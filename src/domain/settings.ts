@@ -1,7 +1,7 @@
 import { version } from "../../package.json";
 
 // Preferences and the snapshot of them that each Session keeps (issue #1, Data model).
-// The settings screen arrives with issue #13; until then every Session uses the defaults.
+// The settings screen arrives with issue #14; until then every Session uses the defaults.
 
 export const SCHEMA_VERSION = 1;
 
