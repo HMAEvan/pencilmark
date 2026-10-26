@@ -26,6 +26,8 @@ export const zh = {
   "player.next": "下一题",
   "player.submit": "提交",
   "player.confirmSubmit": "提交后将不能再修改答案。确定提交吗？",
+  "player.confirmSubmitYes": "确定提交",
+  "player.cancel": "取消",
   "review.heading": "结果：{title}",
   "review.score": "答对 {correct} / {total} 题",
   "review.questionNumber": "第 {n} 题",

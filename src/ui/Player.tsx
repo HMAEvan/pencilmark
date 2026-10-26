@@ -22,6 +22,7 @@ export function Player({ sessionId }: { sessionId: string }) {
   const [loaded, setLoaded] = useState<Loaded | null>();
   const [answers, setAnswers] = useState<Record<string, string[]>>({});
   const [index, setIndex] = useState(0);
+  const [confirming, setConfirming] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const recorderRef = useRef<Recorder | undefined>(undefined);
 
@@ -64,9 +65,10 @@ export function Player({ sessionId }: { sessionId: string }) {
     setAnswers({ ...answers, [questionId]: [optionId] });
     recorder.append({ type: "select", questionId, optionId });
   };
+  // Confirmed in the page, not with confirm(): some embedded browsers suppress native dialogs.
   const submit = async () => {
     // The ref, not the state, guards: two clicks can land before a re-render.
-    if (!recorderRef.current || !confirm(t("player.confirmSubmit"))) return;
+    if (!recorderRef.current) return;
     setSubmitting(true);
     recorderRef.current = undefined;
     await submitSession(storage, session, set, recorder);
@@ -95,8 +97,27 @@ export function Player({ sessionId }: { sessionId: string }) {
         <button class="secondary" disabled={index === 0} onClick={() => goTo(index - 1)}>
           {t("player.previous")}
         </button>
-        {index < total - 1 ? <button onClick={() => goTo(index + 1)}>{t("player.next")}</button> : <button disabled={submitting} onClick={submit}>{t("player.submit")}</button>}
+        {index < total - 1 ? (
+          <button onClick={() => goTo(index + 1)}>{t("player.next")}</button>
+        ) : (
+          <button disabled={confirming} onClick={() => setConfirming(true)}>
+            {t("player.submit")}
+          </button>
+        )}
       </div>
+      {confirming && (
+        <div class="card confirm" role="alertdialog" aria-label={t("player.confirmSubmit")}>
+          <p>{t("player.confirmSubmit")}</p>
+          <div class="actions">
+            <button disabled={submitting} onClick={submit}>
+              {t("player.confirmSubmitYes")}
+            </button>
+            <button class="secondary" disabled={submitting} onClick={() => setConfirming(false)}>
+              {t("player.cancel")}
+            </button>
+          </div>
+        </div>
+      )}
     </main>
   );
 }
