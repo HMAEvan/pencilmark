@@ -1,10 +1,11 @@
 import "fake-indexeddb/auto";
 import { describe, expect, it } from "vitest";
-import { commitImport, packErrorsText, parseQuestionPack, previewImport, type ImportPreview } from "./importer";
+import { commitImport, packErrorsText, parseQuestionPack, previewImport, topicPaths, type ImportPreview } from "./importer";
 import { createMemoryStorage } from "../storage/memoryStorage";
 import { createIndexedDbStorage } from "../storage/indexedDbStorage";
 import type { Storage } from "../storage/storage";
 import type { Question, QuestionSet, Topic, Track } from "../domain/types";
+import questionWritingSkill from "../../skills/question-writing/SKILL.md?raw";
 
 const onePack = {
   kind: "question_pack",
@@ -324,5 +325,61 @@ describe("Importer: question types", () => {
     expect(parse(trueFalse({ options: ["True", "False", "Unknown"].map((text, i) => ({ id: `opt_${i}`, content: [{ type: "text", text }] })) }))).toEqual(fail("options"));
     expect(parse(trueFalse({ optionOrder: "shuffle" }))).toEqual(fail("optionOrder"));
     expect(parse(trueFalse({ type: "multiple_answer" }))).toEqual(fail("type"));
+  });
+});
+
+// The sample packs double as import fixtures; the build serves the first one behind "Import sample Set".
+const samplePacks = Object.entries(import.meta.glob<string>("../../samples/*.json", { query: "?raw", import: "default", eager: true }));
+
+describe("Importer: sample packs", () => {
+  it("has at least one sample pack", () => {
+    expect(samplePacks.length).toBeGreaterThan(0);
+  });
+
+  it.each(samplePacks)("imports %s cleanly, without warnings, covering single-answer, multiple-answer and true/false", async (_path, text) => {
+    const parsed = parseQuestionPack(text);
+    if (!parsed.ok) throw new Error(packErrorsText(parsed.errors));
+    const storage = createMemoryStorage();
+    const shown = await previewImport(parsed.pack, storage);
+    expect(shown.warnings).toEqual([]);
+    expect(shown.questions.every((q) => q.status === "new")).toBe(true);
+    expect(parsed.pack.questions.length).toBeGreaterThanOrEqual(5);
+    expect(parsed.pack.questions.length).toBeLessThanOrEqual(10);
+
+    const kinds = new Set(parsed.pack.questions.map((q) => (q.tags?.includes("true_false") ? "true_false" : q.type)));
+    expect([...kinds].sort()).toEqual(["multiple_answer", "single_answer", "true_false"]);
+    await commitImport(shown, storage, { confirmedTopicPaths: shown.newTopicPaths });
+    expect(await storage.query("questions")).toHaveLength(parsed.pack.questions.length);
+  });
+});
+
+describe("Importer: the question-writing Skill's example pack", () => {
+  // The Skill is the single source of the authoring format; its one ```json block is the complete example.
+  const examples = [...questionWritingSkill.matchAll(/^```json\n([\s\S]*?)\n```$/gm)].map((m) => m[1]!);
+
+  it("is the Skill's only JSON block", () => {
+    expect(examples).toHaveLength(1);
+  });
+
+  it("imports cleanly, without warnings, covering single-answer, multiple-answer and true/false", async () => {
+    const parsed = parseQuestionPack(examples[0] ?? "");
+    if (!parsed.ok) throw new Error(packErrorsText(parsed.errors));
+    const shown = await previewImport(parsed.pack, createMemoryStorage());
+    expect(shown.warnings).toEqual([]);
+    const kinds = new Set(parsed.pack.questions.map((q) => (q.tags?.includes("true_false") ? "true_false" : q.type)));
+    expect([...kinds].sort()).toEqual(["multiple_answer", "single_answer", "true_false"]);
+  });
+});
+
+describe("Importer: current Topic paths", () => {
+  it("lists every Track and Topic as a path, in Topic order, and a pack using them needs no new Topics", async () => {
+    const storage = createMemoryStorage();
+    expect(await topicPaths(storage)).toEqual([]);
+    await importPack(storage, { ...threePack, batch: { title: "Genetics", topic: "CHEM100" } });
+
+    const paths = await topicPaths(storage);
+    expect(paths).toEqual(["BIOL101", "BIOL101 / Genetics", "BIOL101 / Genetics / Lecture 1", "BIOL101 / Genetics / Lecture 2", "CHEM100"]);
+    const reuse = { ...threePack, questions: paths.map((path, i) => question(`p${i}`, `Question filed under ${path}`, ["Yes", "No"], { topics: [path] })) };
+    expect((await preview(storage, reuse)).newTopicPaths).toEqual([]);
   });
 });

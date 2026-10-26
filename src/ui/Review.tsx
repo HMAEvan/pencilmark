@@ -1,13 +1,15 @@
 import { useEffect, useRef, useState } from "preact/hooks";
 import type { Flag, Question, QuestionSet, Session } from "../domain/types";
 import { blocksToText, letterAt, letterOf } from "../domain/display";
-import { t, type TranslationKey } from "../i18n/i18n";
+import { t } from "../i18n/i18n";
 import { openRecorder, type RawEventBody, type Recorder } from "../recorder/recorder";
 import { loadDerivedSession, recordReviewMark, setOverride, type Attempt, type Derivation, type Override } from "../session/sessions";
 import { FlagButtons, NoteField } from "./Marks";
 import { digestWithOverrides, finalValues, type FinalValues, type OverrideValues } from "../derivation/derivation";
 import { excludedIdleMs } from "../derivation/timing";
 import { buildAnswerPack } from "../exports/answerPack";
+import { gradingMaterials } from "../exports/skills";
+import { CopyButton } from "./CopyButton";
 import { formatDuration, formatScore } from "./format";
 import { DEFAULT_PREFERENCES } from "../domain/settings";
 import { isGraded, questionTypeOf } from "../questionTypes/questionType";
@@ -153,7 +155,6 @@ function ResultMark({ final, multiple, partial }: { final: FinalValues; multiple
 
 export function Review({ sessionId }: { sessionId: string }) {
   const [loaded, setLoaded] = useState<Loaded | null>();
-  const [copyState, setCopyState] = useState<TranslationKey>();
   const [marking, setMarking] = useState(false);
   const [includeRawLog, setIncludeRawLog] = useState(false);
   const [downloadFailed, setDownloadFailed] = useState(false);
@@ -195,14 +196,6 @@ export function Review({ sessionId }: { sessionId: string }) {
   };
   // The copied Digest uses the Overrides set since the derivation, in place of the derived values.
   const digest = overrides.size ? digestWithOverrides({ title: set.title, questions: [...questions.values()], rules: derivation.parameters }, { attempts, removedFlags: derivation.removedFlags }, overrides) : derivation.digest;
-  const copyDigest = async () => {
-    try {
-      await navigator.clipboard.writeText(digest);
-      setCopyState("review.copied");
-    } catch {
-      setCopyState("review.copyFailed");
-    }
-  };
   const downloadAnswerPack = async () => {
     setDownloadFailed(false);
     try {
@@ -233,15 +226,16 @@ export function Review({ sessionId }: { sessionId: string }) {
         {ungraded > 0 && <span class="muted">{t("review.ungradedCount", { count: ungraded })}</span>}
       </p>
       <div class="actions">
-        <button onClick={copyDigest}>{t("review.copyDigest")}</button>
+        <CopyButton label="review.copyGrading" text={() => gradingMaterials(digest)} />
+      </div>
+      <div class="actions">
+        <CopyButton label="review.copyDigest" text={() => digest} secondary />
+      </div>
+      <div class="actions">
         <button class="secondary" onClick={() => navigate()}>
           {t("review.backHome")}
         </button>
-        {copyState && <span class="muted">{t(copyState)}</span>}
       </div>
-      {copyState === "review.copyFailed" && (
-        <textarea readOnly rows={10} value={digest} ref={(el) => el?.select()} />
-      )}
       <div class="actions">
         <button class="secondary" onClick={downloadAnswerPack}>
           {t("review.downloadAnswerPack")}

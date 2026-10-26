@@ -1,7 +1,10 @@
 import { useRef, useState } from "preact/hooks";
-import { t, type TranslationKey } from "../i18n/i18n";
-import { commitImport, packErrorsText, parseQuestionPack, previewImport, type ImportPreview, type ImportStatus, type PackError } from "../importer/importer";
+import { t } from "../i18n/i18n";
+import { commitImport, packErrorsText, parseQuestionPack, previewImport, topicPaths, type ImportPreview, type ImportStatus, type PackError } from "../importer/importer";
+import { questionWritingPrompt } from "../exports/skills";
+import samplePack from "../../samples/general-science.json?raw";
 import { storage } from "./appStorage";
+import { CopyButton } from "./CopyButton";
 
 function locatedLine(error: PackError): string {
   const question = error.question ?? t("import.packLevel");
@@ -11,16 +14,6 @@ function locatedLine(error: PackError): string {
 }
 
 function Errors({ errors }: { errors: PackError[] }) {
-  const [copyState, setCopyState] = useState<TranslationKey>();
-  const text = packErrorsText(errors);
-  const copy = async () => {
-    try {
-      await navigator.clipboard.writeText(text);
-      setCopyState("import.copied");
-    } catch {
-      setCopyState("import.copyFailed");
-    }
-  };
   return (
     <div class="errors">
       <p>{t("import.errorsHeading")}</p>
@@ -30,12 +23,8 @@ function Errors({ errors }: { errors: PackError[] }) {
         ))}
       </ul>
       <div class="actions">
-        <button type="button" class="secondary" onClick={copy}>
-          {t("import.copyErrors")}
-        </button>
-        {copyState && <span class="muted">{t(copyState)}</span>}
+        <CopyButton label="import.copyErrors" text={() => packErrorsText(errors)} secondary />
       </div>
-      {copyState === "import.copyFailed" && <textarea readOnly rows={6} value={text} ref={(el) => el?.select()} />}
     </div>
   );
 }
@@ -82,7 +71,8 @@ function Preview({ preview, onConfirm, onCancel }: { preview: ImportPreview; onC
   );
 }
 
-export function ImportForm({ onImported }: { onImported: () => void }) {
+/** `offerSample`: while there are no Sets, the sample pack can be loaded into the usual preview. Nothing is imported without it. */
+export function ImportForm({ onImported, offerSample }: { onImported: () => void; offerSample: boolean }) {
   const [text, setText] = useState("");
   const [errors, setErrors] = useState<PackError[]>([]);
   const [preview, setPreview] = useState<ImportPreview>();
@@ -90,14 +80,17 @@ export function ImportForm({ onImported }: { onImported: () => void }) {
   // A ref, not state: two clicks can land before a re-render and would import twice.
   const committing = useRef(false);
 
-  const check = async (e: Event) => {
-    e.preventDefault();
+  const check = async (packText: string) => {
     setImported(undefined);
     setPreview(undefined);
-    const parsed = parseQuestionPack(text);
+    const parsed = parseQuestionPack(packText);
     if (!parsed.ok) return setErrors(parsed.errors);
     setErrors([]);
     setPreview(await previewImport(parsed.pack, storage));
+  };
+  const loadSample = () => {
+    setText(samplePack);
+    void check(samplePack);
   };
 
   const confirm = async () => {
@@ -122,7 +115,13 @@ export function ImportForm({ onImported }: { onImported: () => void }) {
   };
 
   return (
-    <form class="card" onSubmit={check}>
+    <form
+      class="card"
+      onSubmit={(e) => {
+        e.preventDefault();
+        void check(text);
+      }}
+    >
       <h2>{t("import.heading")}</h2>
       <textarea
         rows={6}
@@ -141,6 +140,14 @@ export function ImportForm({ onImported }: { onImported: () => void }) {
           {t("import.pickFile")}
           <input type="file" accept=".json,.txt,.md,application/json,text/plain" onChange={pickFile} />
         </label>
+      </div>
+      <div class="actions">
+        <CopyButton label="import.copyPrompt" text={async () => questionWritingPrompt(await topicPaths(storage))} secondary />
+        {offerSample && (
+          <button type="button" class="secondary" disabled={preview !== undefined} onClick={loadSample}>
+            {t("import.sample")}
+          </button>
+        )}
       </div>
       {imported && <p class="ok">{t("import.success", { title: imported })}</p>}
       {errors.length > 0 && <Errors errors={errors} />}

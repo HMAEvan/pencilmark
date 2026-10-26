@@ -8,15 +8,22 @@ import { ImportForm } from "./ImportForm";
 
 type SetRow = { set: QuestionSet; latest?: Session };
 
-async function loadRows(): Promise<SetRow[]> {
-  const sets = await storage.query<QuestionSet>("sets", { archived: false });
-  sets.sort((a, b) => b.createdAt - a.createdAt);
-  return Promise.all(sets.map(async (set) => ({ set, latest: await latestSession(storage, set.id) })));
+/** `anySets` counts archived Sets too: the sample is offered only to a tool that has never had a Set. */
+async function loadRows(): Promise<{ rows: SetRow[]; anySets: boolean }> {
+  const all = await storage.query<QuestionSet>("sets");
+  const sets = all.filter((set) => !set.archived).sort((a, b) => b.createdAt - a.createdAt);
+  const rows = await Promise.all(sets.map(async (set) => ({ set, latest: await latestSession(storage, set.id) })));
+  return { rows, anySets: all.length > 0 };
 }
 
 export function Home() {
   const [rows, setRows] = useState<SetRow[]>();
-  const refresh = () => void loadRows().then(setRows);
+  const [anySets, setAnySets] = useState(true);
+  const refresh = () =>
+    void loadRows().then((loaded) => {
+      setRows(loaded.rows);
+      setAnySets(loaded.anySets);
+    });
   useEffect(refresh, []);
 
   const [confirmingAbandon, setConfirmingAbandon] = useState<string>();
@@ -41,7 +48,7 @@ export function Home() {
   return (
     <main>
       <h1>{t("app.title")}</h1>
-      <ImportForm onImported={refresh} />
+      <ImportForm onImported={refresh} offerSample={!anySets} />
       <h2>{t("home.setsHeading")}</h2>
       {!rows && <p>{t("common.loading")}</p>}
       {rows?.length === 0 && <p class="muted">{t("home.noSets")}</p>}

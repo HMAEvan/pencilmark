@@ -1,5 +1,6 @@
 import { PHASES, type Flag, type Question } from "../domain/types";
 import { blocksToText, letterAt, letterOf } from "../domain/display";
+import { FLAG_TYPES } from "../domain/schemaDocument";
 import type { DerivedAttempt } from "./derivation";
 import type { FlagMark, RemovedFlags } from "./marks";
 import { finalValues, type FinalValues, type OverrideValues } from "./overrides";
@@ -20,9 +21,9 @@ function duration(ms: number): string {
   return seconds >= 60 ? `${Math.floor(seconds / 60)}m ${seconds % 60}s` : `${seconds}s`;
 }
 
-const FLAG_NAMES: Record<Flag, string> = { concept: "concept confusion", careless: "careless", focus: "focus", memory: "memory", bad_question: "bad question" };
+const flagName = (flag: Flag) => FLAG_TYPES.find((type) => type.id === flag)!.name;
 
-const flagList = (flags: FlagMark[]) => flags.map((f) => `${FLAG_NAMES[f.flag]} (${f.phase})`).join(", ");
+const flagList = (flags: FlagMark[]) => flags.map((f) => `${flagName(f.flag)} (${f.phase})`).join(", ");
 
 /** Removed Flags are listed too: taking a Flag back is evidence of hesitation. */
 function markLines({ confidence, flags, notes }: DerivedAttempt, removed: FlagMark[], collectConfidence: boolean): string[] {

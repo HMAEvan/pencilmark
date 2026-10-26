@@ -1,0 +1,139 @@
+{
+  "kind": "question_pack",
+  "schemaVersion": 1,
+  "batch": {
+    "title": "General science sampler",
+    "material": "Fabricated sample Questions on general science, written for trying PencilMark",
+    "topic": "General Science"
+  },
+  "questions": [
+    {
+      "label": "q1",
+      "type": "single_answer",
+      "stem": [{ "type": "text", "text": "Which gas makes up the largest share of Earth's atmosphere by volume?" }],
+      "options": [
+        { "id": "opt_n2", "content": [{ "type": "text", "text": "Nitrogen" }], "rationale": [{ "type": "text", "text": "Correct: nitrogen is about 78% of dry air." }] },
+        {
+          "id": "opt_o2",
+          "content": [{ "type": "text", "text": "Oxygen" }],
+          "rationale": [{ "type": "text", "text": "Oxygen is about 21%, the second largest share." }],
+          "misconception": [{ "type": "text", "text": "Assuming the gas we breathe for respiration must be the most abundant one." }]
+        },
+        {
+          "id": "opt_co2",
+          "content": [{ "type": "text", "text": "Carbon dioxide" }],
+          "rationale": [{ "type": "text", "text": "Carbon dioxide is well under 1% of the atmosphere." }],
+          "misconception": [{ "type": "text", "text": "Overestimating CO₂ because of how often it is discussed in climate news." }]
+        },
+        { "id": "opt_ar", "content": [{ "type": "text", "text": "Argon" }], "rationale": [{ "type": "text", "text": "Argon is about 0.9%, the third largest share." }] }
+      ],
+      "answer": ["opt_n2"],
+      "explanation": [{ "type": "text", "text": "Dry air is roughly 78% nitrogen, 21% oxygen and 0.9% argon, with carbon dioxide and other gases making up the rest." }],
+      "topics": ["General Science / Earth Science"]
+    },
+    {
+      "label": "q2",
+      "type": "single_answer",
+      "stem": [{ "type": "text", "text": "A ball is dropped from rest. Ignoring air resistance, roughly how fast is it falling after 2 seconds?" }],
+      "options": [
+        { "id": "opt_10", "content": [{ "type": "text", "text": "About 10 m/s" }], "rationale": [{ "type": "text", "text": "That is the speed after 1 second." }], "misconception": [{ "type": "text", "text": "Treating g as a speed rather than a rate of change of speed." }] },
+        { "id": "opt_20", "content": [{ "type": "text", "text": "About 20 m/s" }], "rationale": [{ "type": "text", "text": "Correct: v = g × t ≈ 9.8 m/s² × 2 s ≈ 20 m/s." }] },
+        { "id": "opt_40", "content": [{ "type": "text", "text": "About 40 m/s" }], "rationale": [{ "type": "text", "text": "This squares the time, which applies to distance, not speed." }], "misconception": [{ "type": "text", "text": "Mixing up v = gt with d = ½gt²." }] },
+        { "id": "opt_0", "content": [{ "type": "text", "text": "It falls at a constant speed, so it depends only on its mass" }], "rationale": [{ "type": "text", "text": "Without air resistance, every object accelerates at the same rate, whatever its mass." }], "misconception": [{ "type": "text", "text": "The everyday intuition that heavier objects fall faster." }] }
+      ],
+      "answer": ["opt_20"],
+      "explanation": [{ "type": "text", "text": "In free fall the speed grows by about 9.8 m/s every second, so after 2 seconds it is about 20 m/s. {{opt:opt_40}} confuses speed with the distance formula." }],
+      "topics": ["General Science / Physics / Motion"]
+    },
+    {
+      "label": "q3",
+      "type": "multiple_answer",
+      "stem": [{ "type": "text", "text": "Which of these are found in a typical plant cell but not in a typical animal cell? Select all that apply." }],
+      "options": [
+        { "id": "opt_wall", "content": [{ "type": "text", "text": "Cell wall" }], "rationale": [{ "type": "text", "text": "Correct: plant cells have a cellulose cell wall; animal cells do not." }] },
+        { "id": "opt_chloro", "content": [{ "type": "text", "text": "Chloroplasts" }], "rationale": [{ "type": "text", "text": "Correct: chloroplasts carry out photosynthesis in plant cells." }] },
+        {
+          "id": "opt_mito",
+          "content": [{ "type": "text", "text": "Mitochondria" }],
+          "rationale": [{ "type": "text", "text": "Both plant and animal cells have mitochondria." }],
+          "misconception": [{ "type": "text", "text": "Believing plants get all their energy from chloroplasts and so need no mitochondria." }]
+        },
+        { "id": "opt_membrane", "content": [{ "type": "text", "text": "Cell membrane" }], "rationale": [{ "type": "text", "text": "Every cell has a cell membrane, inside the wall in plants." }], "misconception": [{ "type": "text", "text": "Thinking the cell wall replaces the membrane." }] }
+      ],
+      "answer": ["opt_wall", "opt_chloro"],
+      "explanation": [{ "type": "text", "text": "Cell walls and chloroplasts (and usually a large central vacuole) set plant cells apart. Mitochondria and the cell membrane are shared by both." }],
+      "topics": ["General Science / Biology / Cells"]
+    },
+    {
+      "label": "q4",
+      "type": "multiple_answer",
+      "stem": [{ "type": "text", "text": "Which of these are chemical changes? Select all that apply." }],
+      "options": [
+        { "id": "opt_rust", "content": [{ "type": "text", "text": "Iron rusting" }], "rationale": [{ "type": "text", "text": "Correct: iron reacts with oxygen and water to form iron oxide, a new substance." }] },
+        { "id": "opt_melt", "content": [{ "type": "text", "text": "Ice melting" }], "rationale": [{ "type": "text", "text": "Melting changes only the state; it is still water." }], "misconception": [{ "type": "text", "text": "Treating any visible change of appearance as a chemical change." }] },
+        { "id": "opt_burn", "content": [{ "type": "text", "text": "Wood burning" }], "rationale": [{ "type": "text", "text": "Correct: combustion produces carbon dioxide, water and ash." }] },
+        { "id": "opt_dissolve", "content": [{ "type": "text", "text": "Sugar dissolving in water" }], "rationale": [{ "type": "text", "text": "Dissolving is physical: evaporating the water gives the sugar back." }], "misconception": [{ "type": "text", "text": "Thinking that because the sugar disappears, it has become something else." }] },
+        { "id": "opt_bake", "content": [{ "type": "text", "text": "Baking a cake" }], "rationale": [{ "type": "text", "text": "Correct: heat drives reactions in the batter that cannot be undone." }] }
+      ],
+      "answer": ["opt_rust", "opt_burn", "opt_bake"],
+      "explanation": [{ "type": "text", "text": "A chemical change makes new substances and is usually hard to reverse. Melting and dissolving are physical changes: the substance stays the same." }],
+      "topics": ["General Science / Chemistry"]
+    },
+    {
+      "label": "q5",
+      "type": "single_answer",
+      "stem": [{ "type": "text", "text": "Which planet in our solar system is closest to the Sun?" }],
+      "options": [
+        { "id": "opt_mercury", "content": [{ "type": "text", "text": "Mercury" }], "rationale": [{ "type": "text", "text": "Correct: Mercury orbits closest to the Sun." }] },
+        { "id": "opt_venus", "content": [{ "type": "text", "text": "Venus" }], "rationale": [{ "type": "text", "text": "Venus is second, though it is the hottest planet." }], "misconception": [{ "type": "text", "text": "Assuming the hottest planet must be the closest." }] },
+        { "id": "opt_earth", "content": [{ "type": "text", "text": "Earth" }], "rationale": [{ "type": "text", "text": "Earth is third." }] },
+        { "id": "opt_none", "content": [{ "type": "text", "text": "None of the above" }], "rationale": [{ "type": "text", "text": "One of the listed planets is the closest." }], "pin": "last" }
+      ],
+      "answer": ["opt_mercury"],
+      "explanation": [{ "type": "text", "text": "Mercury is closest; Venus is hotter because its thick carbon dioxide atmosphere traps heat." }],
+      "topics": ["General Science / Earth Science / Astronomy"]
+    },
+    {
+      "label": "q6",
+      "type": "single_answer",
+      "stem": [{ "type": "text", "text": "Sound travels faster in air than in water." }],
+      "options": [
+        { "id": "opt_true", "content": [{ "type": "text", "text": "True" }], "rationale": [{ "type": "text", "text": "Sound is about four times faster in water than in air." }], "misconception": [{ "type": "text", "text": "Thinking a denser medium must slow sound down." }] },
+        { "id": "opt_false", "content": [{ "type": "text", "text": "False" }], "rationale": [{ "type": "text", "text": "Correct: about 343 m/s in air against about 1,480 m/s in water." }] }
+      ],
+      "optionOrder": "fixed",
+      "answer": ["opt_false"],
+      "explanation": [{ "type": "text", "text": "Sound moves faster through water because water resists compression far more strongly than air does." }],
+      "topics": ["General Science / Physics / Waves"],
+      "tags": ["true_false"]
+    },
+    {
+      "label": "q7",
+      "type": "single_answer",
+      "stem": [{ "type": "text", "text": "Pure water at sea level boils at 100 °C." }],
+      "options": [
+        { "id": "opt_true", "content": [{ "type": "text", "text": "True" }], "rationale": [{ "type": "text", "text": "Correct: at standard sea-level pressure, pure water boils at 100 °C." }] },
+        { "id": "opt_false", "content": [{ "type": "text", "text": "False" }], "rationale": [{ "type": "text", "text": "The boiling point changes with pressure, but at sea level it is 100 °C." }], "misconception": [{ "type": "text", "text": "Remembering that boiling point varies and overgeneralising to sea level." }] }
+      ],
+      "optionOrder": "fixed",
+      "answer": ["opt_true"],
+      "explanation": [{ "type": "text", "text": "Boiling point depends on pressure: on a high mountain water boils below 100 °C." }],
+      "topics": ["General Science / Chemistry"],
+      "tags": ["true_false"]
+    },
+    {
+      "label": "q8",
+      "type": "single_answer",
+      "stem": [{ "type": "text", "text": "Humans and other mammals are warm-blooded, keeping a roughly constant body temperature." }],
+      "options": [
+        { "id": "opt_true", "content": [{ "type": "text", "text": "True" }], "rationale": [{ "type": "text", "text": "Correct: mammals regulate their body temperature internally." }] },
+        { "id": "opt_false", "content": [{ "type": "text", "text": "False" }], "rationale": [{ "type": "text", "text": "Mammals are endotherms, unlike most reptiles." }] }
+      ],
+      "optionOrder": "fixed",
+      "answer": ["opt_true"],
+      "explanation": [{ "type": "text", "text": "Mammals and birds are endotherms: they generate heat to hold a steady temperature." }],
+      "topics": ["General Science / Biology"],
+      "tags": ["true_false"]
+    }
+  ]
+}

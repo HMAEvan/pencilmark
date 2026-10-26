@@ -9,6 +9,7 @@ import { packWarnings, type PackWarning } from "./warnings";
 import { isTrueFalse } from "../questionTypes/singleAnswer";
 
 export type { PackWarning };
+export { topicPaths } from "./topics";
 
 // A Question pack carries pack-local labels only; real IDs are assigned on commit (ADR-0003).
 export type PackQuestion = {

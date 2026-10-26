@@ -157,3 +157,13 @@ Working name introduced while building issue #7, not yet agreed with /domain-mod
 **Mark** (标记类记录):
 Anything the user records about an Attempt beyond the answer itself: Confidence, Flags, Item flags and the Note. Used in code for the group (`QuestionMarks`, `walkMarks`, `recordReviewMark`).
 _Status_: provisional, not yet agreed
+
+Working names introduced while building issue #9, not yet agreed with /domain-modeling.
+
+**Skill** (技能说明):
+A self-contained instruction file pasted into any AI chat (and usable as a Claude skill): the question-writing Skill, the single source of the Question pack format, and the grading Skill, which teaches from a Digest. The copy texts are a Skill followed by the user's Topic paths or a Digest.
+_Status_: provisional, not yet agreed
+
+**Schema document** (结构说明文档):
+The `meta/schema` document in the database: the schema version, the Flag type table, timing defaults and conventions for AI readers.
+_Status_: provisional, not yet agreed

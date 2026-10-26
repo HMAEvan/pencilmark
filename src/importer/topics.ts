@@ -49,3 +49,24 @@ export async function topicResolver(storage: Storage, provenance: Provenance, no
 
   return { resolve, created, newPaths };
 }
+
+/** Every Track and Topic in Storage as a path, each Track followed depth-first by its Topics in order. */
+export async function topicPaths(storage: Storage): Promise<string[]> {
+  const tracks = await storage.query<Track>("tracks");
+  const topics = await storage.query<Topic>("topics");
+  tracks.sort((a, b) => a.title.localeCompare(b.title));
+  const paths: string[] = [];
+  const walk = (trackId: string, parentId: string | undefined, prefix: string) => {
+    const children = topics.filter((t) => t.trackId === trackId && t.parentId === parentId).sort((a, b) => a.order - b.order);
+    for (const topic of children) {
+      const path = `${prefix} / ${topic.title}`;
+      paths.push(path);
+      walk(trackId, topic.id, path);
+    }
+  };
+  for (const track of tracks) {
+    paths.push(track.title);
+    walk(track.id, undefined, track.title);
+  }
+  return paths;
+}
