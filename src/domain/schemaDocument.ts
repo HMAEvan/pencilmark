@@ -1,4 +1,4 @@
-import type { Flag } from "./types";
+import { FLAGS, type Flag } from "./types";
 import type { Storage } from "../storage/storage";
 import { DEFAULT_PREFERENCES, SCHEMA_VERSION } from "./settings";
 
@@ -15,13 +15,16 @@ export type FlagType = {
   deprecated?: true;
 };
 
-export const FLAG_TYPES: FlagType[] = [
-  { id: "concept", name: "concept confusion", colour: "#7b1fa2", level: "question" },
-  { id: "careless", name: "careless", colour: "#ef6c00", level: "question" },
-  { id: "focus", name: "focus", colour: "#1565c0", level: "question" },
-  { id: "memory", name: "memory", colour: "#2e7d32", level: "question" },
-  { id: "bad_question", name: "bad question", colour: "#c62828", level: "question" },
-];
+/** Keyed by Flag, so every Flag has exactly one entry. */
+export const FLAG_TYPE: Record<Flag, Omit<FlagType, "id">> = {
+  concept: { name: "concept confusion", colour: "#7b1fa2", level: "question" },
+  careless: { name: "careless", colour: "#ef6c00", level: "question" },
+  focus: { name: "focus", colour: "#1565c0", level: "question" },
+  memory: { name: "memory", colour: "#2e7d32", level: "question" },
+  bad_question: { name: "bad question", colour: "#c62828", level: "question" },
+};
+
+export const FLAG_TYPES: FlagType[] = FLAGS.map((id) => ({ id, ...FLAG_TYPE[id] }));
 
 export type SchemaDocument = {
   id: "schema";

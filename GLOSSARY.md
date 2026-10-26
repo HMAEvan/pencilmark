@@ -167,3 +167,7 @@ _Status_: provisional, not yet agreed
 **Schema document** (结构说明文档):
 The `meta/schema` document in the database: the schema version, the Flag type table, timing defaults and conventions for AI readers.
 _Status_: provisional, not yet agreed
+
+**Flag type** (标记类型):
+One kind of Flag as the Schema document lists it: id, English name, colour, and level (`question` for Flags; Item flags will use `item`). A retired Flag type is marked deprecated, never removed. In code: `FlagType`, `FLAG_TYPE`, `FLAG_TYPES`.
+_Status_: provisional, not yet agreed

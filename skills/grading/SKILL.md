@@ -22,9 +22,9 @@ If no Digest is in the conversation, ask the learner to paste one from the Penci
 
 Each Question is a `## Question n` section: the stem, the Options under their displayed letters, then these lines.
 
-- **Answer given / Correct answer**: letters as the learner saw them. `(blank)` means no answer.
+- **Answer given / Correct answer**: letters as the learner saw them. `(blank)` means no answer. A `not graded` Question gives its correct answer as Option ids instead.
 - **Result**: `correct` or `wrong`. A multiple-answer Question adds its partial score from 0 to 1. `not graded` marks a type the tool shows read-only.
-- **Answering time**: active time before the answer was revealed. Idle stretches are excluded and said so. "Overridden by the user" means the learner corrected the value; trust the corrected one.
+- **Answering time**: active time before the answer was revealed. Idle stretches are excluded and said so. "(overridden by the user; derived: …)" means the learner corrected the value; trust the corrected one. The Result line can carry the same note.
 - **Reviewing time**: time spent on the Question after the reveal, reading the explanation. Absent means it was not looked at again.
 - **First choice**: the first answer chosen and how long it took.
 - **Answer changes**: each change, with the complete answer after it, when it happened, and how long the previous answer stood.

@@ -1,6 +1,7 @@
 import "fake-indexeddb/auto";
 import { describe, expect, it } from "vitest";
-import { commitImport, packErrorsText, parseQuestionPack, previewImport, topicPaths, type ImportPreview } from "./importer";
+import { commitImport, packErrorsText, parseQuestionPack, previewImport, topicPaths, type ImportPreview, type QuestionPack } from "./importer";
+import { isTrueFalse } from "../questionTypes/singleAnswer";
 import { createMemoryStorage } from "../storage/memoryStorage";
 import { createIndexedDbStorage } from "../storage/indexedDbStorage";
 import type { Storage } from "../storage/storage";
@@ -328,6 +329,9 @@ describe("Importer: question types", () => {
   });
 });
 
+/** The Question types a pack covers, true/false counted on its own. */
+const typesCovered = (pack: QuestionPack) => [...new Set(pack.questions.map((q) => (isTrueFalse(q) ? "true_false" : q.type)))].sort();
+
 // The sample packs double as import fixtures; the build serves the first one behind "Import sample Set".
 const samplePacks = Object.entries(import.meta.glob<string>("../../samples/*.json", { query: "?raw", import: "default", eager: true }));
 
@@ -346,8 +350,7 @@ describe("Importer: sample packs", () => {
     expect(parsed.pack.questions.length).toBeGreaterThanOrEqual(5);
     expect(parsed.pack.questions.length).toBeLessThanOrEqual(10);
 
-    const kinds = new Set(parsed.pack.questions.map((q) => (q.tags?.includes("true_false") ? "true_false" : q.type)));
-    expect([...kinds].sort()).toEqual(["multiple_answer", "single_answer", "true_false"]);
+    expect(typesCovered(parsed.pack)).toEqual(["multiple_answer", "single_answer", "true_false"]);
     await commitImport(shown, storage, { confirmedTopicPaths: shown.newTopicPaths });
     expect(await storage.query("questions")).toHaveLength(parsed.pack.questions.length);
   });
@@ -366,8 +369,7 @@ describe("Importer: the question-writing Skill's example pack", () => {
     if (!parsed.ok) throw new Error(packErrorsText(parsed.errors));
     const shown = await previewImport(parsed.pack, createMemoryStorage());
     expect(shown.warnings).toEqual([]);
-    const kinds = new Set(parsed.pack.questions.map((q) => (q.tags?.includes("true_false") ? "true_false" : q.type)));
-    expect([...kinds].sort()).toEqual(["multiple_answer", "single_answer", "true_false"]);
+    expect(typesCovered(parsed.pack)).toEqual(["multiple_answer", "single_answer", "true_false"]);
   });
 });
 
