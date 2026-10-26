@@ -1,6 +1,7 @@
-import type { Question } from "../domain/types";
+import { PHASES, type Flag, type Question } from "../domain/types";
 import { blocksToText, letterAt, letterOf } from "../domain/display";
 import type { DerivedAttempt } from "./derivation";
+import type { FlagMark, RemovedFlags } from "./marks";
 import { finalValues, type FinalValues, type OverrideValues } from "./overrides";
 import { excludedIdleMs } from "./timing";
 import { isGraded, questionTypeOf } from "../questionTypes/questionType";
@@ -17,6 +18,20 @@ function letters(optionIds: string[], optionOrder: string[]): string {
 function duration(ms: number): string {
   const seconds = Math.round(ms / 1000);
   return seconds >= 60 ? `${Math.floor(seconds / 60)}m ${seconds % 60}s` : `${seconds}s`;
+}
+
+const FLAG_NAMES: Record<Flag, string> = { concept: "concept confusion", careless: "careless", focus: "focus", memory: "memory", bad_question: "bad question" };
+
+const flagList = (flags: FlagMark[]) => flags.map((f) => `${FLAG_NAMES[f.flag]} (${f.phase})`).join(", ");
+
+/** Removed Flags are listed too: taking a Flag back is evidence of hesitation. */
+function markLines({ confidence, flags, notes }: DerivedAttempt, removed: FlagMark[], collectConfidence: boolean): string[] {
+  const lines = [
+    `- Confidence: ${collectConfidence ? (confidence ?? "none") : "not collected"}`,
+    `- Flags: ${flags.length ? flagList(flags) : "none"}${removed.length ? `; removed: ${flagList(removed)}` : ""}`,
+  ];
+  for (const phase of PHASES) if (notes[phase]) lines.push(`- Note (${phase}): ${notes[phase]}`);
+  return lines;
 }
 
 function answeringTime(attempt: DerivedAttempt, final: FinalValues): string {
@@ -47,6 +62,8 @@ export function writeDigest(
   title: string,
   attempts: DerivedAttempt[],
   questions: Map<string, Question>,
+  collectConfidence: boolean,
+  removedFlags: RemovedFlags,
   overrides: Map<string, OverrideValues> = new Map(),
 ): string {
   const lines = [`# Digest: ${title}`, ""];
@@ -62,6 +79,7 @@ export function writeDigest(
         `- Correct answer: ${question.answer.join(", ")}`,
         "- Result: not graded",
         answeringTime(attempt, final),
+        ...markLines(attempt, removedFlags[attempt.questionId] ?? [], collectConfidence),
         "",
       );
       continue;
@@ -78,6 +96,7 @@ export function writeDigest(
       `- Answer given: ${letters(attempt.answer, order)}`,
       `- Correct answer: ${letters(question.answer, order)}`,
       ...outcomeLines(attempt, final, multiple),
+      ...markLines(attempt, removedFlags[attempt.questionId] ?? [], collectConfidence),
       "",
     );
   }

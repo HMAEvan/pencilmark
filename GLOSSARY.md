@@ -151,3 +151,9 @@ _Status_: provisional, not yet agreed
 **Pin** (固定位置):
 An Option's mark to stay first or last, in authored order, when Options are shuffled.
 _Status_: provisional, not yet agreed
+
+Working name introduced while building issue #7, not yet agreed with /domain-modeling.
+
+**Mark** (标记类记录):
+Anything the user records about an Attempt beyond the answer itself: Confidence, Flags, Item flags and the Note. Used in code for the group (`QuestionMarks`, `walkMarks`, `recordReviewMark`).
+_Status_: provisional, not yet agreed

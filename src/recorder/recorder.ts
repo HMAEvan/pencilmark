@@ -1,11 +1,19 @@
 import type { Storage } from "../storage/storage";
+import type { Confidence, Flag } from "../domain/types";
 
 // ADR-0001: one append-only, time-ordered stream per Session, chunked only by saving.
 
 export type RawEventBody =
   | { type: "navigate"; questionId: string }
   | { type: "select"; questionId: string; optionId: string }
-  | { type: "deselect"; questionId: string; optionId: string }  | { type: "hide" }
+  | { type: "deselect"; questionId: string; optionId: string }
+  /** Sets or changes the Confidence; `null` clears it. */
+  | { type: "confidence"; questionId: string; confidence: Confidence | null }
+  | { type: "flag"; questionId: string; flag: Flag }
+  | { type: "unflag"; questionId: string; flag: Flag }
+  /** The whole Note as saved; an empty `text` removes it. */
+  | { type: "note"; questionId: string; text: string }
+  | { type: "hide" }
   /** A resume event: the page was shown or reopened. `wall` is UTC epoch ms. */
   | { type: "show"; wall: number }
   | { type: "submit" };
