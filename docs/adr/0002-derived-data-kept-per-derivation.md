@@ -1,0 +1,3 @@
+# Derived data is stored separately and every derivation is kept
+
+Attempts and the Digest are computed from the Raw log by a pure function. Each computation produces a new, separate derivation record holding the algorithm version, the full parameters, and the range of Raw log chunks it read. The Session points at the derivation currently in use. Earlier derivations are never overwritten. Overrides attach to the Session and Question, not to a derivation, so they survive recomputation. We store derived data at all, rather than computing it on demand, because an AI reading the database should not have to re-implement the timing rules and risk getting them wrong.

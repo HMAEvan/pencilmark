@@ -1,0 +1,3 @@
+# IDs are meaningless, permanent, and assigned by the tool
+
+Every entity ID is a type prefix, a date, and a cryptographically random string drawn from an unambiguous alphabet. IDs never encode categories, because recategorising would break every reference. Sequential numbers are not used, because independent AI windows would collide. Question packs written by an AI carry only pack-local labels, and the tool assigns real IDs on import: language models are poor at producing randomness and tend to copy example IDs. Human-readable codes are generated for display only and never stored. Documents owned by a Session use composite IDs built from these permanent IDs.
