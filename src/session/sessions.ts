@@ -1,7 +1,7 @@
 import type { Question, QuestionSet, Session } from "../domain/types";
 import { newId } from "../domain/ids";
 import type { Storage } from "../storage/storage";
-import { readRawLog, recoverRawLog, type Recorder } from "../recorder/recorder";
+import { readRawLog, recoverRawLog, type RawEventBody, type Recorder } from "../recorder/recorder";
 import { DEFAULT_PREFERENCES, settingsSnapshot } from "../domain/settings";
 import { ALGORITHM_VERSION, derive, type DerivationInput, type DerivationResult, type DerivedAttempt, type OverrideValues } from "../derivation/derivation";
 
@@ -97,10 +97,9 @@ async function derivationInput(storage: Storage, session: Session, set: Question
   };
 }
 
-/** Answers selected so far, read back from the sealed Raw log so a reload shows them. Call it after opening the Recorder, which recovers a buffer a killed page left behind. */
-export async function currentAnswers(storage: Storage, session: Session, set: QuestionSet): Promise<Record<string, string[]>> {
-  const { attempts } = derive(await derivationInput(storage, session, set));
-  return Object.fromEntries(attempts.map((a) => [a.questionId, a.answer]));
+/** Answers and marks so far, read back from the sealed Raw log so a reload shows them. Call it after opening the Recorder, which recovers a buffer a killed page left behind. */
+export async function currentAttempts(storage: Storage, session: Session, set: QuestionSet): Promise<DerivedAttempt[]> {
+  return derive(await derivationInput(storage, session, set)).attempts;
 }
 
 /**
@@ -122,10 +121,15 @@ export async function deriveSession(storage: Storage, session: Session, set: Que
   return updated;
 }
 
-/** A derivation from an older algorithm lacks what the current one records, so it is derived again. */
+/**
+ * Derives again when the derivation is out of date: from an older algorithm, which lacks what the current one records,
+ * or missing Raw log chunks sealed since, such as marks made on the review page. Call it after opening the Recorder.
+ */
 export async function currentDerivation(storage: Storage, session: Session, set: QuestionSet): Promise<Derivation | undefined> {
   const derivation = session.currentDerivationId ? await storage.get<Derivation>("derivations", session.currentDerivationId) : undefined;
-  if (!derivation || derivation.algorithmVersion >= ALGORITHM_VERSION) return derivation;
+  if (!derivation) return derivation;
+  const upToDate = derivation.algorithmVersion >= ALGORITHM_VERSION && derivation.chunks.length === (await readRawLog(storage, session.id)).length;
+  if (upToDate) return derivation;
   const updated = await deriveSession(storage, session, set);
   return storage.get<Derivation>("derivations", updated.currentDerivationId!);
 }
@@ -135,4 +139,11 @@ export async function submitSession(storage: Storage, session: Session, set: Que
   await recorder.seal();
   const now = Date.now();
   await deriveSession(storage, { ...session, status: "done", endedAt: now }, set);
+}
+
+/** Records a mark made after the answers were revealed and derives the Session again, so its Attempts and Digest include it. */
+export async function recordReviewMark(storage: Storage, session: Session, set: QuestionSet, recorder: Recorder, event: RawEventBody): Promise<Session> {
+  recorder.append(event);
+  await recorder.seal();
+  return deriveSession(storage, session, set);
 }

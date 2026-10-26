@@ -1,4 +1,4 @@
-import type { Question } from "../domain/types";
+import type { Flag, Question } from "../domain/types";
 import { blocksToText, letterAt, letterOf } from "../domain/display";
 import type { DerivedAttempt } from "./derivation";
 import { finalValues, type OverrideValues } from "./overrides";
@@ -17,6 +17,17 @@ function duration(ms: number): string {
 }
 
 const result = (correct: boolean) => (correct ? "correct" : "wrong");
+
+const FLAG_NAMES: Record<Flag, string> = { concept: "concept confusion", careless: "careless", focus: "focus", memory: "memory", bad_question: "bad question" };
+
+function markLines({ confidence, flags, note }: DerivedAttempt, collectConfidence: boolean): string[] {
+  const lines = [
+    `- Confidence: ${collectConfidence ? (confidence ?? "none") : "not collected"}`,
+    `- Flags: ${flags.length ? flags.map((f) => `${FLAG_NAMES[f.flag]} (${f.phase})`).join(", ") : "none"}`,
+  ];
+  if (note) lines.push(`- Note: ${note}`);
+  return lines;
+}
 
 function outcomeLines(attempt: DerivedAttempt, override: OverrideValues | undefined): string[] {
   const { timing, trajectory, optionOrder } = attempt;
@@ -39,6 +50,7 @@ export function writeDigest(
   title: string,
   attempts: DerivedAttempt[],
   questions: Map<string, Question>,
+  collectConfidence: boolean,
   overrides: Map<string, OverrideValues> = new Map(),
 ): string {
   const lines = [`# Digest: ${title}`, ""];
@@ -59,6 +71,7 @@ export function writeDigest(
       `- Answer given: ${letters(attempt.answer, order)}`,
       `- Correct answer: ${letters(question.answer, order)}`,
       ...outcomeLines(attempt, overrides.get(attempt.questionId)),
+      ...markLines(attempt, collectConfidence),
       "",
     );
   }

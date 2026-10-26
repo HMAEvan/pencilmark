@@ -1,26 +1,40 @@
 import { useEffect, useState } from "preact/hooks";
-import type { Question, QuestionSet, Session } from "../domain/types";
+import type { Flag, Question, QuestionSet, Session } from "../domain/types";
 import { blocksToText, letterAt, letterOf } from "../domain/display";
 import { t, type TranslationKey } from "../i18n/i18n";
-import { currentDerivation, loadOverrides, loadQuestions, setOverride, type Attempt, type Derivation, type Override } from "../session/sessions";
+import { currentDerivation, loadOverrides, loadQuestions, recordReviewMark, setOverride, type Attempt, type Derivation, type Override } from "../session/sessions";
+import { openRecorder, type RawEventBody, type Recorder } from "../recorder/recorder";
+import { FlagButtons, NoteField } from "./Marks";
 import { digestWithOverrides, finalValues, type FinalValues, type OverrideValues } from "../derivation/derivation";
 import { excludedIdleMs } from "../derivation/timing";
 import { formatDuration } from "./format";
 import { storage } from "./appStorage";
 import { navigate } from "./App";
 
-type Loaded = { session: Session; set: QuestionSet; derivation: Derivation; attempts: Attempt[]; questions: Map<string, Question>; overrides: Map<string, Override> };
+type Loaded = {
+  session: Session;
+  set: QuestionSet;
+  derivation: Derivation;
+  attempts: Attempt[];
+  questions: Map<string, Question>;
+  overrides: Map<string, Override>;
+  recorder: Recorder;
+};
 
 async function load(sessionId: string): Promise<Loaded | undefined> {
   const session = await storage.get<Session>("sessions", sessionId);
   if (!session?.currentDerivationId) return undefined;
   const set = await storage.get<QuestionSet>("sets", session.setId);
-  const derivation = set && (await currentDerivation(storage, session, set));
-  if (!set || !derivation) return undefined;
+  if (!set) return undefined;
+  // Opened first: it seals a buffer a killed page left behind, so the derivation can include those marks.
+  // Nothing is appended here except marks, so opening the review page alone never adds to the Raw log.
+  const recorder = await openRecorder(storage, session.id);
+  const derivation = await currentDerivation(storage, session, set);
+  if (!derivation) return undefined;
   const attempts = await storage.query<Attempt>("attempts", { derivationId: derivation.id });
   attempts.sort((a, b) => a.displayedNumber - b.displayedNumber);
   const questions = new Map((await loadQuestions(storage, set)).map((q) => [q.id, q]));
-  return { session, set, derivation, attempts, questions, overrides: await loadOverrides(storage, sessionId) };
+  return { session, set, derivation, attempts, questions, overrides: await loadOverrides(storage, sessionId), recorder };
 }
 
 /** Setting an Override on a derived time or result, shown under a Question. The derived value and the Raw log are never changed. */
@@ -68,19 +82,31 @@ function answerText(optionIds: string[], optionOrder: string[]): string {
 export function Review({ sessionId }: { sessionId: string }) {
   const [loaded, setLoaded] = useState<Loaded | null>();
   const [copyState, setCopyState] = useState<TranslationKey>();
+  const [marking, setMarking] = useState(false);
 
   useEffect(() => void load(sessionId).then((result) => setLoaded(result ?? null)), [sessionId]);
 
   if (loaded === undefined) return <main>{t("common.loading")}</main>;
   if (loaded === null) return <main>{t("common.notFound")}</main>;
 
-  const { session, set, derivation, attempts, questions, overrides } = loaded;
+  const { session, set, derivation, attempts, questions, overrides, recorder } = loaded;
+  // A mark after reveal has the Phase reviewing (ADR-0008); the Session is derived again so the Attempts and Digest include it.
+  const mark = async (event: RawEventBody) => {
+    setMarking(true);
+    try {
+      await recordReviewMark(storage, session, set, recorder, event);
+      const reloaded = await load(sessionId);
+      if (reloaded) setLoaded(reloaded);
+    } finally {
+      setMarking(false);
+    }
+  };
   const saveOverride = async (questionId: string, values: OverrideValues) => {
     const saved = await setOverride(storage, session.id, questionId, values);
     setLoaded({ ...loaded, overrides: new Map(overrides).set(questionId, saved) });
   };
   // The copied Digest uses the Overrides set since the derivation, in place of the derived values.
-  const digest = overrides.size ? digestWithOverrides({ title: set.title, questions: [...questions.values()] }, attempts, overrides) : derivation.digest;
+  const digest = overrides.size ? digestWithOverrides({ title: set.title, questions: [...questions.values()], rules: derivation.parameters }, attempts, overrides) : derivation.digest;
   const copyDigest = async () => {
     try {
       await navigator.clipboard.writeText(digest);
@@ -142,6 +168,15 @@ export function Review({ sessionId }: { sessionId: string }) {
             </div>
             <p>{t("review.answerGiven", { answer: answerText(attempt.answer, order) })}</p>
             <p>{t("review.correctAnswer", { answer: answerText(question.answer, order) })}</p>
+            {derivation.parameters.collectConfidence && (
+              <p class="muted">{t("review.confidence", { confidence: attempt.confidence ? t(`confidence.${attempt.confidence}`) : t("review.confidenceNone") })}</p>
+            )}
+            <FlagButtons
+              flags={attempt.flags.map((f) => f.flag)}
+              disabled={marking}
+              onToggle={(flag: Flag, on) => void mark({ type: on ? "flag" : "unflag", questionId: attempt.questionId, flag })}
+            />
+            <NoteField note={attempt.note ?? ""} disabled={marking} onSave={(text) => void mark({ type: "note", questionId: attempt.questionId, text })} />
             <OverrideEditor attempt={attempt} final={final} idleThresholdMs={derivation.parameters.idleThresholdMs} onSave={(values) => void saveOverride(attempt.questionId, values)} />
             {question.explanation.length > 0 && (
               <details>

@@ -67,3 +67,20 @@ details { margin-top: 8px; }
 .warnings { color: var(--muted); }
 label.file { color: var(--accent); cursor: pointer; }
 label.file input { display: none; }
+button.small { padding: 4px 10px; font-size: 0.9rem; }
+.question-nav { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
+.nav-item {
+  min-width: 2.4em; padding: 4px 0; text-align: center; position: relative;
+  background: transparent; color: var(--muted); border: 1px dashed var(--border);
+}
+.nav-item.answered { color: var(--fg); border: 1px solid var(--accent); }
+.nav-item.flagged::after { content: "⚑"; position: absolute; top: -8px; right: -4px; font-size: 0.75rem; color: var(--bad); }
+.nav-item.current { box-shadow: 0 0 0 2px var(--accent); }
+.confidence, .flags { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 12px; }
+.drawer {
+  position: sticky; bottom: 0; background: var(--bg); border-top: 1px solid var(--border);
+  padding: 8px 0; margin-top: 12px;
+}
+.drawer-body { margin-top: 4px; }
+.note { display: block; margin-top: 12px; color: var(--muted); font-size: 0.9rem; }
+.note textarea { margin-top: 4px; font: inherit; color: var(--fg); }

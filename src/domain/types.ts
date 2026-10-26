@@ -95,3 +95,13 @@ export type Session = Provenance & {
   settings: SettingsSnapshot;
   currentDerivationId?: string;
 };
+
+/** ADR-0008: `reviewing` starts when the answer is revealed. */
+export type Phase = "answering" | "reviewing" | "revisit";
+
+export type Confidence = "sure" | "probably" | "guessed";
+
+/** Concept confusion, careless, focus, memory, bad question. */
+export type Flag = "concept" | "careless" | "focus" | "memory" | "bad_question";
+
+export const FLAGS: Flag[] = ["concept", "careless", "focus", "memory", "bad_question"];

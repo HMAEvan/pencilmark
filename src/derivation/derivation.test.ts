@@ -149,6 +149,8 @@ describe("derive", () => {
         "- Answering time: 2s",
         "- First choice: C after 1s",
         "- Answer changes: none",
+        "- Confidence: none",
+        "- Flags: none",
         "",
       ].join("\n"),
     );
@@ -305,7 +307,7 @@ describe("derive: provenance", () => {
         { rules: strict },
       ),
     );
-    expect(result.algorithmVersion).toBe(2);
+    expect(result.algorithmVersion).toBe(3);
     expect(result.parameters).toEqual({ idleThresholdMs: 30_000, flickThresholdMs: 1_000, shuffleQuestions: true, shuffleOptions: true, collectConfidence: true });
     expect(result.chunks).toEqual([
       { id: `${SESSION}_0`, hash: "hash0" },
@@ -353,5 +355,109 @@ describe("Digest with Overrides", () => {
       ["- Result: correct (overridden by the user; derived: wrong)", "- Answering time: 2m 0s (overridden by the user; derived: 40s)", "- First choice: C after 30s"].join("\n"),
     );
     expect(digest).toContain(["- Result: wrong", "- Answering time: 0s", "- First choice: none"].join("\n"));
+  });
+});
+
+describe("derive: Confidence", () => {
+  const confide = (q: Question, confidence: "sure" | "probably" | "guessed" | null) => ({ type: "confidence", questionId: q.id, confidence }) as const;
+
+  it("keeps the last Confidence set, and leaves an unset or cleared Confidence empty", () => {
+    // Q1: guessed, then changed to probably. Q2: set to sure, then cleared.
+    const result = derive(
+      sitting([
+        {
+          activeMs: 20_000,
+          events: [[0, open(question)], [2_000, confide(question, "guessed")], [4_000, confide(question, "probably")], [10_000, open(second)], [12_000, confide(second, "sure")], [14_000, confide(second, null)], [20_000, submit]],
+        },
+      ]),
+    );
+    expect(attemptOf(result, question).confidence).toBe("probably");
+    expect(attemptOf(result, second).confidence).toBeNull();
+  });
+
+  it("is empty for every Attempt when Confidence collection is off in the snapshot", () => {
+    const result = derive(
+      sitting([{ activeMs: 10_000, events: [[0, open(question)], [2_000, confide(question, "sure")], [10_000, submit]] }], { rules: { ...rules, collectConfidence: false } }),
+    );
+    expect(result.attempts.map((a) => a.confidence)).toEqual([null, null]);
+  });
+});
+
+describe("derive: Flags", () => {
+  const flag = (q: Question, flag: "concept" | "careless" | "focus" | "memory" | "bad_question") => ({ type: "flag", questionId: q.id, flag }) as const;
+  const unflag = (q: Question, flag: "concept" | "careless" | "focus" | "memory" | "bad_question") => ({ type: "unflag", questionId: q.id, flag }) as const;
+
+  it("holds only the final Flags, each with its Phase and the wall-clock time it was added", () => {
+    // Chunk 0 starts at wall time 1,000 s. Q1: careless at 3 s, memory at 4 s, careless removed at 5 s.
+    const result = derive(
+      sitting([
+        {
+          startedAt: 1_000_000,
+          activeMs: 10_000,
+          events: [[0, open(question)], [3_000, flag(question, "careless")], [4_000, flag(question, "memory")], [5_000, unflag(question, "careless")], [10_000, submit]],
+        },
+      ]),
+    );
+    expect(attemptOf(result, question).flags).toEqual([{ flag: "memory", phase: "answering", at: 1_004_000 }]);
+    expect(attemptOf(result, second).flags).toEqual([]);
+  });
+
+  it("gives a Flag added after the answers were revealed the Phase reviewing", () => {
+    // Submitted in chunk 0; on the review page an hour later, Q2 is flagged as a bad question.
+    const result = derive(
+      sitting([
+        { startedAt: 0, activeMs: 10_000, events: [[0, open(question)], [2_000, flag(question, "concept")], [10_000, submit]] },
+        { startedAt: 3_600_000, activeMs: 5_000, events: [[5_000, flag(second, "bad_question")]] },
+      ]),
+    );
+    expect(attemptOf(result, question).flags).toEqual([{ flag: "concept", phase: "answering", at: 2_000 }]);
+    expect(attemptOf(result, second).flags).toEqual([{ flag: "bad_question", phase: "reviewing", at: 3_605_000 }]);
+  });
+});
+
+describe("derive: Note", () => {
+  const note = (q: Question, text: string) => ({ type: "note", questionId: q.id, text }) as const;
+
+  it("keeps the last Note saved, and leaves a Note saved empty as empty", () => {
+    const result = derive(
+      sitting([
+        { activeMs: 10_000, events: [[0, open(question)], [2_000, note(question, "Mixed up")], [3_000, note(question, "Mixed up ATP and GTP")], [4_000, note(second, "x")], [10_000, submit]] },
+        { activeMs: 1_000, events: [[1_000, note(second, "")]] },
+      ]),
+    );
+    expect(attemptOf(result, question).note).toBe("Mixed up ATP and GTP");
+    expect(attemptOf(result, second).note).toBeNull();
+  });
+});
+
+describe("derive: Digest marks", () => {
+  const marked = (collectConfidence: boolean) =>
+    sitting(
+      [
+        {
+          activeMs: 20_000,
+          events: [
+            [0, open(question)],
+            [2_000, { type: "confidence", questionId: question.id, confidence: "probably" }],
+            [3_000, { type: "flag", questionId: question.id, flag: "concept" }],
+            [4_000, { type: "note", questionId: question.id, text: "Mixed up ATP and GTP" }],
+            [10_000, open(second)],
+            [20_000, submit],
+          ],
+        },
+        { activeMs: 5_000, events: [[5_000, { type: "flag", questionId: question.id, flag: "bad_question" }]] },
+      ],
+      { rules: { ...rules, collectConfidence } },
+    );
+
+  it("shows Confidence and Flags with their Phase for every Question, and the Note where there is one", () => {
+    const { digest } = derive(marked(true));
+    expect(digest).toContain(["- Answer changes: none", "- Confidence: probably", "- Flags: concept confusion (answering), bad question (reviewing)", "- Note: Mixed up ATP and GTP", ""].join("\n"));
+    expect(digest).toContain(["- Answer changes: none", "- Confidence: none", "- Flags: none", ""].join("\n"));
+  });
+
+  it("says Confidence was not collected when collection was off", () => {
+    const { digest } = derive(marked(false));
+    expect(digest).toContain("- Confidence: not collected\n- Flags: concept confusion (answering), bad question (reviewing)\n");
   });
 });
