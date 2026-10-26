@@ -31,9 +31,9 @@ export type DerivedAttempt = {
   questionId: string;
   questionRevision: number;
   answer: string[];
-  /** True only for an exact match; null while grading is pending. */
+  /** True only for an exact match; null for a Question that is not graded. */
   correct: boolean | null;
-  /** From 0 to 1; a single-answer Question scores 0 or 1. Null while grading is pending. */
+  /** From 0 to 1; a single-answer Question scores 0 or 1. Null for a Question that is not graded. */
   partialScore: number | null;
   /** Unanswered: scores 0. */
   blank: boolean;

@@ -7,9 +7,8 @@ import { digestWithOverrides, finalValues, type FinalValues, type OverrideValues
 import { excludedIdleMs } from "../derivation/timing";
 import { formatDuration, formatScore } from "./format";
 import { DEFAULT_PREFERENCES } from "../domain/settings";
-import { questionTypeOf } from "../questionTypes/questionType";
+import { isGraded, questionTypeOf } from "../questionTypes/questionType";
 import { multipleAnswer } from "../questionTypes/multipleAnswer";
-import { shortAnswer } from "../questionTypes/shortAnswer";
 import { storage } from "./appStorage";
 import { navigate } from "./App";
 
@@ -27,14 +26,17 @@ async function load(sessionId: string): Promise<Loaded | undefined> {
   return { session, set, derivation, attempts, questions, overrides: await loadOverrides(storage, sessionId) };
 }
 
-/** Setting an Override on a derived time or result, shown under a Question. The derived value and the Raw log are never changed. */
-function OverrideEditor({ attempt, final, idleThresholdMs, onSave }: { attempt: Attempt; final: FinalValues; idleThresholdMs: number; onSave: (values: OverrideValues) => void }) {
+/**
+ * Setting an Override on a derived time or result, shown under a Question. The derived value and the Raw log are never changed.
+ * A Question that is not graded has no result to correct.
+ */
+function OverrideEditor({ attempt, final, graded, idleThresholdMs, onSave }: { attempt: Attempt; final: FinalValues; graded: boolean; idleThresholdMs: number; onSave: (values: OverrideValues) => void }) {
   const [seconds, setSeconds] = useState("");
   const idle = attempt.timing.excludedIdle;
   const enteredMs = Math.round(Number(seconds) * 1000);
   return (
     <details class="override">
-      <summary>{t(idle.length > 0 ? "review.idleExcluded" : "review.overrideOpen", { time: formatDuration(excludedIdleMs(attempt.timing)) })}</summary>
+      <summary>{t(idle.length > 0 ? "review.idleExcluded" : graded ? "review.overrideOpen" : "review.overrideTimeOpen", { time: formatDuration(excludedIdleMs(attempt.timing)) })}</summary>
       {idle.length > 0 && <p class="muted">{t("review.idleExplained", { seconds: idleThresholdMs / 1000 })}</p>}
       <p class="muted">{t("review.derivedTime", { time: formatDuration(attempt.timing.answeringActiveMs), raw: formatDuration(attempt.timing.answeringRawMs) })}</p>
       <div class="actions">
@@ -51,35 +53,37 @@ function OverrideEditor({ attempt, final, idleThresholdMs, onSave }: { attempt: 
           </button>
         )}
       </div>
-      <div class="actions">
-        {final.correct !== true && (
-          <button class="secondary" onClick={() => onSave({ correct: true })}>
-            {t("review.markCorrect")}
-          </button>
-        )}
-        {final.correct !== false && (
-          <button class="secondary" onClick={() => onSave({ correct: false })}>
-            {t("review.markWrong")}
-          </button>
-        )}
-        {final.overridden.includes("correct") && (
-          <button class="secondary" onClick={() => onSave({ correct: undefined })}>
-            {t("review.restoreResult")}
-          </button>
-        )}
-      </div>
+      {graded && (
+        <div class="actions">
+          {final.correct !== true && (
+            <button class="secondary" onClick={() => onSave({ correct: true })}>
+              {t("review.markCorrect")}
+            </button>
+          )}
+          {final.correct !== false && (
+            <button class="secondary" onClick={() => onSave({ correct: false })}>
+              {t("review.markWrong")}
+            </button>
+          )}
+          {final.overridden.includes("correct") && (
+            <button class="secondary" onClick={() => onSave({ correct: undefined })}>
+              {t("review.restoreResult")}
+            </button>
+          )}
+        </div>
+      )}
     </details>
   );
 }
 
-/** Letters in displayed order; a short-answer Question's answer is its text. */
-function answerText(answer: string[], optionOrder: string[], written: boolean): string {
+/** Letters in displayed order, whatever order the Options were selected in. */
+function answerText(answer: string[], optionOrder: string[]): string {
   if (!answer.length) return t("review.blank");
-  return written ? answer.join(t("review.answerSeparator")) : answer.map((id) => letterOf(id, optionOrder)).sort().join(t("review.letterSeparator"));
+  return answer.map((id) => letterOf(id, optionOrder)).sort().join(t("review.letterSeparator"));
 }
 
 function ResultMark({ final, multiple, partial }: { final: FinalValues; multiple: boolean; partial: boolean }) {
-  if (final.correct === null) return <span class="muted">{t("review.pending")}</span>;
+  if (final.correct === null) return <span class="muted">{t("review.notGraded")}</span>;
   return (
     <>
       <span class={final.correct ? "ok" : "bad"}>{t(final.correct ? "review.correct" : "review.wrong")}</span>
@@ -100,7 +104,9 @@ export function Review({ sessionId }: { sessionId: string }) {
   const { session, set, derivation, attempts, questions, overrides } = loaded;
   // A display preference: it changes what is shown, never what is stored. Sessions from before snapshots used the default.
   const partial = (session.settings?.display.multipleAnswerScore ?? DEFAULT_PREFERENCES.display.multipleAnswerScore) === "partial";
-  const finals = attempts.map((a) => finalValues(a, overrides.get(a.questionId)));
+  // Questions that are not graded count towards neither the score nor the total.
+  const finals = attempts.filter((a) => isGraded(questions.get(a.questionId)!)).map((a) => finalValues(a, overrides.get(a.questionId)));
+  const ungraded = attempts.length - finals.length;
   const saveOverride = async (questionId: string, values: OverrideValues) => {
     const saved = await setOverride(storage, session.id, questionId, values);
     setLoaded({ ...loaded, overrides: new Map(overrides).set(questionId, saved) });
@@ -121,8 +127,9 @@ export function Review({ sessionId }: { sessionId: string }) {
       <h1>{t("review.heading", { title: set.title })}</h1>
       <p>
         {partial
-          ? t("review.partialTotal", { score: formatScore(finals.reduce((sum, f) => sum + (f.partialScore ?? 0), 0)), total: attempts.length })
-          : t("review.score", { correct: finals.filter((f) => f.correct).length, total: attempts.length })}
+          ? t("review.partialTotal", { score: formatScore(finals.reduce((sum, f) => sum + (f.partialScore ?? 0), 0)), total: finals.length })
+          : t("review.score", { correct: finals.filter((f) => f.correct).length, total: finals.length })}
+        {ungraded > 0 && <span class="muted">{t("review.ungradedCount", { count: ungraded })}</span>}
       </p>
       <div class="actions">
         <button onClick={copyDigest}>{t("review.copyDigest")}</button>
@@ -139,12 +146,11 @@ export function Review({ sessionId }: { sessionId: string }) {
         const order = attempt.optionOrder;
         const override = overrides.get(attempt.questionId);
         const final = finalValues(attempt, override);
-        const type = questionTypeOf(question);
-        const written = type === shortAnswer;
+        const graded = isGraded(question);
         return (
           <section class="card" key={attempt.id}>
             <h3>
-              {t("review.questionNumber", { n: attempt.displayedNumber })} <ResultMark final={final} multiple={type === multipleAnswer} partial={partial} />
+              {t("review.questionNumber", { n: attempt.displayedNumber })} <ResultMark final={final} multiple={questionTypeOf(question) === multipleAnswer} partial={partial} />
               {final.overridden.includes("correct") && <span class="muted"> {t("review.overridden")}</span>}
             </h3>
             <p class="muted">
@@ -157,8 +163,9 @@ export function Review({ sessionId }: { sessionId: string }) {
                 </span>
               )}
             </p>
+            {!graded && <p class="muted">{t("player.unsupportedType")}</p>}
             <p class="stem">{blocksToText(question.stem, order)}</p>
-            {!written && (
+            {graded && (
               <div class="options">
                 {order.map((optionId, i) => {
                   const option = question.options.find((o) => o.id === optionId)!;
@@ -173,9 +180,9 @@ export function Review({ sessionId }: { sessionId: string }) {
                 })}
               </div>
             )}
-            <p>{t("review.answerGiven", { answer: answerText(attempt.answer, order, written) })}</p>
-            <p>{t("review.correctAnswer", { answer: answerText(question.answer, order, written) })}</p>
-            <OverrideEditor attempt={attempt} final={final} idleThresholdMs={derivation.parameters.idleThresholdMs} onSave={(values) => void saveOverride(attempt.questionId, values)} />
+            {graded && <p>{t("review.answerGiven", { answer: answerText(attempt.answer, order) })}</p>}
+            <p>{t("review.correctAnswer", { answer: graded ? answerText(question.answer, order) : question.answer.join(t("review.answerSeparator")) })}</p>
+            <OverrideEditor attempt={attempt} final={final} graded={graded} idleThresholdMs={derivation.parameters.idleThresholdMs} onSave={(values) => void saveOverride(attempt.questionId, values)} />
             {question.explanation.length > 0 && (
               <details>
                 <summary>{t("review.explanation")}</summary>

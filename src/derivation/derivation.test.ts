@@ -445,31 +445,28 @@ describe("derive: Questions of an unrecognised type", () => {
     };
   };
   const go = { type: "navigate", questionId: ordering.id } as const;
-  const write = (text: string) => ({ type: "text", questionId: ordering.id, text }) as const;
+  const stray = { type: "select", questionId: ordering.id, optionId: "prophase" } as const;
 
-  it("takes the last text written as the answer and leaves the result pending, as for a short-answer Question", () => {
-    const { attempts } = derive(sitOrdering([go, write("prophase, anaphase"), write("prophase, metaphase, anaphase, telophase"), submit]));
-    expect(attempts[0]).toMatchObject({ answer: ["prophase, metaphase, anaphase, telophase"], correct: null, partialScore: null, blank: false });
-    expect(attempts[0]!.trajectory.changes).toEqual([{ answer: ["prophase, metaphase, anaphase, telophase"], atMs: 2_000, dwellMs: 1_000 }]);
-  });
-
-  it("records text cleared before submission as blank", () => {
-    const { attempts } = derive(sitOrdering([go, write("prophase"), write("  "), submit]));
+  it("is not graded and has no answer, even if the Raw log selects something for it", () => {
+    const { attempts } = derive(sitOrdering([go, stray, submit]));
     expect(attempts[0]).toMatchObject({ answer: [], correct: null, partialScore: null, blank: true });
+    expect(attempts[0]!.timing.answeringActiveMs).toBe(2_000);
+    expect(attempts[0]!.trajectory).toEqual({ firstChoice: null, timeToFirstChoiceMs: null, changes: [] });
   });
 
-  it("shows the text answer in the Digest, with the result pending", () => {
-    const { digest } = derive(sitOrdering([go, write("prophase first"), submit]));
+  it("shows the stem, correct answer and time in the Digest, marked as not graded", () => {
+    const { digest } = derive(sitOrdering([go, submit]));
     expect(digest).toContain(
       [
+        "## Question 1",
+        "",
         "Put the stages of mitosis in order.",
         "",
-        '- Type: "ordering", shown as short answer',
-        "- Answer given: prophase first",
+        '- Type: "ordering", not supported: shown read-only, not graded',
         "- Correct answer: prophase, metaphase, anaphase, telophase",
-        "- Result: pending (to be graded)",
-        "- Answering time: 2s",
-        '- First choice: "prophase first" after 1s',
+        "- Result: not graded",
+        "- Answering time: 1s",
+        "",
       ].join("\n"),
     );
   });

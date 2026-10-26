@@ -7,9 +7,8 @@ import { currentAnswers, loadQuestions, submitSession } from "../session/session
 import { storage } from "./appStorage";
 import { navigate } from "./App";
 import { formatDuration } from "./format";
-import { questionTypeOf } from "../questionTypes/questionType";
+import { isGraded, questionTypeOf } from "../questionTypes/questionType";
 import { multipleAnswer } from "../questionTypes/multipleAnswer";
-import { shortAnswer } from "../questionTypes/shortAnswer";
 
 type Loaded = { session: Session; set: QuestionSet; questions: Map<string, Question>; recorder: Recorder };
 
@@ -112,11 +111,6 @@ export function Player({ sessionId }: { sessionId: string }) {
       recorder.append({ type: "select", questionId, optionId });
     }
   };
-  // Recorded when the text is committed (on leaving the box), not keystroke by keystroke.
-  const writeText = (text: string) => {
-    setAnswers({ ...answers, [questionId]: text.trim() ? [text] : [] });
-    recorder.append({ type: "text", questionId, text });
-  };
   // Confirmed in the page, not with confirm(): some embedded browsers suppress native dialogs.
   const submit = async () => {
     // The ref, not the state, guards: two clicks can land before a re-render.
@@ -135,18 +129,10 @@ export function Player({ sessionId }: { sessionId: string }) {
       </p>
       <div class="card">
         {type === multipleAnswer && <p class="muted">{t("player.multipleAnswerInstruction")}</p>}
-        {type === shortAnswer && question.type !== shortAnswer.type && <p class="muted">{t("player.shownAsShortAnswer")}</p>}
+        {!isGraded(question) && <p class="muted">{t("player.unsupportedType")}</p>}
         <p class="stem">{blocksToText(question.stem, optionOrder)}</p>
-        {type === shortAnswer ? (
-          <textarea
-            key={questionId}
-            rows={4}
-            aria-label={t("player.textAnswer")}
-            placeholder={t("player.textAnswer")}
-            defaultValue={answer[0] ?? ""}
-            onChange={(e) => writeText(e.currentTarget.value)}
-          />
-        ) : (
+        {/* A type shown read-only offers nothing to answer. */}
+        {isGraded(question) && (
           <div class="options">
             {optionOrder.map((optionId, i) => {
               const option = question.options.find((o) => o.id === optionId)!;

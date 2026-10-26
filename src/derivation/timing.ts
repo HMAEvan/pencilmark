@@ -50,7 +50,7 @@ export const emptyTiming = (): QuestionTiming => ({ answeringRawMs: 0, answering
 
 export const emptyTrajectory = (): Trajectory => ({ firstChoice: null, timeToFirstChoiceMs: null, changes: [] });
 
-/** How a Question's answer changes when an Option is selected; each question type has its own answer state. */
+/** How a Question's answer changes when an Option is selected; each question type has its own answer state. Returns `answer` itself when nothing changes. */
 export type SelectOption = (questionId: string, answer: string[], optionId: string) => string[];
 
 export function walkRawLog(rawLog: RawLogChunk[], rules: Rules, select: SelectOption): RawLogWalk {
@@ -122,11 +122,11 @@ export function walkRawLog(rawLog: RawLogChunk[], rules: Rules, select: SelectOp
         closeVisit();
         visit = { questionId: event.questionId, answeringRawMs: 0, answeringActiveMs: 0, excludedIdle: [] };
       } else if (event.type === "select") {
-        answerChanged(event.questionId, select(event.questionId, answers.get(event.questionId) ?? [], event.optionId));
+        const answer = answers.get(event.questionId) ?? [];
+        const next = select(event.questionId, answer, event.optionId);
+        if (next !== answer) answerChanged(event.questionId, next);
       } else if (event.type === "deselect") {
         answerChanged(event.questionId, (answers.get(event.questionId) ?? []).filter((id) => id !== event.optionId));
-      } else if (event.type === "text") {
-        answerChanged(event.questionId, event.text.trim() ? [event.text] : []);
       } else if (event.type === "submit") {
         closeVisit();
         answering = false;

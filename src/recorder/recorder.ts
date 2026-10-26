@@ -5,10 +5,7 @@ import type { Storage } from "../storage/storage";
 export type RawEventBody =
   | { type: "navigate"; questionId: string }
   | { type: "select"; questionId: string; optionId: string }
-  | { type: "deselect"; questionId: string; optionId: string }
-  /** The whole text answer after a change, for a Question answered in words. */
-  | { type: "text"; questionId: string; text: string }
-  | { type: "hide" }
+  | { type: "deselect"; questionId: string; optionId: string }  | { type: "hide" }
   /** A resume event: the page was shown or reopened. `wall` is UTC epoch ms. */
   | { type: "show"; wall: number }
   | { type: "submit" };
