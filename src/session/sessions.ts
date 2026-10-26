@@ -135,6 +135,22 @@ export async function currentDerivation(storage: Storage, session: Session, set:
   return storage.get<Derivation>("derivations", updated.currentDerivationId!);
 }
 
+/** A submitted Session with the derivation in use, its Attempts in displayed order, its Questions and Overrides. */
+export type DerivedSession = { session: Session; set: QuestionSet; derivation: Derivation; attempts: Attempt[]; questions: Question[]; overrides: Map<string, Override> };
+
+/** Loads a submitted Session, deriving it again first if needed (see `currentDerivation`); nothing for one never submitted. */
+export async function loadDerivedSession(storage: Storage, sessionId: string): Promise<DerivedSession | undefined> {
+  const stored = await storage.get<Session>("sessions", sessionId);
+  const set = stored?.currentDerivationId ? await storage.get<QuestionSet>("sets", stored.setId) : undefined;
+  const derivation = stored && set && (await currentDerivation(storage, stored, set));
+  if (!set || !derivation) return undefined;
+  // Deriving again moves the Session to the new derivation.
+  const session = (await storage.get<Session>("sessions", sessionId))!;
+  const attempts = await storage.query<Attempt>("attempts", { derivationId: derivation.id });
+  attempts.sort((a, b) => a.displayedNumber - b.displayedNumber);
+  return { session, set, derivation, attempts, questions: await loadQuestions(storage, set), overrides: await loadOverrides(storage, sessionId) };
+}
+
 export async function submitSession(storage: Storage, session: Session, set: QuestionSet, recorder: Recorder): Promise<void> {
   recorder.append({ type: "submit" });
   await recorder.seal();

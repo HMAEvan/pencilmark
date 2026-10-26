@@ -4,14 +4,14 @@ import type { Recorder } from "../recorder/recorder";
 const SAVE_INTERVAL_MS = 3000;
 
 /** A screen's Recorder, and what the screen records first, after the resume event. */
-export type Opened = { recorder: Recorder; afterShow?: () => void };
+export type ScreenRecording = { recorder: Recorder; afterShow?: () => void };
 
 /**
  * Records the page being hidden and shown into the Raw log, and saves the buffer every few seconds, while the screen is open.
  * `open` loads the screen and returns its Recorder, or nothing when there is nothing to record.
  * Setting the returned ref to `undefined` stops recording, as submission does.
  */
-export function useRecorder(open: () => Promise<Opened | undefined>, key: string) {
+export function useRecorder(open: () => Promise<ScreenRecording | undefined>, sessionId: string) {
   const recorderRef = useRef<Recorder | undefined>(undefined);
 
   useEffect(() => {
@@ -53,7 +53,7 @@ export function useRecorder(open: () => Promise<Opened | undefined>, key: string
       // Leaving the screen for another takes the Session out of view, as hiding the page does.
       hide();
     };
-  }, [key]);
+  }, [sessionId]);
 
   return recorderRef;
 }

@@ -3,7 +3,7 @@ import type { Question, QuestionSet, Session } from "../domain/types";
 import { blocksToText, letterAt, letterOf } from "../domain/display";
 import { t, type TranslationKey } from "../i18n/i18n";
 import { openRecorder, type Recorder } from "../recorder/recorder";
-import { currentDerivation, loadOverrides, loadQuestions, setOverride, type Attempt, type Derivation, type Override } from "../session/sessions";
+import { loadDerivedSession, setOverride, type Attempt, type Derivation, type Override } from "../session/sessions";
 import { digestWithOverrides, finalValues, type FinalValues, type OverrideValues } from "../derivation/derivation";
 import { excludedIdleMs } from "../derivation/timing";
 import { buildAnswerPack } from "../exports/answerPack";
@@ -16,17 +16,13 @@ type Loaded = { session: Session; set: QuestionSet; derivation: Derivation; atte
 
 async function load(sessionId: string): Promise<(Loaded & { recorder: Recorder }) | undefined> {
   const session = await storage.get<Session>("sessions", sessionId);
+  // Only a submitted Session has a review page to record.
   if (!session?.currentDerivationId) return undefined;
-  const set = await storage.get<QuestionSet>("sets", session.setId);
-  if (!set) return undefined;
   // Opened first: it seals a buffer a killed review page left behind, so that reviewing time is derived too.
   const recorder = await openRecorder(storage, session.id);
-  const derivation = await currentDerivation(storage, session, set);
-  if (!derivation) return undefined;
-  const attempts = await storage.query<Attempt>("attempts", { derivationId: derivation.id });
-  attempts.sort((a, b) => a.displayedNumber - b.displayedNumber);
-  const questions = new Map((await loadQuestions(storage, set)).map((q) => [q.id, q]));
-  return { session, set, derivation, attempts, questions, overrides: await loadOverrides(storage, sessionId), recorder };
+  const derived = await loadDerivedSession(storage, sessionId);
+  if (!derived) return undefined;
+  return { ...derived, questions: new Map(derived.questions.map((q) => [q.id, q])), recorder };
 }
 
 /** The Question whose card covers the middle of the viewport: the one occupying the main part of the screen. */
@@ -130,7 +126,8 @@ export function Review({ sessionId }: { sessionId: string }) {
     setLoaded(result ?? null);
     if (!result) return;
     const { recorder } = result;
-    return { recorder, afterShow: () => onScreen.current && recorder.append({ type: "onScreen", questionId: onScreen.current }) };
+    // Recorded even when no Question is known to be on screen yet, so a Question from an earlier visit to the page gets no more time.
+    return { recorder, afterShow: () => recorder.append({ type: "onScreen", ...(onScreen.current && { questionId: onScreen.current }) }) };
   }, sessionId);
   const onScreen = useOnScreenRecording(recorderRef, !!loaded);
 
@@ -210,7 +207,7 @@ export function Review({ sessionId }: { sessionId: string }) {
                   {t("review.idleMark")}
                 </span>
               )}
-              {attempt.timing.reviewingActiveMs > 0 && ` · ${t("review.reviewingTime", { time: formatDuration(attempt.timing.reviewingActiveMs) })}`}
+              {attempt.timing.reviewingActiveMs > 0 && ` ${t("review.reviewingTime", { time: formatDuration(attempt.timing.reviewingActiveMs) })}`}
             </p>
             <p class="stem">{blocksToText(question.stem, order)}</p>
             <div class="options">

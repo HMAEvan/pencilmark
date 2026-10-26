@@ -27,7 +27,7 @@
   "definitions": {
     "id": { "type": "string", "minLength": 1 },
     "ms": { "type": "number", "minimum": 0 },
-    "optionIds": { "type": "array", "items": { "type": "string" } },
+    "ids": { "type": "array", "items": { "type": "string" } },
     "blocks": {
       "type": "array",
       "items": {
@@ -52,8 +52,8 @@
         "status": { "enum": ["in_progress", "done", "reviewing", "reviewed", "abandoned"] },
         "startedAt": { "type": "number" },
         "endedAt": { "type": "number" },
-        "questionOrder": { "$ref": "#/definitions/optionIds" },
-        "optionOrders": { "type": "object", "additionalProperties": { "$ref": "#/definitions/optionIds" } },
+        "questionOrder": { "$ref": "#/definitions/ids" },
+        "optionOrders": { "type": "object", "additionalProperties": { "$ref": "#/definitions/ids" } },
         "settings": { "type": "object" },
         "currentDerivationId": { "$ref": "#/definitions/id" }
       }
@@ -93,7 +93,7 @@
             }
           }
         },
-        "answer": { "$ref": "#/definitions/optionIds" },
+        "answer": { "$ref": "#/definitions/ids" },
         "explanation": { "$ref": "#/definitions/blocks" }
       }
     },
@@ -125,11 +125,11 @@
         "sessionId": { "$ref": "#/definitions/id" },
         "questionId": { "$ref": "#/definitions/id" },
         "questionRevision": { "type": "integer", "minimum": 1 },
-        "answer": { "$ref": "#/definitions/optionIds" },
+        "answer": { "$ref": "#/definitions/ids" },
         "correct": { "type": "boolean" },
         "blank": { "type": "boolean" },
         "displayedNumber": { "type": "integer", "minimum": 1 },
-        "optionOrder": { "$ref": "#/definitions/optionIds" },
+        "optionOrder": { "$ref": "#/definitions/ids" },
         "timing": {
           "type": "object",
           "required": ["answeringRawMs", "answeringActiveMs", "visits", "excludedIdle", "reviewingRawMs", "reviewingActiveMs"],
