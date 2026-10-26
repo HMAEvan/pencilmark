@@ -76,6 +76,21 @@ describe.each(adapters)("Recorder with the %s Storage adapter", (_name, makeStor
     expect(chunks.map((c) => c.events.map((e) => e.seq))).toEqual([[1, 2], [3]]);
   });
 
+  it("refuses to overwrite a sealed chunk when two Recorders are open for one Session", async () => {
+    const storage = makeStorage();
+    const { clock } = fakeClock(0);
+    const first = await openRecorder(storage, "ss_20261026_abcdef", clock);
+    const second = await openRecorder(storage, "ss_20261026_abcdef", clock);
+
+    first.append({ type: "select", questionId: "q_x", optionId: "opt_a" });
+    await first.seal();
+    second.append({ type: "select", questionId: "q_x", optionId: "opt_b" });
+    await expect(second.seal()).rejects.toThrow();
+
+    const chunks = await readRawLog(storage, "ss_20261026_abcdef");
+    expect(chunks.flatMap((c) => c.events)).toEqual([{ seq: 1, at: 0, type: "select", questionId: "q_x", optionId: "opt_a" }]);
+  });
+
   it("keeps the Raw logs of different Sessions apart", async () => {
     const storage = makeStorage();
     const { clock } = fakeClock(0);

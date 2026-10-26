@@ -22,6 +22,7 @@ export function Player({ sessionId }: { sessionId: string }) {
   const [loaded, setLoaded] = useState<Loaded | null>();
   const [answers, setAnswers] = useState<Record<string, string[]>>({});
   const [index, setIndex] = useState(0);
+  const [submitting, setSubmitting] = useState(false);
   const recorderRef = useRef<Recorder | undefined>(undefined);
 
   useEffect(() => {
@@ -35,7 +36,7 @@ export function Player({ sessionId }: { sessionId: string }) {
       if (first) result.recorder.append({ type: "navigate", questionId: first });
     });
     // A hidden page may be killed, so seal what has been recorded so far.
-    const seal = () => void recorderRef.current?.seal();
+    const seal = () => void recorderRef.current?.seal().catch((e: unknown) => console.error("Sealing the Raw log failed", e));
     const onVisibility = () => document.visibilityState === "hidden" && seal();
     document.addEventListener("visibilitychange", onVisibility);
     addEventListener("pagehide", seal);
@@ -64,9 +65,11 @@ export function Player({ sessionId }: { sessionId: string }) {
     recorder.append({ type: "select", questionId, optionId });
   };
   const submit = async () => {
-    if (!confirm(t("player.confirmSubmit"))) return;
-    await submitSession(storage, session, set, recorder);
+    // The ref, not the state, guards: two clicks can land before a re-render.
+    if (!recorderRef.current || !confirm(t("player.confirmSubmit"))) return;
+    setSubmitting(true);
     recorderRef.current = undefined;
+    await submitSession(storage, session, set, recorder);
     navigate("review", session.id);
   };
 
@@ -92,7 +95,7 @@ export function Player({ sessionId }: { sessionId: string }) {
         <button class="secondary" disabled={index === 0} onClick={() => goTo(index - 1)}>
           {t("player.previous")}
         </button>
-        {index < total - 1 ? <button onClick={() => goTo(index + 1)}>{t("player.next")}</button> : <button onClick={submit}>{t("player.submit")}</button>}
+        {index < total - 1 ? <button onClick={() => goTo(index + 1)}>{t("player.next")}</button> : <button disabled={submitting} onClick={submit}>{t("player.submit")}</button>}
       </div>
     </main>
   );

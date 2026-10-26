@@ -13,6 +13,7 @@ export const zh = {
   "import.submit": "导入",
   "import.success": "已导入练习单「{title}」",
   "import.errorsHeading": "题目包有误，未导入：",
+  "import.errorLocation": "{question} · {field}",
   "import.errorLine": "{location}：{message}",
   "import.packLevel": "题目包",
   "session.status.in_progress": "进行中",

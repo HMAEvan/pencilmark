@@ -15,8 +15,10 @@ async function loadRows(): Promise<SetRow[]> {
 }
 
 function errorLine(error: PackError): string {
-  const where = [error.question ?? t("import.packLevel"), error.field].filter(Boolean).join(" · ");
-  return t("import.errorLine", { location: where, message: error.message });
+  const question = error.question ?? t("import.packLevel");
+  const location = error.field ? t("import.errorLocation", { question, field: error.field }) : question;
+  // `message` is the Importer's English text, written for the AI that will fix the pack.
+  return t("import.errorLine", { location, message: error.message });
 }
 
 function ImportForm({ onImported }: { onImported: () => void }) {

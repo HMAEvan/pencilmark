@@ -48,7 +48,7 @@ export async function openRecorder(storage: Storage, sessionId: string, clock: C
       const chunk: RawLogChunk = { id: `${sessionId}_${n}`, sessionId, n, startedAt: current.startedAt, events: current.events };
       n += 1;
       current = undefined;
-      await storage.set("rawLogChunks", chunk);
+      await storage.add("rawLogChunks", chunk);
     },
   };
 }
