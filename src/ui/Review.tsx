@@ -152,6 +152,12 @@ export function Review({ sessionId }: { sessionId: string }) {
   const downloadAnswerPack = async () => {
     setDownloadFailed(false);
     try {
+      // Exporting saves what there is now: sealing first puts this visit, and the export itself, in the Answer pack (ADR-0001).
+      const recorder = recorderRef.current;
+      if (recorder) {
+        recorder.append({ type: "exportAnswerPack", includeRawLog });
+        await recorder.checkpoint();
+      }
       const pack = await buildAnswerPack(storage, session.id, { includeRawLog });
       if (!pack) throw new Error(`Session ${session.id} has no derivation`);
       downloadJson(`pencilmark-answer-pack-${session.id}.json`, pack);

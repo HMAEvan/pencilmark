@@ -13,7 +13,8 @@ export type RawEventBody =
   /** On the review page: the Question now occupying the main part of the screen, absent when none does. */
   | { type: "onScreen"; questionId?: string }
   | { type: "expandRationale"; questionId: string; optionId: string }
-  | { type: "collapseRationale"; questionId: string; optionId: string };
+  | { type: "collapseRationale"; questionId: string; optionId: string }
+  | { type: "exportAnswerPack"; includeRawLog: boolean };
 
 /** `seq` orders events across the whole Session; `at` is monotonic ms since its own chunk started. */
 export type RawEvent = RawEventBody & { seq: number; at: number };
@@ -63,6 +64,11 @@ export type Recorder = {
   save(): Promise<void>;
   /** Writes the current chunk once and starts a new one. A sealed chunk is never written again. */
   seal(): Promise<void>;
+  /**
+   * Seals the chunk for a save the user asked for, such as exporting, and starts the next chunk at once:
+   * the page stays in the foreground, so the time until the next event still counts.
+   */
+  checkpoint(): Promise<void>;
   /** The page was hidden and may be killed: records it and seals the chunk. */
   hide(): Promise<void>;
   /** The page was shown or reopened: records a resume event, which starts a new chunk after a seal. */
@@ -132,7 +138,8 @@ export async function openRecorder(
       return enqueue(() => storage.set("rawLogBuffers", buffer));
     },
     seal() {
-      if (!current) return writes;
+      // A chunk started by a checkpoint may have no events yet; it stays open rather than being sealed empty.
+      if (!current || current.events.length === 0) return writes;
       const body = { id: chunkId(sessionId, n), sessionId, n, startedAt: current.startedAt, events: current.events, activeMs: elapsed(current) };
       sealedActiveMs += body.activeMs;
       n += 1;
@@ -143,6 +150,11 @@ export async function openRecorder(
         prevHash = chunk.hash;
         await storage.delete("rawLogBuffers", sessionId);
       });
+    },
+    checkpoint() {
+      const sealing = recorder.seal();
+      current ??= { startedAt: clock.wall(), monotonicStart: clock.monotonic(), events: [], bytes: 0 };
+      return sealing;
     },
     async hide() {
       recorder.append({ type: "hide" });
