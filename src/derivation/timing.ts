@@ -1,10 +1,12 @@
 import type { RawLogChunk } from "../recorder/recorder";
 import type { Rules } from "../domain/settings";
 
-// Answering time, answers and trajectories per Question, walked from the Raw log. Monotonic `at` is only compared within its own chunk,
+// Time, answers and trajectories per Question, walked from the Raw log. Monotonic `at` is only compared within its own chunk,
 // and the gaps between chunks (the page hidden or closed) never count.
 // ADR-0009: with one Question on screen, opening it is interacting with it, so time belongs to the open Question
 // until another is opened. Case screens, where the last sub-Question interacted with gets the time, come later.
+// ADR-0008: the reviewing Phase starts when the answers are revealed, in Exam mode at submission. From then on, time
+// belongs to the Question occupying the main part of the review page.
 
 /** A stretch with no interaction longer than the idle threshold; the part beyond the threshold is not counted. */
 export type ExcludedIdle = { chunk: number; at: number; excludedMs: number };
@@ -12,8 +14,12 @@ export type ExcludedIdle = { chunk: number; at: number; excludedMs: number };
 export type QuestionTiming = {
   answeringRawMs: number;
   answeringActiveMs: number;
+  /** Visits while answering. */
   visits: number;
+  /** Idle excluded from answering time, the time an Override corrects. */
   excludedIdle: ExcludedIdle[];
+  reviewingRawMs: number;
+  reviewingActiveMs: number;
 };
 
 export type SessionTotals = {
@@ -24,6 +30,13 @@ export type SessionTotals = {
   /** Active time no Question was open, including passes over a Question too short to be a Visit. */
   navigationMs: number;
   excludedIdleMs: number;
+  /** Foreground time after the answers were revealed. */
+  reviewingRawMs: number;
+  /** Raw time less excluded idle time. Equals the Questions' active reviewing time plus reviewing navigation time. */
+  reviewingActiveMs: number;
+  /** Active reviewing time no Question occupied the main part of the screen, including passes too short to be a Visit. */
+  reviewingNavigationMs: number;
+  reviewingExcludedIdleMs: number;
 };
 
 /**
@@ -46,41 +59,64 @@ export type RawLogWalk = {
   chunkGaps: ChunkGap[];
 };
 
-export const emptyTiming = (): QuestionTiming => ({ answeringRawMs: 0, answeringActiveMs: 0, visits: 0, excludedIdle: [] });
+export const emptyTiming = (): QuestionTiming => ({ answeringRawMs: 0, answeringActiveMs: 0, visits: 0, excludedIdle: [], reviewingRawMs: 0, reviewingActiveMs: 0 });
 
 export const emptyTrajectory = (): Trajectory => ({ firstChoice: null, timeToFirstChoiceMs: null, changes: [] });
 
+type Phase = "answering" | "reviewing";
+
 export function walkRawLog(rawLog: RawLogChunk[], rules: Rules): RawLogWalk {
   const questions = new Map<string, QuestionTiming>();
-  const totals: SessionTotals = { answeringRawMs: 0, answeringActiveMs: 0, navigationMs: 0, excludedIdleMs: 0 };
+  const totals: SessionTotals = {
+    answeringRawMs: 0,
+    answeringActiveMs: 0,
+    navigationMs: 0,
+    excludedIdleMs: 0,
+    reviewingRawMs: 0,
+    reviewingActiveMs: 0,
+    reviewingNavigationMs: 0,
+    reviewingExcludedIdleMs: 0,
+  };
   const timingOf = (questionId: string) => {
     let timing = questions.get(questionId);
     if (!timing) questions.set(questionId, (timing = emptyTiming()));
     return timing;
   };
+  const addNavigation = (phase: Phase, ms: number) => {
+    if (phase === "answering") totals.navigationMs += ms;
+    else totals.reviewingNavigationMs += ms;
+  };
 
-  let visit: (Omit<QuestionTiming, "visits"> & { questionId: string }) | undefined;
+  let phase: Phase = "answering";
+  let visit: { phase: Phase; questionId: string; rawMs: number; activeMs: number; excludedIdle: ExcludedIdle[] } | undefined;
   const closeVisit = () => {
     if (!visit) return;
-    if (visit.answeringRawMs < rules.flickThresholdMs) {
-      totals.navigationMs += visit.answeringActiveMs;
-    } else {
+    if (visit.rawMs < rules.flickThresholdMs) {
+      addNavigation(visit.phase, visit.activeMs);
+    } else if (visit.phase === "answering") {
       const timing = timingOf(visit.questionId);
-      timing.answeringRawMs += visit.answeringRawMs;
-      timing.answeringActiveMs += visit.answeringActiveMs;
+      timing.answeringRawMs += visit.rawMs;
+      timing.answeringActiveMs += visit.activeMs;
       timing.visits += 1;
       timing.excludedIdle.push(...visit.excludedIdle);
+    } else {
+      const timing = timingOf(visit.questionId);
+      timing.reviewingRawMs += visit.rawMs;
+      timing.reviewingActiveMs += visit.activeMs;
     }
     visit = undefined;
   };
-  let answering = true;
+  const openVisit = (questionId: string | undefined) => {
+    closeVisit();
+    if (questionId) visit = { phase, questionId, rawMs: 0, activeMs: 0, excludedIdle: [] };
+  };
 
   const answers = new Map<string, string[]>();
   const trajectories = new Map<string, Trajectory>();
   const lastChoiceMs = new Map<string, number>();
   const answerChanged = (questionId: string, answer: string[]) => {
     answers.set(questionId, answer);
-    const atMs = (questions.get(questionId)?.answeringActiveMs ?? 0) + (visit?.questionId === questionId ? visit.answeringActiveMs : 0);
+    const atMs = (questions.get(questionId)?.answeringActiveMs ?? 0) + (visit?.questionId === questionId ? visit.activeMs : 0);
     let trajectory = trajectories.get(questionId);
     if (!trajectory) trajectories.set(questionId, (trajectory = emptyTrajectory()));
     if (trajectory.firstChoice === null) {
@@ -98,33 +134,40 @@ export function walkRawLog(rawLog: RawLogChunk[], rules: Rules): RawLogWalk {
       const from = prevAt;
       const rawMs = until - from;
       prevAt = until;
-      if (!answering) return;
       const excludedMs = Math.max(0, rawMs - rules.idleThresholdMs);
       const activeMs = rawMs - excludedMs;
-      totals.answeringRawMs += rawMs;
-      totals.answeringActiveMs += activeMs;
-      totals.excludedIdleMs += excludedMs;
+      if (phase === "answering") {
+        totals.answeringRawMs += rawMs;
+        totals.answeringActiveMs += activeMs;
+        totals.excludedIdleMs += excludedMs;
+      } else {
+        totals.reviewingRawMs += rawMs;
+        totals.reviewingActiveMs += activeMs;
+        totals.reviewingExcludedIdleMs += excludedMs;
+      }
       if (visit) {
-        visit.answeringRawMs += rawMs;
-        visit.answeringActiveMs += activeMs;
+        visit.rawMs += rawMs;
+        visit.activeMs += activeMs;
         if (excludedMs > 0) visit.excludedIdle.push({ chunk: chunk.n, at: from, excludedMs });
       } else {
-        totals.navigationMs += activeMs;
+        addNavigation(phase, activeMs);
       }
     };
     for (const event of chunk.events) {
       elapse(event.at);
-      if (!answering) continue;
-      if (event.type === "navigate") {
-        closeVisit();
-        visit = { questionId: event.questionId, answeringRawMs: 0, answeringActiveMs: 0, excludedIdle: [] };
-      } else if (event.type === "select") {
-        answerChanged(event.questionId, [event.optionId]);
-      } else if (event.type === "deselect") {
-        answerChanged(event.questionId, (answers.get(event.questionId) ?? []).filter((id) => id !== event.optionId));
-      } else if (event.type === "submit") {
-        closeVisit();
-        answering = false;
+      if (phase === "answering") {
+        if (event.type === "navigate") {
+          openVisit(event.questionId);
+        } else if (event.type === "select") {
+          answerChanged(event.questionId, [event.optionId]);
+        } else if (event.type === "deselect") {
+          answerChanged(event.questionId, (answers.get(event.questionId) ?? []).filter((id) => id !== event.optionId));
+        } else if (event.type === "submit") {
+          closeVisit();
+          phase = "reviewing";
+        }
+      } else if (event.type === "onScreen") {
+        openVisit(event.questionId);
       }
     }
     elapse(Math.max(chunk.activeMs, prevAt));

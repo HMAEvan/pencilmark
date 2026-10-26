@@ -10,8 +10,8 @@ export { finalValues, type FinalValues, type OverrideValues } from "./overrides"
 
 // ADR-0002: a pure function from the Raw log to derived data. No DOM, no storage.
 
-/** Raised whenever a change to how Derivation computes (here, in timing.ts or in digest.ts) would change a derived value. 2: timing and trajectories. */
-export const ALGORITHM_VERSION = 2;
+/** Raised whenever a change to how Derivation computes (here, in timing.ts or in digest.ts) would change a derived value. 2: timing and trajectories. 3: reviewing time. */
+export const ALGORITHM_VERSION = 3;
 
 export type DerivationInput = {
   title: string;

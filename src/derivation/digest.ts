@@ -29,6 +29,7 @@ function outcomeLines(attempt: DerivedAttempt, override: OverrideValues | undefi
   return [
     `- Result: ${result(final.correct)}${final.overridden.includes("correct") ? ` (overridden by the user; derived: ${result(attempt.correct)})` : ""}`,
     `- Answering time: ${time}`,
+    ...(timing.reviewingActiveMs > 0 ? [`- Reviewing time: ${duration(timing.reviewingActiveMs)}`] : []),
     `- First choice: ${trajectory.firstChoice ? `${letters(trajectory.firstChoice, optionOrder)} after ${duration(trajectory.timeToFirstChoiceMs!)}` : "none"}`,
     `- Answer changes: ${changes.length ? changes.join(", ") : "none"}`,
   ];

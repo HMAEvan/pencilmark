@@ -122,10 +122,15 @@ export async function deriveSession(storage: Storage, session: Session, set: Que
   return updated;
 }
 
-/** A derivation from an older algorithm lacks what the current one records, so it is derived again. */
+/**
+ * The derivation in use, derived again when it is from an older algorithm, which lacks what the current one records,
+ * or when chunks were sealed after it was computed, such as time spent reviewing.
+ */
 export async function currentDerivation(storage: Storage, session: Session, set: QuestionSet): Promise<Derivation | undefined> {
   const derivation = session.currentDerivationId ? await storage.get<Derivation>("derivations", session.currentDerivationId) : undefined;
-  if (!derivation || derivation.algorithmVersion >= ALGORITHM_VERSION) return derivation;
+  if (!derivation) return undefined;
+  const sealed = await readRawLog(storage, session.id);
+  if (derivation.algorithmVersion >= ALGORITHM_VERSION && sealed.length <= derivation.chunks.length) return derivation;
   const updated = await deriveSession(storage, session, set);
   return storage.get<Derivation>("derivations", updated.currentDerivationId!);
 }

@@ -207,8 +207,19 @@ describe("derive: timing", () => {
       answeringActiveMs: 70_000,
       visits: 1,
       excludedIdle: [{ chunk: 0, at: 0, excludedMs: 30_000 }],
+      reviewingRawMs: 0,
+      reviewingActiveMs: 0,
     });
-    expect(result.totals).toEqual({ answeringRawMs: 100_000, answeringActiveMs: 70_000, navigationMs: 0, excludedIdleMs: 30_000 });
+    expect(result.totals).toEqual({
+      answeringRawMs: 100_000,
+      answeringActiveMs: 70_000,
+      navigationMs: 0,
+      excludedIdleMs: 30_000,
+      reviewingRawMs: 0,
+      reviewingActiveMs: 0,
+      reviewingNavigationMs: 0,
+      reviewingExcludedIdleMs: 0,
+    });
   });
 
   it("marks a wall clock that goes backwards between chunks as clockAnomaly, and changes no answering time", () => {
@@ -226,6 +237,65 @@ describe("derive: timing", () => {
     expect(attemptOf(skewed, second).timing.answeringActiveMs).toBe(10_000);
     expect(skewed.attempts).toEqual(sane.attempts);
     expect(skewed.totals).toEqual(sane.totals);
+  });
+});
+
+describe("derive: reviewing time", () => {
+  const onScreen = (q?: Question) => ({ type: "onScreen", ...(q && { questionId: q.id }) }) as const;
+  /** Checks that reviewing time, worked out by hand, equals the Questions' reviewing time plus time no Question was on screen. */
+  function deriveReviewing(sat: DerivationInput, reviewingActiveMs: number) {
+    const result = derive(sat);
+    const questionsMs = result.attempts.reduce((sum, a) => sum + a.timing.reviewingActiveMs, 0);
+    expect(result.totals.reviewingActiveMs).toBe(reviewingActiveMs);
+    expect(questionsMs + result.totals.reviewingNavigationMs).toBe(reviewingActiveMs);
+    return result;
+  }
+
+  it("gives time after submission to the Question occupying the main part of the screen, leaving answering time as it was", () => {
+    // Answering: Q1 0–30 s, submitted. Review page, after the page was hidden: nothing on screen 0–1 s, Q1 1–21 s, Q2 21–36 s.
+    const result = deriveReviewing(
+      sitting([
+        { activeMs: 30_000, events: [[0, open(question)], [10_000, choose(question, "opt_a")], [30_000, submit], [30_000, { type: "hide" }]] },
+        { activeMs: 36_000, events: [[0, { type: "show", wall: 3_600_000 }], [1_000, onScreen(question)], [21_000, onScreen(second)], [36_000, { type: "hide" }]] },
+      ]),
+      36_000,
+    );
+    expect(attemptOf(result, question).timing).toMatchObject({ answeringActiveMs: 30_000, reviewingRawMs: 20_000, reviewingActiveMs: 20_000 });
+    expect(attemptOf(result, second).timing).toMatchObject({ answeringActiveMs: 0, reviewingRawMs: 15_000, reviewingActiveMs: 15_000 });
+    expect(result.totals).toMatchObject({ answeringActiveMs: 30_000, navigationMs: 0, reviewingNavigationMs: 1_000 });
+  });
+
+  it("does not count a Question scrolled past in 0.2 seconds, and excludes reviewing idle beyond the threshold", () => {
+    // Submitted at 5 s. Q1 on screen 5–105 s with no interaction, Q2 scrolled past 105–105.2 s, Q1 again to 110 s.
+    const result = deriveReviewing(
+      sitting([
+        {
+          activeMs: 110_000,
+          events: [[0, open(question)], [5_000, submit], [5_000, onScreen(question)], [105_000, onScreen(second)], [105_200, onScreen(question)], [110_000, onScreen()]],
+        },
+      ]),
+      65_000,
+    );
+    expect(attemptOf(result, question).timing).toMatchObject({ answeringActiveMs: 5_000, reviewingRawMs: 104_800, reviewingActiveMs: 64_800, excludedIdle: [] });
+    expect(attemptOf(result, second).timing).toMatchObject({ reviewingRawMs: 0, reviewingActiveMs: 0 });
+    expect(result.totals).toMatchObject({ reviewingRawMs: 105_000, reviewingNavigationMs: 200, reviewingExcludedIdleMs: 40_000 });
+  });
+
+  it("does not let selections after submission change the answer or start a Visit", () => {
+    const result = derive(
+      sitting([{ activeMs: 20_000, events: [[0, open(question)], [5_000, choose(question, "opt_a")], [10_000, submit], [12_000, open(second)], [15_000, choose(second, "opt_a")]] }]),
+    );
+    expect(attemptOf(result, second)).toMatchObject({ answer: [], blank: true, timing: { answeringActiveMs: 0, visits: 0, reviewingActiveMs: 0 } });
+    expect(result.totals).toMatchObject({ reviewingActiveMs: 10_000, reviewingNavigationMs: 10_000 });
+  });
+
+  it("lists reviewing time in the Digest for Questions that were reviewed", () => {
+    // Q1 answered 0–30 s; after submission Q2 is on screen for 45 s and Q1 never is.
+    const { digest } = derive(
+      sitting([{ activeMs: 75_000, events: [[0, open(question)], [30_000, submit], [30_000, onScreen(second)], [75_000, onScreen()]] }]),
+    );
+    expect(digest).toContain("## Question 2\n\nWhere is most DNA kept?\n\n- A. Nucleus\n- B. Cytoplasm\n\n- Answer given: (blank)\n- Correct answer: A\n- Result: wrong\n- Answering time: 0s\n- Reviewing time: 45s\n");
+    expect(digest).not.toContain("- Answering time: 30s\n- Reviewing time");
   });
 });
 
@@ -305,7 +375,7 @@ describe("derive: provenance", () => {
         { rules: strict },
       ),
     );
-    expect(result.algorithmVersion).toBe(2);
+    expect(result.algorithmVersion).toBe(3);
     expect(result.parameters).toEqual({ idleThresholdMs: 30_000, flickThresholdMs: 1_000, shuffleQuestions: true, shuffleOptions: true, collectConfidence: true });
     expect(result.chunks).toEqual([
       { id: `${SESSION}_0`, hash: "hash0" },

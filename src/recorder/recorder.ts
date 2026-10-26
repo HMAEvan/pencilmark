@@ -9,7 +9,11 @@ export type RawEventBody =
   | { type: "hide" }
   /** A resume event: the page was shown or reopened. `wall` is UTC epoch ms. */
   | { type: "show"; wall: number }
-  | { type: "submit" };
+  | { type: "submit" }
+  /** On the review page: the Question now occupying the main part of the screen, absent when none does. */
+  | { type: "onScreen"; questionId?: string }
+  | { type: "expandRationale"; questionId: string; optionId: string }
+  | { type: "collapseRationale"; questionId: string; optionId: string };
 
 /** `seq` orders events across the whole Session; `at` is monotonic ms since its own chunk started. */
 export type RawEvent = RawEventBody & { seq: number; at: number };

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "preact/hooks";
+import { useEffect, useState } from "preact/hooks";
 import type { Question, QuestionSet, Session } from "../domain/types";
 import { blocksToText, letterAt } from "../domain/display";
 import { t } from "../i18n/i18n";
@@ -7,6 +7,7 @@ import { currentAnswers, loadQuestions, submitSession } from "../session/session
 import { storage } from "./appStorage";
 import { navigate } from "./App";
 import { formatDuration } from "./format";
+import { useRecorder } from "./useRecorder";
 
 type Loaded = { session: Session; set: QuestionSet; questions: Map<string, Question>; recorder: Recorder };
 
@@ -20,8 +21,6 @@ async function load(sessionId: string): Promise<(Loaded & { answers: Record<stri
   const answers = await currentAnswers(storage, session, set);
   return { session, set, questions, answers, recorder };
 }
-
-const SAVE_INTERVAL_MS = 3000;
 
 /** The Session's active time, ticking once a second. */
 function Timer({ recorder }: { recorder: Recorder }) {
@@ -39,50 +38,19 @@ export function Player({ sessionId }: { sessionId: string }) {
   const [index, setIndex] = useState(0);
   const [confirming, setConfirming] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const recorderRef = useRef<Recorder | undefined>(undefined);
 
-  useEffect(() => {
-    const report = (e: unknown) => console.error("Writing the Raw log failed", e);
-    // A hidden page may be killed, so the chunk is sealed; showing it again starts a new chunk.
-    // `pagehide` and `visibilitychange` often fire together; record each change of state once.
-    // A page opened in a background tab starts hidden and records its resume event when shown.
-    let hidden = document.visibilityState === "hidden";
-    void load(sessionId).then((result) => {
-      if (result && result.session.status !== "in_progress") return navigate("review", sessionId);
+  const recorderRef = useRecorder(
+    async () => {
+      const result = await load(sessionId);
+      if (result && result.session.status !== "in_progress") return void navigate("review", sessionId);
       setLoaded(result ?? null);
       if (!result) return;
       setAnswers(result.answers);
-      recorderRef.current = result.recorder;
-      if (!hidden) result.recorder.show();
       const first = result.session.questionOrder[0];
-      if (first) result.recorder.append({ type: "navigate", questionId: first });
-    });
-    const hide = () => {
-      if (hidden) return;
-      hidden = true;
-      void recorderRef.current?.hide().catch(report);
-    };
-    const show = () => {
-      if (!hidden) return;
-      hidden = false;
-      recorderRef.current?.show();
-    };
-    const onVisibility = () => (document.visibilityState === "hidden" ? hide() : show());
-    // A page restored from the back-forward cache gets `pageshow` without a visibility change.
-    const onPageShow = (e: PageTransitionEvent) => e.persisted && show();
-    const saveTimer = setInterval(() => void recorderRef.current?.save().catch(report), SAVE_INTERVAL_MS);
-    document.addEventListener("visibilitychange", onVisibility);
-    addEventListener("pagehide", hide);
-    addEventListener("pageshow", onPageShow);
-    return () => {
-      clearInterval(saveTimer);
-      document.removeEventListener("visibilitychange", onVisibility);
-      removeEventListener("pagehide", hide);
-      removeEventListener("pageshow", onPageShow);
-      // Leaving the Player for another screen takes the Session out of view, as hiding the page does.
-      hide();
-    };
-  }, [sessionId]);
+      return { recorder: result.recorder, afterShow: () => first && result.recorder.append({ type: "navigate", questionId: first }) };
+    },
+    sessionId,
+  );
 
   if (loaded === undefined) return <main>{t("common.loading")}</main>;
   if (loaded === null) return <main>{t("common.notFound")}</main>;
