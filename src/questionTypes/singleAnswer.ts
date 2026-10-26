@@ -1,9 +1,11 @@
-import type { Question } from "../domain/types";
+import type { QuestionType } from "./questionType";
 
-// Single-answer Questions (true/false reuses this in issue #4): 0 or 1, exact match.
-export const singleAnswer = {
+// Single-answer Questions, also used for true/false: 0 or 1, exact match.
+export const singleAnswer: QuestionType = {
   type: "single_answer",
-  grade(question: Question, answer: string[]): boolean {
-    return answer.length === 1 && answer[0] === question.answer[0];
+  select: (_answer, optionId) => [optionId],
+  grade(question, answer) {
+    const correct = answer.length === 1 && answer[0] === question.answer[0];
+    return { correct, partialScore: correct ? 1 : 0 };
   },
 };

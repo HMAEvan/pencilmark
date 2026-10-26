@@ -76,12 +76,22 @@ function checkReferences(pack: QuestionPack): PackError[] {
       if (ids.has(o.id)) fail(`options[${i}].id`, `"${o.id}" is used by another Option of this Question`);
       ids.add(o.id);
     });
-    q.answer.forEach((id) => {
+    q.answer.forEach((id, i) => {
       if (!ids.has(id)) fail("answer", `names "${id}", which is not an Option of this Question`);
+      else if (q.answer.indexOf(id) !== i) fail("answer", `names "${id}" more than once`);
     });
+    if (q.type === "single_answer" && q.answer.length > 1) fail("answer", "must name exactly one Option for a single_answer Question; use multiple_answer for more");
+    if (isTrueFalse(q)) {
+      if (q.type !== "single_answer") fail("type", `must be "single_answer" for a true/false Question`);
+      if (q.options.length !== 2) fail("options", "must be exactly two Options for a true/false Question");
+      if (q.optionOrder === "shuffle") fail("optionOrder", `must be "fixed" (or left out) for a true/false Question`);
+    }
   }
   return errors;
 }
+
+/** A true/false Question: single-answer, two Options, fixed order, and this tag. */
+const isTrueFalse = (q: PackQuestion) => q.tags?.includes("true_false") ?? false;
 
 /** An AI's reply often wraps the pack in a Markdown code fence, with chat text around it. */
 function stripCodeFence(text: string): string {
@@ -207,7 +217,7 @@ export async function commitImport(
       typeVersion: 1,
       stem: q.stem,
       options: q.options.map((o) => ({ ...o, rationale: o.rationale ?? [] })),
-      optionOrder: q.optionOrder ?? "shuffle",
+      optionOrder: q.optionOrder ?? (isTrueFalse(q) ? "fixed" : "shuffle"),
       answer: q.answer,
       explanation: q.explanation ?? [],
       batchId: batch.id,

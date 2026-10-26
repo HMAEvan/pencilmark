@@ -3,6 +3,7 @@ import { newId } from "../domain/ids";
 import type { Storage } from "../storage/storage";
 import { readRawLog, recoverRawLog, type Recorder } from "../recorder/recorder";
 import { DEFAULT_PREFERENCES, settingsSnapshot } from "../domain/settings";
+import { displayOrders } from "./displayOrder";
 import { ALGORITHM_VERSION, derive, type DerivationInput, type DerivationResult, type DerivedAttempt, type OverrideValues } from "../derivation/derivation";
 
 // Wires Storage, the Recorder and Derivation together for the UI.
@@ -60,16 +61,15 @@ export async function startSession(storage: Storage, set: QuestionSet): Promise<
 
   const questions = await loadQuestions(storage, set);
   const now = new Date();
-  // Shuffling arrives with issue #5; for now the authored orders are displayed.
+  const settings = settingsSnapshot();
   const session: Session = {
     id: newId("ss", now),
     setId: set.id,
     mode: "exam",
     status: "in_progress",
     startedAt: now.getTime(),
-    questionOrder: questions.map((q) => q.id),
-    optionOrders: Object.fromEntries(questions.map((q) => [q.id, q.options.map((o) => o.id)])),
-    settings: settingsSnapshot(),
+    ...displayOrders(questions, settings.rules),
+    settings,
     source: "user",
     updatedAt: now.getTime(),
   };

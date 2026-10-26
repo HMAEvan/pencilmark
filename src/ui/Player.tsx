@@ -7,6 +7,9 @@ import { currentAnswers, loadQuestions, submitSession } from "../session/session
 import { storage } from "./appStorage";
 import { navigate } from "./App";
 import { formatDuration } from "./format";
+import { questionTypeOf } from "../questionTypes/questionType";
+import { multipleAnswer } from "../questionTypes/multipleAnswer";
+import { shortAnswer } from "../questionTypes/shortAnswer";
 
 type Loaded = { session: Session; set: QuestionSet; questions: Map<string, Question>; recorder: Recorder };
 
@@ -92,20 +95,27 @@ export function Player({ sessionId }: { sessionId: string }) {
   const questionId = session.questionOrder[index]!;
   const question = questions.get(questionId)!;
   const optionOrder = session.optionOrders[questionId] ?? question.options.map((o) => o.id);
+  const type = questionTypeOf(question);
+  const answer = answers[questionId] ?? [];
 
   const goTo = (next: number) => {
     setIndex(next);
     recorder.append({ type: "navigate", questionId: session.questionOrder[next]! });
   };
-  // Tapping the selected Option again clears the answer.
+  // Tapping a selected Option again deselects it.
   const toggle = (optionId: string) => {
-    if (answers[questionId]?.includes(optionId)) {
-      setAnswers({ ...answers, [questionId]: [] });
+    if (answer.includes(optionId)) {
+      setAnswers({ ...answers, [questionId]: answer.filter((id) => id !== optionId) });
       recorder.append({ type: "deselect", questionId, optionId });
     } else {
-      setAnswers({ ...answers, [questionId]: [optionId] });
+      setAnswers({ ...answers, [questionId]: type.select(answer, optionId) });
       recorder.append({ type: "select", questionId, optionId });
     }
+  };
+  // Recorded when the text is committed (on leaving the box), not keystroke by keystroke.
+  const writeText = (text: string) => {
+    setAnswers({ ...answers, [questionId]: text.trim() ? [text] : [] });
+    recorder.append({ type: "text", questionId, text });
   };
   // Confirmed in the page, not with confirm(): some embedded browsers suppress native dialogs.
   const submit = async () => {
@@ -124,19 +134,32 @@ export function Player({ sessionId }: { sessionId: string }) {
         {t("player.questionNumber", { n: index + 1, total })} · <Timer recorder={recorder} />
       </p>
       <div class="card">
+        {type === multipleAnswer && <p class="muted">{t("player.multipleAnswerHint")}</p>}
+        {type === shortAnswer && question.type !== shortAnswer.type && <p class="muted">{t("player.shownAsShortAnswer")}</p>}
         <p class="stem">{blocksToText(question.stem, optionOrder)}</p>
-        <div class="options">
-          {optionOrder.map((optionId, i) => {
-            const option = question.options.find((o) => o.id === optionId)!;
-            const selected = answers[questionId]?.includes(optionId);
-            return (
-              <button key={optionId} class={`option${selected ? " selected" : ""}`} aria-pressed={selected} onClick={() => toggle(optionId)}>
-                <span class="letter">{letterAt(i)}</span>
-                <span>{blocksToText(option.content, optionOrder)}</span>
-              </button>
-            );
-          })}
-        </div>
+        {type === shortAnswer ? (
+          <textarea
+            key={questionId}
+            rows={4}
+            aria-label={t("player.textAnswer")}
+            placeholder={t("player.textAnswer")}
+            defaultValue={answer[0] ?? ""}
+            onChange={(e) => writeText(e.currentTarget.value)}
+          />
+        ) : (
+          <div class="options">
+            {optionOrder.map((optionId, i) => {
+              const option = question.options.find((o) => o.id === optionId)!;
+              const selected = answer.includes(optionId);
+              return (
+                <button key={optionId} class={`option${selected ? " selected" : ""}`} aria-pressed={selected} onClick={() => toggle(optionId)}>
+                  <span class="letter">{letterAt(i)}</span>
+                  <span>{blocksToText(option.content, optionOrder)}</span>
+                </button>
+              );
+            })}
+          </div>
+        )}
       </div>
       <div class="actions">
         <button class="secondary" disabled={index === 0} onClick={() => goTo(index - 1)}>

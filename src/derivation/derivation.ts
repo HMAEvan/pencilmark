@@ -1,6 +1,6 @@
 import type { Question } from "../domain/types";
 import type { RawLogChunk } from "../recorder/recorder";
-import { singleAnswer } from "../questionTypes/singleAnswer";
+import { questionTypeOf } from "../questionTypes/questionType";
 import { writeDigest } from "./digest";
 import type { OverrideValues } from "./overrides";
 import { emptyTiming, emptyTrajectory, walkRawLog, type ChunkGap, type QuestionTiming, type SessionTotals, type Trajectory } from "./timing";
@@ -10,8 +10,11 @@ export { finalValues, type FinalValues, type OverrideValues } from "./overrides"
 
 // ADR-0002: a pure function from the Raw log to derived data. No DOM, no storage.
 
-/** Raised whenever a change to how Derivation computes (here, in timing.ts or in digest.ts) would change a derived value. 2: timing and trajectories. */
-export const ALGORITHM_VERSION = 2;
+/**
+ * Raised whenever a change to how Derivation computes (here, in timing.ts, in digest.ts or in a question type) would change a derived value.
+ * 2: timing and trajectories. 3: multiple-answer Questions and partial scores.
+ */
+export const ALGORITHM_VERSION = 3;
 
 export type DerivationInput = {
   title: string;
@@ -28,7 +31,11 @@ export type DerivedAttempt = {
   questionId: string;
   questionRevision: number;
   answer: string[];
-  correct: boolean;
+  /** True only for an exact match; null while grading is pending. */
+  correct: boolean | null;
+  /** From 0 to 1; a single-answer Question scores 0 or 1. Null while grading is pending. */
+  partialScore: number | null;
+  /** Unanswered: scores 0. */
   blank: boolean;
   displayedNumber: number;
   optionOrder: string[];
@@ -49,8 +56,11 @@ export type DerivationResult = {
 };
 
 export function derive(input: DerivationInput): DerivationResult {
-  const walk = walkRawLog(input.rawLog, input.rules);
   const byId = new Map(input.questions.map((q) => [q.id, q]));
+  const walk = walkRawLog(input.rawLog, input.rules, (questionId, answer, optionId) => {
+    const question = byId.get(questionId);
+    return question ? questionTypeOf(question).select(answer, optionId) : answer;
+  });
 
   const attempts = input.questionOrder.map((questionId, index): DerivedAttempt => {
     const question = byId.get(questionId);
@@ -60,7 +70,7 @@ export function derive(input: DerivationInput): DerivationResult {
       questionId,
       questionRevision: question.revision,
       answer,
-      correct: singleAnswer.grade(question, answer),
+      ...questionTypeOf(question).grade(question, answer),
       blank: answer.length === 0,
       displayedNumber: index + 1,
       optionOrder: input.optionOrders[questionId] ?? question.options.map((o) => o.id),

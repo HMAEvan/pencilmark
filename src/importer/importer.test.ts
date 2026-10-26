@@ -281,3 +281,48 @@ describe("parseQuestionPack", () => {
     expect(parsed).toEqual({ ok: false, errors: [{ question: "q1", field: "answer", message: expect.any(String) }] });
   });
 });
+
+const multiplePack = {
+  ...threePack,
+  questions: [question("q1", "Which are found in plant cells?", ["Chloroplast", "Centriole", "Cell wall"], { type: "multiple_answer", answer: ["opt_0", "opt_2"] })],
+};
+
+const trueFalse = (overrides: Record<string, unknown> = {}) =>
+  question("tf1", "Ribosomes are membrane-bound.", ["True", "False"], { answer: ["opt_1"], tags: ["true_false"], ...overrides });
+
+describe("Importer: question types", () => {
+  it("commits a multiple-answer Question with all of its correct Options", async () => {
+    const storage = createMemoryStorage();
+    const { setId } = await importPack(storage, multiplePack);
+    const set = await storage.get<QuestionSet>("sets", setId);
+    const stored = await storage.get<Question>("questions", set!.entries[0]!.questionId);
+    expect(stored).toMatchObject({ type: "multiple_answer", answer: ["opt_0", "opt_2"], optionOrder: "shuffle" });
+  });
+
+  it("rejects a single-answer Question with more than one correct Option", () => {
+    const parsed = parseQuestionPack(JSON.stringify({ ...threePack, questions: [question("q1", "What carries genetic information?", ["DNA", "RNA", "Starch"], { answer: ["opt_0", "opt_1"] })] }));
+    expect(parsed).toEqual({ ok: false, errors: [{ question: "q1", field: "answer", message: expect.any(String) }] });
+  });
+
+  it("rejects a Question type the Question pack format does not have", () => {
+    const parsed = parseQuestionPack(JSON.stringify({ ...threePack, questions: [{ ...threePack.questions[0]!, type: "true_false" }] }));
+    expect(parsed).toEqual({ ok: false, errors: [{ question: "q1", field: "type", message: expect.any(String) }] });
+  });
+
+  it("commits a true/false Question with its two Options in fixed, authored order", async () => {
+    const storage = createMemoryStorage();
+    const { setId } = await importPack(storage, { ...threePack, questions: [trueFalse()] });
+    const set = await storage.get<QuestionSet>("sets", setId);
+    const stored = await storage.get<Question>("questions", set!.entries[0]!.questionId);
+    expect(stored).toMatchObject({ type: "single_answer", tags: ["true_false"], optionOrder: "fixed", answer: ["opt_1"] });
+    expect(stored!.options.map((o) => o.id)).toEqual(["opt_0", "opt_1"]);
+  });
+
+  it("rejects a true/false Question that is not a fixed-order single-answer Question with two Options", () => {
+    const parse = (q: unknown) => parseQuestionPack(JSON.stringify({ ...threePack, questions: [q] }));
+    const fail = (field: string) => ({ ok: false, errors: [{ question: "tf1", field, message: expect.any(String) }] });
+    expect(parse(trueFalse({ options: ["True", "False", "Unknown"].map((text, i) => ({ id: `opt_${i}`, content: [{ type: "text", text }] })) }))).toEqual(fail("options"));
+    expect(parse(trueFalse({ optionOrder: "shuffle" }))).toEqual(fail("optionOrder"));
+    expect(parse(trueFalse({ type: "multiple_answer" }))).toEqual(fail("type"));
+  });
+});

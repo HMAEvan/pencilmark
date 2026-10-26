@@ -305,7 +305,7 @@ describe("derive: provenance", () => {
         { rules: strict },
       ),
     );
-    expect(result.algorithmVersion).toBe(2);
+    expect(result.algorithmVersion).toBe(3);
     expect(result.parameters).toEqual({ idleThresholdMs: 30_000, flickThresholdMs: 1_000, shuffleQuestions: true, shuffleOptions: true, collectConfidence: true });
     expect(result.chunks).toEqual([
       { id: `${SESSION}_0`, hash: "hash0" },
@@ -320,21 +320,21 @@ describe("Overrides", () => {
 
   it("uses the derived values when there is no Override", () => {
     const attempt = attemptOf(derive(sat()), question);
-    expect(finalValues(attempt)).toEqual({ answeringActiveMs: 40_000, correct: false, overridden: [] });
+    expect(finalValues(attempt)).toEqual({ answeringActiveMs: 40_000, correct: false, partialScore: 0, overridden: [] });
   });
 
   it("uses an overridden time or result in place of the derived one, leaving the derived Attempt unchanged", () => {
     const attempt = attemptOf(derive(sat()), question);
     const before = structuredClone(attempt);
-    expect(finalValues(attempt, { answeringActiveMs: 15_000 })).toEqual({ answeringActiveMs: 15_000, correct: false, overridden: ["answeringActiveMs"] });
-    expect(finalValues(attempt, { correct: true })).toEqual({ answeringActiveMs: 40_000, correct: true, overridden: ["correct"] });
+    expect(finalValues(attempt, { answeringActiveMs: 15_000 })).toEqual({ answeringActiveMs: 15_000, correct: false, partialScore: 0, overridden: ["answeringActiveMs"] });
+    expect(finalValues(attempt, { correct: true })).toEqual({ answeringActiveMs: 40_000, correct: true, partialScore: 1, overridden: ["correct"] });
     expect(attempt).toEqual(before);
   });
 
   it("still applies to the Attempt of a later derivation with different rules", () => {
     const recomputed = attemptOf(derive({ ...sat(), rules: { ...rules, idleThresholdMs: 20_000 } }), question);
     expect(recomputed.timing.answeringActiveMs).toBe(30_000);
-    expect(finalValues(recomputed, { answeringActiveMs: 15_000, correct: true })).toEqual({ answeringActiveMs: 15_000, correct: true, overridden: ["answeringActiveMs", "correct"] });
+    expect(finalValues(recomputed, { answeringActiveMs: 15_000, correct: true })).toEqual({ answeringActiveMs: 15_000, correct: true, partialScore: 1, overridden: ["answeringActiveMs", "correct"] });
   });
 });
 
@@ -353,5 +353,124 @@ describe("Digest with Overrides", () => {
       ["- Result: correct (overridden by the user; derived: wrong)", "- Answering time: 2m 0s (overridden by the user; derived: 40s)", "- First choice: C after 30s"].join("\n"),
     );
     expect(digest).toContain(["- Result: wrong", "- Answering time: 0s", "- First choice: none"].join("\n"));
+  });
+});
+
+describe("derive: multiple-answer Questions", () => {
+  const multiple: Question = {
+    ...question,
+    id: "q_20261026_multxy",
+    type: "multiple_answer",
+    stem: [{ type: "text", text: "Which are found in plant cells?" }],
+    options: ["Chloroplast", "Centriole", "Cell wall", "Glycogen granule", "Lysosome"].map((text, i) => ({
+      id: `opt_${"abcde"[i]}`,
+      content: [{ type: "text", text }],
+      rationale: [],
+    })),
+    answer: ["opt_a", "opt_c"],
+  };
+  const order = ["opt_a", "opt_b", "opt_c", "opt_d", "opt_e"];
+  const sitMultiple = (events: RawEventBody[]): DerivationInput => {
+    const stamped: RawEvent[] = events.map((e, i) => ({ ...e, seq: i + 1, at: i * 1000 }));
+    return {
+      ...input([]),
+      rawLog: [{ ...input([]).rawLog[0]!, events: stamped, activeMs: events.length * 1000 }],
+      questions: [multiple],
+      questionOrder: [multiple.id],
+      optionOrders: { [multiple.id]: order },
+    };
+  };
+  const pick = (optionId: string) => ({ type: "select", questionId: multiple.id, optionId }) as const;
+  const unpick = (optionId: string) => ({ type: "deselect", questionId: multiple.id, optionId }) as const;
+  const go = { type: "navigate", questionId: multiple.id } as const;
+  const resultOf = (...picked: string[]) => derive(sitMultiple([go, ...picked.map(pick), submit])).attempts[0]!;
+
+  it("scores an exact match 1, half the correct Options 0.5, and wrong picks down to 0", () => {
+    expect(resultOf("opt_a", "opt_c")).toMatchObject({ answer: ["opt_a", "opt_c"], correct: true, partialScore: 1, blank: false });
+    expect(resultOf("opt_a")).toMatchObject({ correct: false, partialScore: 0.5 });
+    expect(resultOf("opt_a", "opt_b")).toMatchObject({ correct: false, partialScore: 0 });
+    expect(resultOf("opt_a", "opt_b", "opt_c", "opt_d", "opt_e")).toMatchObject({ correct: false, partialScore: 0 });
+  });
+
+  it("scores an unanswered multiple-answer Question 0 and marks it blank", () => {
+    expect(resultOf()).toMatchObject({ answer: [], correct: false, partialScore: 0, blank: true });
+  });
+
+  it("adds each selected Option to the answer and removes deselected ones, recording each complete answer in the trajectory", () => {
+    const attempt = derive(sitMultiple([go, pick("opt_c"), pick("opt_b"), unpick("opt_b"), pick("opt_a"), submit])).attempts[0]!;
+    expect(attempt).toMatchObject({ answer: ["opt_c", "opt_a"], correct: true, partialScore: 1 });
+    expect(attempt.trajectory).toEqual({
+      firstChoice: ["opt_c"],
+      timeToFirstChoiceMs: 1_000,
+      changes: [
+        { answer: ["opt_c", "opt_b"], atMs: 2_000, dwellMs: 1_000 },
+        { answer: ["opt_c"], atMs: 3_000, dwellMs: 1_000 },
+        { answer: ["opt_c", "opt_a"], atMs: 4_000, dwellMs: 1_000 },
+      ],
+    });
+  });
+
+  it("gives a single-answer Question a partial score of 0 or 1", () => {
+    expect(derive(input([navigate, select("opt_a"), submit])).attempts[0]).toMatchObject({ correct: true, partialScore: 1 });
+    expect(derive(input([navigate, select("opt_b"), submit])).attempts[0]).toMatchObject({ correct: false, partialScore: 0 });
+  });
+
+  it("shows both the result and the partial score in the Digest, with answers in displayed letter order", () => {
+    const { digest } = derive({ ...sitMultiple([go, pick("opt_c"), pick("opt_a"), submit]), optionOrders: { [multiple.id]: ["opt_c", "opt_b", "opt_a", "opt_d", "opt_e"] } });
+    expect(digest).toContain(["- Answer given: A, C", "- Correct answer: A, C", "- Result: correct (partial score 1)"].join("\n"));
+    const half = derive(sitMultiple([go, pick("opt_a"), submit])).digest;
+    expect(half).toContain("- Type: multiple answer (select all that apply)");
+    expect(half).toContain("- Result: wrong (partial score 0.5)");
+    expect(derive(sitMultiple([go, submit])).digest).toContain("- Result: wrong (partial score 0)");
+  });
+});
+
+describe("derive: Questions of an unrecognised type", () => {
+  const ordering: Question = {
+    ...question,
+    id: "q_20261026_ordxyz",
+    type: "ordering",
+    stem: [{ type: "text", text: "Put the stages of mitosis in order." }],
+    options: [],
+    answer: ["prophase", "metaphase", "anaphase", "telophase"],
+  };
+  const sitOrdering = (events: RawEventBody[]): DerivationInput => {
+    const stamped: RawEvent[] = events.map((e, i) => ({ ...e, seq: i + 1, at: i * 1000 }));
+    return {
+      ...input([]),
+      rawLog: [{ ...input([]).rawLog[0]!, events: stamped, activeMs: events.length * 1000 }],
+      questions: [ordering],
+      questionOrder: [ordering.id],
+      optionOrders: { [ordering.id]: [] },
+    };
+  };
+  const go = { type: "navigate", questionId: ordering.id } as const;
+  const write = (text: string) => ({ type: "text", questionId: ordering.id, text }) as const;
+
+  it("takes the last text written as the answer and leaves the result pending, as for a short-answer Question", () => {
+    const { attempts } = derive(sitOrdering([go, write("prophase, anaphase"), write("prophase, metaphase, anaphase, telophase"), submit]));
+    expect(attempts[0]).toMatchObject({ answer: ["prophase, metaphase, anaphase, telophase"], correct: null, partialScore: null, blank: false });
+    expect(attempts[0]!.trajectory.changes).toEqual([{ answer: ["prophase, metaphase, anaphase, telophase"], atMs: 2_000, dwellMs: 1_000 }]);
+  });
+
+  it("records text cleared before submission as blank", () => {
+    const { attempts } = derive(sitOrdering([go, write("prophase"), write("  "), submit]));
+    expect(attempts[0]).toMatchObject({ answer: [], correct: null, partialScore: null, blank: true });
+  });
+
+  it("shows the text answer in the Digest, with the result pending", () => {
+    const { digest } = derive(sitOrdering([go, write("prophase first"), submit]));
+    expect(digest).toContain(
+      [
+        "Put the stages of mitosis in order.",
+        "",
+        '- Type: "ordering", shown as short answer',
+        "- Answer given: prophase first",
+        "- Correct answer: prophase, metaphase, anaphase, telophase",
+        "- Result: pending (to be graded)",
+        "- Answering time: 2s",
+        '- First choice: "prophase first" after 1s',
+      ].join("\n"),
+    );
   });
 });
