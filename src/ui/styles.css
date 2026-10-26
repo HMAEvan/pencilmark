@@ -64,3 +64,6 @@ details { margin-top: 8px; }
 .override summary { color: var(--muted); font-size: 0.9rem; cursor: pointer; }
 .override input { width: 6em; font: inherit; padding: 4px 8px; background: var(--bg); color: var(--fg); border: 1px solid var(--border); border-radius: 6px; }
 .idle-mark { cursor: help; }
+.warnings { color: var(--muted); }
+label.file { color: var(--accent); cursor: pointer; }
+label.file input { display: none; }
