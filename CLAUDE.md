@@ -11,6 +11,7 @@ Domain language: `GLOSSARY.md`. Decisions: `docs/adr/`. Read both before touchin
 - Hashing is used only for the Raw log hash chain. Use a hash elsewhere only where not using it would add a great deal of complexity.
 - Sealed Raw log chunks are never written again by any code path.
 - Persistent names (IndexedDB, localStorage) are prefixed `pencilmark`.
+- Glossary drift found in review (a term from an _Avoid_ list, or a name not in `GLOSSARY.md` for a glossary concept) is fixed without asking. If a new concept has no glossary term yet, propose one with /domain-modeling instead of inventing a name.
 
 ## Agent skills
 
