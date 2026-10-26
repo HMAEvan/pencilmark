@@ -122,6 +122,33 @@ describe.each(adapters)("Recorder with the %s Storage adapter", (_name, makeStor
     ]);
   });
 
+  it("at a checkpoint, seals the chunk and starts the next one at once, so no foreground time is lost", async () => {
+    const storage = makeStorage();
+    const { clock, advance } = fakeClock(Date.UTC(2026, 9, 26, 9, 0, 0));
+    const recorder = await openRecorder(storage, "ss_20261026_abcdef", clock);
+
+    recorder.append({ type: "onScreen", questionId: "q_x" });
+    advance(3000);
+    recorder.append({ type: "exportAnswerPack", includeRawLog: true });
+    await recorder.checkpoint();
+    expect(await readRawLog(storage, "ss_20261026_abcdef")).toHaveLength(1);
+
+    advance(4000);
+    recorder.append({ type: "onScreen", questionId: "q_y" });
+    advance(1000);
+    await recorder.hide();
+
+    const chunks = await readRawLog(storage, "ss_20261026_abcdef");
+    expect(chunks[0]).toMatchObject({ activeMs: 3000, events: [{ seq: 1, at: 0, type: "onScreen", questionId: "q_x" }, { seq: 2, at: 3000, type: "exportAnswerPack", includeRawLog: true }] });
+    expect(chunks[1]).toMatchObject({
+      startedAt: Date.UTC(2026, 9, 26, 9, 0, 3),
+      activeMs: 5000,
+      events: [{ seq: 3, at: 4000, type: "onScreen", questionId: "q_y" }, { seq: 4, at: 5000, type: "hide" }],
+    });
+    expect(recorder.activeMs()).toBe(8000);
+    expect((await openRecorder(storage, "ss_20261026_abcdef", clock)).integrity).toEqual({ ok: true });
+  });
+
   it("seals a chunk nearing the size limit and continues recording in a new chunk", async () => {
     const storage = makeStorage();
     const { clock, advance } = fakeClock(0);

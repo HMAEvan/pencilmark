@@ -43,6 +43,9 @@ function answeringTime(attempt: DerivedAttempt, final: FinalValues): string {
   return `- Answering time: ${time}`;
 }
 
+/** Left out when the Question was never on screen after submission. */
+const reviewingTime = ({ timing }: DerivedAttempt) => (timing.reviewingActiveMs > 0 ? [`- Reviewing time: ${duration(timing.reviewingActiveMs)}`] : []);
+
 /** A multiple-answer Question's result names its partial score too; a single-answer one scores exactly as it is graded. */
 function outcomeLines(attempt: DerivedAttempt, final: FinalValues, multiple: boolean): string[] {
   const { trajectory, optionOrder } = attempt;
@@ -52,6 +55,7 @@ function outcomeLines(attempt: DerivedAttempt, final: FinalValues, multiple: boo
   return [
     `- Result: ${result(final)}${final.overridden.includes("correct") ? ` (overridden by the user; derived: ${result(attempt)})` : ""}`,
     answeringTime(attempt, final),
+    ...reviewingTime(attempt),
     `- First choice: ${trajectory.firstChoice ? `${letters(trajectory.firstChoice, optionOrder)} after ${duration(trajectory.timeToFirstChoiceMs!)}` : "none"}`,
     `- Answer changes: ${changes.length ? changes.join(", ") : "none"}`,
   ];
@@ -79,6 +83,7 @@ export function writeDigest(
         `- Correct answer: ${question.answer.join(", ")}`,
         "- Result: not graded",
         answeringTime(attempt, final),
+        ...reviewingTime(attempt),
         ...markLines(attempt, removedFlags[attempt.questionId] ?? [], collectConfidence),
         "",
       );

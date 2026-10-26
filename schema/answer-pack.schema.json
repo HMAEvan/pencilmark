@@ -1,0 +1,184 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://hmaevan.github.io/pencilmark/schema/answer-pack.schema.json",
+  "title": "PencilMark Answer pack",
+  "description": "One Session for grading or re-import: the Session, its Set, the Question revisions it was sat against, the derivation in use with its Attempts, the Overrides, the Digest, and optionally the sealed Raw log. Times are milliseconds; wall-clock times are UTC epoch ms.",
+  "type": "object",
+  "required": ["kind", "schemaVersion", "exportedAt", "appVersion", "session", "set", "questions", "derivation", "attempts", "overrides", "digest"],
+  "additionalProperties": false,
+  "properties": {
+    "kind": { "const": "answer_pack" },
+    "schemaVersion": { "const": 1 },
+    "exportedAt": { "type": "integer", "minimum": 0 },
+    "appVersion": { "type": "string" },
+    "session": { "$ref": "#/definitions/session" },
+    "set": { "$ref": "#/definitions/set" },
+    "questions": { "type": "array", "items": { "$ref": "#/definitions/question" } },
+    "derivation": { "$ref": "#/definitions/derivation" },
+    "attempts": { "type": "array", "items": { "$ref": "#/definitions/attempt" } },
+    "overrides": { "type": "array", "items": { "$ref": "#/definitions/override" } },
+    "digest": { "type": "string", "description": "The Digest in Markdown, with any Overrides in place of the derived values." },
+    "rawLog": {
+      "type": "array",
+      "description": "The sealed Raw log chunks in order, unchanged. Absent when the Raw log was left out.",
+      "items": { "$ref": "#/definitions/rawLogChunk" }
+    }
+  },
+  "definitions": {
+    "id": { "type": "string", "minLength": 1 },
+    "ms": { "type": "number", "minimum": 0 },
+    "ids": { "type": "array", "items": { "type": "string" } },
+    "blocks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["type", "text"],
+        "properties": { "type": { "const": "text" }, "text": { "type": "string" } }
+      }
+    },
+    "provenance": {
+      "type": "object",
+      "required": ["source", "updatedAt"],
+      "properties": { "source": { "enum": ["user", "ai"] }, "model": { "type": "string" }, "updatedAt": { "type": "number" } }
+    },
+    "session": {
+      "allOf": [{ "$ref": "#/definitions/provenance" }],
+      "type": "object",
+      "required": ["id", "setId", "mode", "status", "startedAt", "questionOrder", "optionOrders"],
+      "properties": {
+        "id": { "$ref": "#/definitions/id" },
+        "setId": { "$ref": "#/definitions/id" },
+        "mode": { "const": "exam" },
+        "status": { "enum": ["in_progress", "done", "reviewing", "reviewed", "abandoned"] },
+        "startedAt": { "type": "number" },
+        "endedAt": { "type": "number" },
+        "questionOrder": { "$ref": "#/definitions/ids" },
+        "optionOrders": { "type": "object", "additionalProperties": { "$ref": "#/definitions/ids" } },
+        "settings": { "type": "object" },
+        "currentDerivationId": { "$ref": "#/definitions/id" }
+      }
+    },
+    "set": {
+      "allOf": [{ "$ref": "#/definitions/provenance" }],
+      "type": "object",
+      "required": ["id", "title", "entries"],
+      "properties": {
+        "id": { "$ref": "#/definitions/id" },
+        "title": { "type": "string" },
+        "entries": {
+          "type": "array",
+          "items": { "type": "object", "required": ["kind", "questionId"], "properties": { "kind": { "const": "question" }, "questionId": { "$ref": "#/definitions/id" } } }
+        }
+      }
+    },
+    "question": {
+      "allOf": [{ "$ref": "#/definitions/provenance" }],
+      "type": "object",
+      "required": ["id", "revision", "type", "stem", "options", "answer", "explanation"],
+      "properties": {
+        "id": { "$ref": "#/definitions/id" },
+        "revision": { "type": "integer", "minimum": 1 },
+        "type": { "type": "string" },
+        "stem": { "$ref": "#/definitions/blocks" },
+        "options": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id", "content", "rationale"],
+            "properties": {
+              "id": { "$ref": "#/definitions/id" },
+              "content": { "$ref": "#/definitions/blocks" },
+              "rationale": { "$ref": "#/definitions/blocks" },
+              "misconception": { "$ref": "#/definitions/blocks" }
+            }
+          }
+        },
+        "answer": { "$ref": "#/definitions/ids" },
+        "explanation": { "$ref": "#/definitions/blocks" }
+      }
+    },
+    "derivation": {
+      "type": "object",
+      "required": ["id", "sessionId", "algorithmVersion", "parameters", "chunks", "totals", "chunkGaps", "digest", "computedAt"],
+      "properties": {
+        "id": { "$ref": "#/definitions/id" },
+        "sessionId": { "$ref": "#/definitions/id" },
+        "algorithmVersion": { "type": "integer", "minimum": 1 },
+        "parameters": { "type": "object" },
+        "chunks": {
+          "type": "array",
+          "description": "The Raw log chunks this derivation read, with the hash each had.",
+          "items": { "type": "object", "required": ["id", "hash"], "properties": { "id": { "$ref": "#/definitions/id" }, "hash": { "type": "string" } } }
+        },
+        "totals": { "type": "object" },
+        "chunkGaps": { "type": "array" },
+        "digest": { "type": "string", "description": "The Digest as derived, without Overrides." },
+        "computedAt": { "type": "number" }
+      }
+    },
+    "attempt": {
+      "type": "object",
+      "required": ["id", "derivationId", "sessionId", "questionId", "questionRevision", "answer", "correct", "blank", "displayedNumber", "optionOrder", "timing", "trajectory"],
+      "properties": {
+        "id": { "$ref": "#/definitions/id" },
+        "derivationId": { "$ref": "#/definitions/id" },
+        "sessionId": { "$ref": "#/definitions/id" },
+        "questionId": { "$ref": "#/definitions/id" },
+        "questionRevision": { "type": "integer", "minimum": 1 },
+        "answer": { "$ref": "#/definitions/ids" },
+        "correct": { "type": "boolean" },
+        "blank": { "type": "boolean" },
+        "displayedNumber": { "type": "integer", "minimum": 1 },
+        "optionOrder": { "$ref": "#/definitions/ids" },
+        "timing": {
+          "type": "object",
+          "required": ["answeringRawMs", "answeringActiveMs", "visits", "excludedIdle", "reviewingRawMs", "reviewingActiveMs"],
+          "properties": {
+            "answeringRawMs": { "$ref": "#/definitions/ms" },
+            "answeringActiveMs": { "$ref": "#/definitions/ms" },
+            "visits": { "type": "integer", "minimum": 0 },
+            "excludedIdle": { "type": "array" },
+            "reviewingRawMs": { "$ref": "#/definitions/ms" },
+            "reviewingActiveMs": { "$ref": "#/definitions/ms" }
+          }
+        },
+        "trajectory": { "type": "object", "required": ["firstChoice", "timeToFirstChoiceMs", "changes"] }
+      }
+    },
+    "override": {
+      "type": "object",
+      "required": ["id", "sessionId", "questionId", "overriddenAt"],
+      "properties": {
+        "id": { "$ref": "#/definitions/id" },
+        "sessionId": { "$ref": "#/definitions/id" },
+        "questionId": { "$ref": "#/definitions/id" },
+        "overriddenAt": { "type": "number" },
+        "answeringActiveMs": { "$ref": "#/definitions/ms" },
+        "correct": { "type": "boolean" }
+      }
+    },
+    "rawLogChunk": {
+      "type": "object",
+      "required": ["id", "sessionId", "n", "startedAt", "events", "activeMs", "prevHash", "hash"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "$ref": "#/definitions/id" },
+        "sessionId": { "$ref": "#/definitions/id" },
+        "n": { "type": "integer", "minimum": 0 },
+        "startedAt": { "type": "number" },
+        "events": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["type", "seq", "at"],
+            "properties": { "type": { "type": "string" }, "seq": { "type": "integer", "minimum": 1 }, "at": { "type": "number" } }
+          }
+        },
+        "activeMs": { "$ref": "#/definitions/ms" },
+        "interrupted": { "const": true },
+        "prevHash": { "type": ["string", "null"] },
+        "hash": { "type": "string" }
+      }
+    }
+  }
+}

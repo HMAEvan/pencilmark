@@ -105,6 +105,11 @@ export const zh = {
   "review.copied": "已复制",
   "review.copyFailed": "无法自动复制，请手动复制下面的内容",
   "review.backHome": "返回首页",
+  "review.reviewingTime": "· 复习用时 {time}",
+  "review.rationale": "选项解析",
+  "review.downloadAnswerPack": "下载答卷包",
+  "review.includeRawLog": "包含原始记录",
+  "review.downloadFailed": "无法生成答卷包",
   "common.loading": "加载中…",
   "common.notFound": "找不到该内容",
 } as const;
