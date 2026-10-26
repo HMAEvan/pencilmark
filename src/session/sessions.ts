@@ -1,7 +1,7 @@
 import type { Question, QuestionSet, Session } from "../domain/types";
 import { newId } from "../domain/ids";
 import type { Storage } from "../storage/storage";
-import { openRecorder, readRawLog, type Recorder } from "../recorder/recorder";
+import { readRawLog, recoverRawLog, type Recorder } from "../recorder/recorder";
 import { settingsSnapshot } from "../domain/settings";
 import { ALGORITHM_VERSION, derive, type DerivedAttempt } from "../derivation/derivation";
 
@@ -62,13 +62,12 @@ export async function startSession(storage: Storage, set: QuestionSet): Promise<
 
 /** Ends an in-progress Session without submitting it. Its Raw log is kept, including any interrupted buffer. */
 export async function abandonSession(storage: Storage, session: Session): Promise<void> {
-  // Opening the Recorder seals a buffer the page left behind.
-  await openRecorder(storage, session.id);
+  await recoverRawLog(storage, session.id);
   const now = Date.now();
   await storage.set<Session>("sessions", { ...session, status: "abandoned", endedAt: now, updatedAt: now });
 }
 
-/** Answers selected so far, read back from the sealed Raw log so a reload shows them. Open the Recorder first, so an interrupted buffer is included. */
+/** Answers selected so far, read back from the sealed Raw log so a reload shows them. Call it after opening the Recorder, which recovers a buffer a killed page left behind. */
 export async function currentAnswers(storage: Storage, session: Session, set: QuestionSet): Promise<Record<string, string[]>> {
   const { attempts } = derive({
     title: set.title,

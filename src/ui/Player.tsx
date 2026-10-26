@@ -48,20 +48,21 @@ export function Player({ sessionId }: { sessionId: string }) {
   const recorderRef = useRef<Recorder | undefined>(undefined);
 
   useEffect(() => {
+    const report = (e: unknown) => console.error("Writing the Raw log failed", e);
+    // A hidden page may be killed, so the chunk is sealed; showing it again starts a new chunk.
+    // `pagehide` and `visibilitychange` often fire together; record each change of state once.
+    // A page opened in a background tab starts hidden and records its resume event when shown.
+    let hidden = document.visibilityState === "hidden";
     void load(sessionId).then((result) => {
       if (result && result.session.status !== "in_progress") return navigate("review", sessionId);
       setLoaded(result ?? null);
       if (!result) return;
       setAnswers(result.answers);
       recorderRef.current = result.recorder;
-      result.recorder.show();
+      if (!hidden) result.recorder.show();
       const first = result.session.questionOrder[0];
       if (first) result.recorder.append({ type: "navigate", questionId: first });
     });
-    const report = (e: unknown) => console.error("Writing the Raw log failed", e);
-    // A hidden page may be killed, so the chunk is sealed; showing it again starts a new chunk.
-    // `pagehide` and `visibilitychange` often fire together; record each change of state once.
-    let hidden = false;
     const hide = () => {
       if (hidden) return;
       hidden = true;
@@ -75,16 +76,17 @@ export function Player({ sessionId }: { sessionId: string }) {
     const onVisibility = () => (document.visibilityState === "hidden" ? hide() : show());
     // A page restored from the back-forward cache gets `pageshow` without a visibility change.
     const onPageShow = (e: PageTransitionEvent) => e.persisted && show();
-    const save = setInterval(() => void recorderRef.current?.save().catch(report), SAVE_INTERVAL_MS);
+    const saveTimer = setInterval(() => void recorderRef.current?.save().catch(report), SAVE_INTERVAL_MS);
     document.addEventListener("visibilitychange", onVisibility);
     addEventListener("pagehide", hide);
     addEventListener("pageshow", onPageShow);
     return () => {
-      clearInterval(save);
+      clearInterval(saveTimer);
       document.removeEventListener("visibilitychange", onVisibility);
       removeEventListener("pagehide", hide);
       removeEventListener("pageshow", onPageShow);
-      void recorderRef.current?.seal().catch(report);
+      // Leaving the Player for another screen takes the Session out of view, as hiding the page does.
+      hide();
     };
   }, [sessionId]);
 

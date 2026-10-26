@@ -1,4 +1,4 @@
-import { matches, type Storage } from "./storage";
+import { assertDeletable, matches, type Storage } from "./storage";
 
 export function createMemoryStorage(): Storage {
   const collections = new Map<string, Map<string, unknown>>();
@@ -21,6 +21,7 @@ export function createMemoryStorage(): Storage {
       collection(name).set(doc.id, structuredClone(doc));
     },
     async delete(name, id) {
+      assertDeletable(name);
       collection(name).delete(id);
     },
     async query(name, where) {

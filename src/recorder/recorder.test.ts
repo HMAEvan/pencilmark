@@ -1,6 +1,6 @@
 import "fake-indexeddb/auto";
 import { describe, expect, it } from "vitest";
-import { openRecorder, readRawLog, type RawLogChunk } from "./recorder";
+import { openRecorder, readRawLog, recoverRawLog, type RawLogChunk } from "./recorder";
 import { createMemoryStorage } from "../storage/memoryStorage";
 import { createIndexedDbStorage } from "../storage/indexedDbStorage";
 import type { Storage } from "../storage/storage";
@@ -177,6 +177,18 @@ describe.each(adapters)("Recorder with the %s Storage adapter", (_name, makeStor
     expect(chunks[1]!.events).toEqual([{ seq: 3, at: 0, type: "show", wall: Date.UTC(2026, 9, 26, 9, 1, 3) }]);
     expect(chunks[1]!.interrupted).toBeUndefined();
     expect(reopened.integrity).toEqual({ ok: true });
+  });
+
+  it("recovers a leftover buffer without opening a Recorder", async () => {
+    const storage = makeStorage();
+    const { clock } = fakeClock(0);
+    const killed = await openRecorder(storage, "ss_20261026_abcdef", clock);
+    killed.append({ type: "navigate", questionId: "q_x" });
+    await killed.save();
+
+    const chunks = await recoverRawLog(storage, "ss_20261026_abcdef");
+    expect(chunks).toMatchObject([{ n: 0, interrupted: true, events: [{ seq: 1, type: "navigate" }] }]);
+    expect(await readRawLog(storage, "ss_20261026_abcdef")).toHaveLength(1);
   });
 
   it("does not recover a buffer whose chunk was sealed", async () => {

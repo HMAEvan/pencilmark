@@ -1,4 +1,4 @@
-import { useEffect, useState } from "preact/hooks";
+import { useEffect, useRef, useState } from "preact/hooks";
 import type { QuestionSet, Session } from "../domain/types";
 import { t } from "../i18n/i18n";
 import { commitQuestionPack, parseQuestionPack, type PackError } from "../importer/importer";
@@ -66,11 +66,23 @@ export function Home() {
   useEffect(refresh, []);
 
   const [confirmingAbandon, setConfirmingAbandon] = useState<string>();
-  const start = async (set: QuestionSet) => navigate("session", (await startSession(storage, set)).id);
-  const restart = async (set: QuestionSet, session: Session) => {
-    await abandonSession(storage, session);
-    await start(set);
+  // The ref, not state, guards: two clicks can land before a re-render and would start two Sessions.
+  const starting = useRef(false);
+  const once = async (action: () => Promise<void>) => {
+    if (starting.current) return;
+    starting.current = true;
+    try {
+      await action();
+    } finally {
+      starting.current = false;
+    }
   };
+  const start = (set: QuestionSet) => once(async () => navigate("session", (await startSession(storage, set)).id));
+  const restart = (set: QuestionSet, session: Session) =>
+    once(async () => {
+      await abandonSession(storage, session);
+      navigate("session", (await startSession(storage, set)).id);
+    });
 
   return (
     <main>

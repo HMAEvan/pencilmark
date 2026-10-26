@@ -1,4 +1,4 @@
-import { matches, type Storage } from "./storage";
+import { assertDeletable, matches, type Storage } from "./storage";
 
 const STORE = "documents";
 
@@ -40,6 +40,7 @@ export function createIndexedDbStorage(name = "pencilmark"): Storage {
       await request((await store("readwrite")).add(row));
     },
     async delete(collection, id) {
+      assertDeletable(collection);
       await request((await store("readwrite")).delete([collection, id]));
     },
     async query(collection, where) {

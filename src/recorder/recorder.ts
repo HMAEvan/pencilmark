@@ -67,15 +67,19 @@ export type Recorder = {
   activeMs(): number;
 };
 
-/** Seals a buffer the page left behind as `interrupted`, and returns the Raw log including it. */
-async function recoverBuffer(storage: Storage, sessionId: string, sealed: RawLogChunk[]): Promise<RawLogChunk[]> {
+/** Raw log chunks use composite IDs (ADR-0003). */
+const chunkId = (sessionId: string, n: number) => `${sessionId}_${n}`;
+
+/** Seals a buffer the page left behind as `interrupted`, and returns the whole Raw log including it. */
+export async function recoverRawLog(storage: Storage, sessionId: string): Promise<RawLogChunk[]> {
+  let sealed = await readRawLog(storage, sessionId);
   const buffer = await storage.get<RawLogBuffer>("rawLogBuffers", sessionId);
   if (!buffer) return sealed;
   const last = sealed.at(-1);
   // A buffer whose chunk was already sealed is left over from a seal that ran before the buffer was removed.
   if (buffer.n === (last ? last.n + 1 : 0) && buffer.events.length > 0) {
     const { n, startedAt, events, activeMs } = buffer;
-    const chunk = await withHash({ id: `${sessionId}_${n}`, sessionId, n, startedAt, events, activeMs, interrupted: true }, last?.hash ?? null);
+    const chunk = await withHash({ id: chunkId(sessionId, n), sessionId, n, startedAt, events, activeMs, interrupted: true }, last?.hash ?? null);
     await storage.add("rawLogChunks", chunk);
     sealed = [...sealed, chunk];
   }
@@ -90,7 +94,7 @@ export async function openRecorder(
   clock: Clock = browserClock,
   { maxChunkBytes = DEFAULT_MAX_CHUNK_BYTES }: RecorderOptions = {},
 ): Promise<Recorder> {
-  const sealed = await recoverBuffer(storage, sessionId, await readRawLog(storage, sessionId));
+  const sealed = await recoverRawLog(storage, sessionId);
   const last = sealed.at(-1);
   let n = last ? last.n + 1 : 0;
   let seq = sealed.reduce((max, chunk) => Math.max(max, ...chunk.events.map((e) => e.seq)), 0);
@@ -125,7 +129,7 @@ export async function openRecorder(
     },
     seal() {
       if (!current) return writes;
-      const body = { id: `${sessionId}_${n}`, sessionId, n, startedAt: current.startedAt, events: current.events, activeMs: elapsed(current) };
+      const body = { id: chunkId(sessionId, n), sessionId, n, startedAt: current.startedAt, events: current.events, activeMs: elapsed(current) };
       sealedActiveMs += body.activeMs;
       n += 1;
       current = undefined;
@@ -174,7 +178,7 @@ async function withHash(body: Omit<RawLogChunk, "prevHash" | "hash">, prevHash: 
 async function checkChain(sessionId: string, chunks: RawLogChunk[]): Promise<Integrity> {
   let prevHash: string | null = null;
   for (const [n, chunk] of chunks.entries()) {
-    if (chunk.n !== n) return { ok: false, chunkId: `${sessionId}_${n}` };
+    if (chunk.n !== n) return { ok: false, chunkId: chunkId(sessionId, n) };
     const { hash, ...unhashed } = chunk;
     if (chunk.prevHash !== prevHash || (await hashOf(unhashed)) !== hash) return { ok: false, chunkId: chunk.id };
     prevHash = hash;
