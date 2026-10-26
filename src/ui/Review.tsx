@@ -75,7 +75,7 @@ function OverrideEditor({ attempt, final, idleThresholdMs, onSave }: { attempt: 
 /** Letters in displayed order; a short-answer Question's answer is its text. */
 function answerText(answer: string[], optionOrder: string[], written: boolean): string {
   if (!answer.length) return t("review.blank");
-  return written ? answer.join(t("import.listSeparator")) : answer.map((id) => letterOf(id, optionOrder)).sort().join(", ");
+  return written ? answer.join(t("review.answerSeparator")) : answer.map((id) => letterOf(id, optionOrder)).sort().join(t("review.letterSeparator"));
 }
 
 function ResultMark({ final, multiple, partial }: { final: FinalValues; multiple: boolean; partial: boolean }) {
@@ -83,7 +83,7 @@ function ResultMark({ final, multiple, partial }: { final: FinalValues; multiple
   return (
     <>
       <span class={final.correct ? "ok" : "bad"}>{t(final.correct ? "review.correct" : "review.wrong")}</span>
-      {multiple && partial && <span class="muted"> · {t("review.partialScore", { score: formatScore(final.partialScore ?? 0) })}</span>}
+      {multiple && partial && <span class="muted">{t("review.partialScore", { score: formatScore(final.partialScore ?? 0) })}</span>}
     </>
   );
 }

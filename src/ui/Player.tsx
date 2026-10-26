@@ -134,7 +134,7 @@ export function Player({ sessionId }: { sessionId: string }) {
         {t("player.questionNumber", { n: index + 1, total })} · <Timer recorder={recorder} />
       </p>
       <div class="card">
-        {type === multipleAnswer && <p class="muted">{t("player.multipleAnswerHint")}</p>}
+        {type === multipleAnswer && <p class="muted">{t("player.multipleAnswerInstruction")}</p>}
         {type === shortAnswer && question.type !== shortAnswer.type && <p class="muted">{t("player.shownAsShortAnswer")}</p>}
         <p class="stem">{blocksToText(question.stem, optionOrder)}</p>
         {type === shortAnswer ? (

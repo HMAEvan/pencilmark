@@ -6,6 +6,7 @@ import packSchema from "../../schema/question-pack.schema.json";
 import { duplicateKeys } from "./normalise";
 import { topicResolver } from "./topics";
 import { packWarnings, type PackWarning } from "./warnings";
+import { isTrueFalse } from "../questionTypes/singleAnswer";
 
 export type { PackWarning };
 
@@ -90,8 +91,6 @@ function checkReferences(pack: QuestionPack): PackError[] {
   return errors;
 }
 
-/** A true/false Question: single-answer, two Options, fixed order, and this tag. */
-const isTrueFalse = (q: PackQuestion) => q.tags?.includes("true_false") ?? false;
 
 /** An AI's reply often wraps the pack in a Markdown code fence, with chat text around it. */
 function stripCodeFence(text: string): string {

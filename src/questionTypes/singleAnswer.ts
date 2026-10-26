@@ -9,3 +9,6 @@ export const singleAnswer: QuestionType = {
     return { correct, partialScore: correct ? 1 : 0 };
   },
 };
+
+/** A true/false Question: single-answer, two Options in fixed order, and this tag. */
+export const isTrueFalse = (question: { tags?: string[] }) => question.tags?.includes("true_false") ?? false;

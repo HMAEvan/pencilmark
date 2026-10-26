@@ -1,5 +1,6 @@
 import type { Question } from "../domain/types";
 import type { Rules } from "../domain/settings";
+import { isTrueFalse } from "../questionTypes/singleAnswer";
 
 // The Question and Option orders a Session displays, fixed when it starts and stored on it.
 
@@ -19,7 +20,7 @@ function shuffled<T>(items: T[], random: () => number): T[] {
  */
 function optionOrderOf(question: Question, shuffle: boolean, random: () => number): string[] {
   const ids = (pin: "first" | "last" | undefined) => question.options.filter((o) => o.pin === pin).map((o) => o.id);
-  if (!shuffle || question.optionOrder === "fixed" || question.tags.includes("true_false")) return question.options.map((o) => o.id);
+  if (!shuffle || question.optionOrder === "fixed" || isTrueFalse(question)) return question.options.map((o) => o.id);
   return [...ids("first"), ...shuffled(ids(undefined), random), ...ids("last")];
 }
 

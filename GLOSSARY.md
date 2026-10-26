@@ -135,3 +135,23 @@ _Avoid_: Results file
 **Backup** (完整备份):
 A file carrying everything needed to restore the tool exactly as it was.
 _Avoid_: Export, dump
+
+## Provisional
+
+Working names introduced while building issue #5, not yet agreed with /domain-modeling.
+
+**Question type** (题型):
+The kind of Question, deciding how it is answered and graded: single-answer, multiple-answer, short-answer. True/false is a single-answer Question with two fixed Options and the tag `true_false`. An unrecognised type is shown as short-answer.
+_Status_: provisional, not yet agreed
+
+**Partial score** (部分得分):
+A graded Attempt's score from 0 to 1. Multiple-answer: max(0, (c − w) / k). Single-answer: 0 or 1. Stored beside `correct`; the display preference picks which is shown.
+_Status_: provisional, not yet agreed
+
+**Pin** (固定位置):
+An Option's mark to stay first or last, in authored order, when Options are shuffled.
+_Status_: provisional, not yet agreed
+
+**Pending** (待批改):
+An Attempt the tool cannot grade (short-answer), so `correct` and the partial score are empty until the user grades it with an Override.
+_Status_: provisional, not yet agreed
