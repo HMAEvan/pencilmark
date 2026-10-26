@@ -72,6 +72,8 @@ export function Player({ sessionId }: { sessionId: string }) {
     const hide = () => {
       if (hidden) return;
       hidden = true;
+      // A Note being typed is saved on blur; blurring it first records it before the chunk is sealed.
+      if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
       void recorderRef.current?.hide().catch(report);
     };
     const show = () => {
@@ -202,7 +204,7 @@ export function Player({ sessionId }: { sessionId: string }) {
       <div class={`drawer${drawerOpen ? " open" : ""}`}>
         <button class="secondary small" aria-expanded={drawerOpen} onClick={() => setDrawerOpen(!drawerOpen)}>
           {t(drawerOpen ? "player.marksClose" : "player.marksOpen")}
-          {(flags[questionId]?.length ?? 0) > 0 && " ⚑"}
+          {(flags[questionId]?.length ?? 0) > 0 && ` ${t("player.flaggedMark")}`}
         </button>
         {drawerOpen && (
           <div class="drawer-body">

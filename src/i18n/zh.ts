@@ -52,6 +52,7 @@ export const zh = {
   "player.navFlagged": "（已标记）",
   "player.marksOpen": "标记与备注",
   "player.marksClose": "收起",
+  "player.flaggedMark": "⚑",
   "marks.confidence": "信心度",
   "marks.flags": "标记",
   "marks.note": "备注",

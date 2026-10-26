@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { derive, digestWithOverrides, finalValues, type DerivationInput } from "./derivation";
-import type { Question } from "../domain/types";
+import type { Confidence, Flag, Question } from "../domain/types";
 import type { RawEvent, RawEventBody, RawLogChunk } from "../recorder/recorder";
 import { DEFAULT_PREFERENCES } from "../domain/settings";
 
@@ -359,7 +359,7 @@ describe("Digest with Overrides", () => {
 });
 
 describe("derive: Confidence", () => {
-  const confide = (q: Question, confidence: "sure" | "probably" | "guessed" | null) => ({ type: "confidence", questionId: q.id, confidence }) as const;
+  const confide = (q: Question, confidence: Confidence | null) => ({ type: "confidence", questionId: q.id, confidence }) as const;
 
   it("keeps the last Confidence set, and leaves an unset or cleared Confidence empty", () => {
     // Q1: guessed, then changed to probably. Q2: set to sure, then cleared.
@@ -384,8 +384,8 @@ describe("derive: Confidence", () => {
 });
 
 describe("derive: Flags", () => {
-  const flag = (q: Question, flag: "concept" | "careless" | "focus" | "memory" | "bad_question") => ({ type: "flag", questionId: q.id, flag }) as const;
-  const unflag = (q: Question, flag: "concept" | "careless" | "focus" | "memory" | "bad_question") => ({ type: "unflag", questionId: q.id, flag }) as const;
+  const flag = (q: Question, flag: Flag) => ({ type: "flag", questionId: q.id, flag }) as const;
+  const unflag = (q: Question, flag: Flag) => ({ type: "unflag", questionId: q.id, flag }) as const;
 
   it("holds only the final Flags, each with its Phase and the wall-clock time it was added", () => {
     // Chunk 0 starts at wall time 1,000 s. Q1: careless at 3 s, memory at 4 s, careless removed at 5 s.

@@ -135,3 +135,9 @@ _Avoid_: Results file
 **Backup** (完整备份):
 A file carrying everything needed to restore the tool exactly as it was.
 _Avoid_: Export, dump
+
+## Provisional
+
+**Mark** (标记类记录):
+Anything the user records about an Attempt beyond the answer itself: Confidence, Flags, Item flags and the Note. Used in code for the group (`QuestionMarks`, `walkMarks`, `recordReviewMark`).
+_Status_: provisional, not yet agreed

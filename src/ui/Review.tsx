@@ -21,14 +21,15 @@ type Loaded = {
   recorder: Recorder;
 };
 
-async function load(sessionId: string): Promise<Loaded | undefined> {
+/** Pass the page's Recorder when reloading after a mark, so only one Recorder appends to the Session. */
+async function load(sessionId: string, openedRecorder?: Recorder): Promise<Loaded | undefined> {
   const session = await storage.get<Session>("sessions", sessionId);
   if (!session?.currentDerivationId) return undefined;
   const set = await storage.get<QuestionSet>("sets", session.setId);
   if (!set) return undefined;
   // Opened first: it seals a buffer a killed page left behind, so the derivation can include those marks.
   // Nothing is appended here except marks, so opening the review page alone never adds to the Raw log.
-  const recorder = await openRecorder(storage, session.id);
+  const recorder = openedRecorder ?? (await openRecorder(storage, session.id));
   const derivation = await currentDerivation(storage, session, set);
   if (!derivation) return undefined;
   const attempts = await storage.query<Attempt>("attempts", { derivationId: derivation.id });
@@ -95,7 +96,7 @@ export function Review({ sessionId }: { sessionId: string }) {
     setMarking(true);
     try {
       await recordReviewMark(storage, session, set, recorder, event);
-      const reloaded = await load(sessionId);
+      const reloaded = await load(sessionId, recorder);
       if (reloaded) setLoaded(reloaded);
     } finally {
       setMarking(false);
