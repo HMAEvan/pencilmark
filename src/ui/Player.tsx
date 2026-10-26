@@ -6,6 +6,7 @@ import { openRecorder, type Recorder } from "../recorder/recorder";
 import { currentAnswers, loadQuestions, submitSession } from "../session/sessions";
 import { storage } from "./appStorage";
 import { navigate } from "./App";
+import { formatDuration } from "./format";
 
 type Loaded = { session: Session; set: QuestionSet; questions: Map<string, Question>; recorder: Recorder };
 
@@ -21,13 +22,6 @@ async function load(sessionId: string): Promise<(Loaded & { answers: Record<stri
 }
 
 const SAVE_INTERVAL_MS = 3000;
-
-function formatDuration(ms: number): string {
-  const seconds = Math.floor(ms / 1000);
-  const mm = String(Math.floor(seconds / 60) % 60).padStart(2, "0");
-  const ss = String(seconds % 60).padStart(2, "0");
-  return seconds >= 3600 ? `${Math.floor(seconds / 3600)}:${mm}:${ss}` : `${mm}:${ss}`;
-}
 
 /** The Session's active time, ticking once a second. */
 function Timer({ recorder }: { recorder: Recorder }) {

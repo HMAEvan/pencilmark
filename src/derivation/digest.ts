@@ -8,6 +8,22 @@ function letters(optionIds: string[], optionOrder: string[]): string {
   return optionIds.length ? optionIds.map((id) => letterOf(id, optionOrder)).join(", ") : "(blank)";
 }
 
+/** Whole seconds, with minutes once there is at least one: "45s", "1m 0s". */
+function duration(ms: number): string {
+  const seconds = Math.round(ms / 1000);
+  return seconds >= 60 ? `${Math.floor(seconds / 60)}m ${seconds % 60}s` : `${seconds}s`;
+}
+
+function timingLines({ timing, trajectory, optionOrder }: DerivedAttempt): string[] {
+  const excludedMs = timing.excludedIdle.reduce((sum, idle) => sum + idle.excludedMs, 0);
+  const changes = trajectory.changes.map((c) => `${letters(c.answer, optionOrder)} at ${duration(c.atMs)} (after ${duration(c.dwellMs)})`);
+  return [
+    `- Answering time: ${duration(timing.answeringActiveMs)}${excludedMs > 0 ? ` (${duration(excludedMs)} idle excluded)` : ""}`,
+    `- First choice: ${trajectory.firstChoice ? `${letters(trajectory.firstChoice, optionOrder)} after ${duration(trajectory.timeToFirstChoiceMs!)}` : "none"}`,
+    `- Answer changes: ${changes.length ? changes.join(", ") : "none"}`,
+  ];
+}
+
 export function writeDigest(title: string, attempts: DerivedAttempt[], questions: Map<string, Question>): string {
   const lines = [`# Digest: ${title}`, ""];
   for (const attempt of attempts) {
@@ -27,6 +43,7 @@ export function writeDigest(title: string, attempts: DerivedAttempt[], questions
       `- Answer given: ${letters(attempt.answer, order)}`,
       `- Correct answer: ${letters(question.answer, order)}`,
       `- Result: ${attempt.correct ? "correct" : "wrong"}`,
+      ...timingLines(attempt),
       "",
     );
   }
