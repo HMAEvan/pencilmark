@@ -39,6 +39,9 @@ export function createIndexedDbStorage(name = "pencilmark"): Storage {
       const row: Row = { collection, id: doc.id, doc };
       await request((await store("readwrite")).add(row));
     },
+    async delete(collection, id) {
+      await request((await store("readwrite")).delete([collection, id]));
+    },
     async query(collection, where) {
       const rows = (await request((await store("readonly")).index("collection").getAll(collection))) as Row[];
       return rows.map((row) => row.doc).filter((doc) => matches(doc, where)) as never[];

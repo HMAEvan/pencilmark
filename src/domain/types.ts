@@ -1,5 +1,7 @@
 // Document shapes stored through Storage. Field names follow GLOSSARY.md and the spec (issue #1).
 
+import type { SettingsSnapshot } from "./settings";
+
 export type ContentBlock = { type: "text"; text: string };
 
 export type Provenance = {
@@ -61,5 +63,6 @@ export type Session = Provenance & {
   endedAt?: number;
   questionOrder: string[];
   optionOrders: Record<string, string[]>;
+  settings: SettingsSnapshot;
   currentDerivationId?: string;
 };

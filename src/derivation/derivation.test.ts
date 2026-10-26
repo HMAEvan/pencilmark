@@ -29,7 +29,7 @@ function input(events: RawEventBody[], optionOrder = ["opt_a", "opt_b", "opt_c"]
   const stamped: RawEvent[] = events.map((e, i) => ({ ...e, seq: i + 1, at: i * 1000 }));
   return {
     title: "Cell biology warm-up",
-    rawLog: [{ id: "ss_20261026_ssssss_0", sessionId: "ss_20261026_ssssss", n: 0, startedAt: 0, events: stamped }],
+    rawLog: [{ id: "ss_20261026_ssssss_0", sessionId: "ss_20261026_ssssss", n: 0, startedAt: 0, events: stamped, activeMs: events.length * 1000, prevHash: null, hash: "" }],
     questions: [question],
     questionOrder: [question.id],
     optionOrders: { [question.id]: optionOrder },
@@ -51,6 +51,17 @@ describe("derive", () => {
   it("takes the last selection before submission as the answer", () => {
     const { attempts } = derive(input([navigate, select("opt_a"), select("opt_c"), submit, select("opt_a")]));
     expect(attempts[0]).toMatchObject({ answer: ["opt_c"], correct: false, blank: false });
+  });
+
+  it("records a Question whose selection was deselected as blank", () => {
+    const deselect = { type: "deselect", questionId: question.id, optionId: "opt_a" } as const;
+    const { attempts } = derive(input([navigate, select("opt_a"), deselect, submit]));
+    expect(attempts[0]).toMatchObject({ answer: [], correct: false, blank: true });
+  });
+
+  it("ignores the page being hidden and shown", () => {
+    const { attempts } = derive(input([navigate, select("opt_a"), { type: "hide" }, { type: "show", wall: 5000 }, submit]));
+    expect(attempts[0]).toMatchObject({ answer: ["opt_a"], correct: true });
   });
 
   it("records an unanswered Question as blank and not correct", () => {

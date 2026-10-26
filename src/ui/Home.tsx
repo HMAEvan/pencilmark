@@ -2,7 +2,7 @@ import { useEffect, useState } from "preact/hooks";
 import type { QuestionSet, Session } from "../domain/types";
 import { t } from "../i18n/i18n";
 import { commitQuestionPack, parseQuestionPack, type PackError } from "../importer/importer";
-import { latestSession, startSession } from "../session/sessions";
+import { abandonSession, latestSession, startSession } from "../session/sessions";
 import { storage } from "./appStorage";
 import { navigate } from "./App";
 
@@ -65,7 +65,12 @@ export function Home() {
   const refresh = () => void loadRows().then(setRows);
   useEffect(refresh, []);
 
+  const [confirmingAbandon, setConfirmingAbandon] = useState<string>();
   const start = async (set: QuestionSet) => navigate("session", (await startSession(storage, set)).id);
+  const restart = async (set: QuestionSet, session: Session) => {
+    await abandonSession(storage, session);
+    await start(set);
+  };
 
   return (
     <main>
@@ -83,12 +88,28 @@ export function Home() {
           </p>
           <div class="actions">
             <button onClick={() => start(set)}>{latest?.status === "in_progress" ? t("home.continue") : t("home.start")}</button>
+            {latest?.status === "in_progress" && (
+              <button class="secondary" disabled={confirmingAbandon === set.id} onClick={() => setConfirmingAbandon(set.id)}>
+                {t("home.abandonAndRestart")}
+              </button>
+            )}
             {latest?.currentDerivationId && (
               <button class="secondary" onClick={() => navigate("review", latest.id)}>
                 {t("home.viewReview")}
               </button>
             )}
           </div>
+          {latest?.status === "in_progress" && confirmingAbandon === set.id && (
+            <div class="confirm" role="alertdialog" aria-label={t("home.confirmAbandon")}>
+              <p>{t("home.confirmAbandon")}</p>
+              <div class="actions">
+                <button onClick={() => restart(set, latest)}>{t("home.confirmAbandonYes")}</button>
+                <button class="secondary" onClick={() => setConfirmingAbandon(undefined)}>
+                  {t("player.cancel")}
+                </button>
+              </div>
+            </div>
+          )}
         </section>
       ))}
     </main>

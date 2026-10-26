@@ -8,6 +8,8 @@ export interface Storage {
   set<T extends { id: string }>(collection: string, doc: T): Promise<void>;
   /** Writes a new document; rejects if one with the same id already exists. */
   add<T extends { id: string }>(collection: string, doc: T): Promise<void>;
+  /** Removes a document if it exists. */
+  delete(collection: string, id: string): Promise<void>;
   /** All documents in a collection whose top-level fields equal every value in `where`. */
   query<T>(collection: string, where?: Where): Promise<T[]>;
 }

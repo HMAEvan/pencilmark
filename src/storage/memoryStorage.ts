@@ -20,6 +20,9 @@ export function createMemoryStorage(): Storage {
       if (collection(name).has(doc.id)) throw new Error(`${name}/${doc.id} already exists`);
       collection(name).set(doc.id, structuredClone(doc));
     },
+    async delete(name, id) {
+      collection(name).delete(id);
+    },
     async query(name, where) {
       return [...collection(name).values()].filter((doc) => matches(doc, where)).map((doc) => structuredClone(doc as never));
     },

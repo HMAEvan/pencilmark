@@ -35,6 +35,7 @@ function answersAtSubmission(rawLog: RawLogChunk[]): Map<string, string[]> {
   for (const event of events) {
     if (event.type === "submit") break;
     if (event.type === "select") answers.set(event.questionId, [event.optionId]);
+    if (event.type === "deselect") answers.set(event.questionId, (answers.get(event.questionId) ?? []).filter((id) => id !== event.optionId));
   }
   return answers;
 }

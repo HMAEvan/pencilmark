@@ -1,7 +1,8 @@
 import type { Question, QuestionSet, Session } from "../domain/types";
 import { newId } from "../domain/ids";
 import type { Storage } from "../storage/storage";
-import { readRawLog, type Recorder } from "../recorder/recorder";
+import { openRecorder, readRawLog, type Recorder } from "../recorder/recorder";
+import { settingsSnapshot } from "../domain/settings";
 import { ALGORITHM_VERSION, derive, type DerivedAttempt } from "../derivation/derivation";
 
 // Wires Storage, the Recorder and Derivation together for the UI.
@@ -30,9 +31,14 @@ export async function latestSession(storage: Storage, setId: string): Promise<Se
   return sessions.sort((a, b) => b.startedAt - a.startedAt)[0];
 }
 
+/** A Set never has more than one `in_progress` Session. */
+export async function inProgressSession(storage: Storage, setId: string): Promise<Session | undefined> {
+  return (await storage.query<Session>("sessions", { setId, status: "in_progress" }))[0];
+}
+
 /** Continues the Set's in-progress Session, or starts a new Exam-mode Session. */
 export async function startSession(storage: Storage, set: QuestionSet): Promise<Session> {
-  const existing = (await storage.query<Session>("sessions", { setId: set.id, status: "in_progress" }))[0];
+  const existing = await inProgressSession(storage, set.id);
   if (existing) return existing;
 
   const questions = await loadQuestions(storage, set);
@@ -46,6 +52,7 @@ export async function startSession(storage: Storage, set: QuestionSet): Promise<
     startedAt: now.getTime(),
     questionOrder: questions.map((q) => q.id),
     optionOrders: Object.fromEntries(questions.map((q) => [q.id, q.options.map((o) => o.id)])),
+    settings: settingsSnapshot(),
     source: "user",
     updatedAt: now.getTime(),
   };
@@ -53,7 +60,15 @@ export async function startSession(storage: Storage, set: QuestionSet): Promise<
   return session;
 }
 
-/** Answers selected so far, read back from the sealed Raw log so a reload shows them. */
+/** Ends an in-progress Session without submitting it. Its Raw log is kept, including any interrupted buffer. */
+export async function abandonSession(storage: Storage, session: Session): Promise<void> {
+  // Opening the Recorder seals a buffer the page left behind.
+  await openRecorder(storage, session.id);
+  const now = Date.now();
+  await storage.set<Session>("sessions", { ...session, status: "abandoned", endedAt: now, updatedAt: now });
+}
+
+/** Answers selected so far, read back from the sealed Raw log so a reload shows them. Open the Recorder first, so an interrupted buffer is included. */
 export async function currentAnswers(storage: Storage, session: Session, set: QuestionSet): Promise<Record<string, string[]>> {
   const { attempts } = derive({
     title: set.title,
