@@ -61,6 +61,6 @@ textarea {
 .letter { font-weight: 600; min-width: 1.2em; }
 details { margin-top: 8px; }
 .confirm { border-color: var(--accent); }
-.correction summary { color: var(--muted); font-size: 0.9rem; cursor: pointer; }
-.correction input { width: 6em; font: inherit; padding: 4px 8px; background: var(--bg); color: var(--fg); border: 1px solid var(--border); border-radius: 6px; }
+.override summary { color: var(--muted); font-size: 0.9rem; cursor: pointer; }
+.override input { width: 6em; font: inherit; padding: 4px 8px; background: var(--bg); color: var(--fg); border: 1px solid var(--border); border-radius: 6px; }
 .idle-mark { cursor: help; }

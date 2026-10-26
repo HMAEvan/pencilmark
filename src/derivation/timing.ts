@@ -3,7 +3,8 @@ import type { Rules } from "../domain/settings";
 
 // Answering time, answers and trajectories per Question, walked from the Raw log. Monotonic `at` is only compared within its own chunk,
 // and the gaps between chunks (the page hidden or closed) never count.
-// Opening a Question is interacting with it: time belongs to the open Question from then until another is opened.
+// ADR-0009: with one Question on screen, opening it is interacting with it, so time belongs to the open Question
+// until another is opened. Case screens, where the last sub-Question interacted with gets the time, come later.
 
 /** A stretch with no interaction longer than the idle threshold; the part beyond the threshold is not counted. */
 export type ExcludedIdle = { chunk: number; at: number; excludedMs: number };
@@ -36,7 +37,7 @@ export type AnswerChange = { answer: string[]; atMs: number; dwellMs: number };
 
 export type Trajectory = { firstChoice: string[] | null; timeToFirstChoiceMs: number | null; changes: AnswerChange[] };
 
-export type Timing = {
+export type RawLogWalk = {
   questions: Map<string, QuestionTiming>;
   /** Each Question's answer when the answers were revealed. */
   answers: Map<string, string[]>;
@@ -49,7 +50,7 @@ export const emptyTiming = (): QuestionTiming => ({ answeringRawMs: 0, answering
 
 export const emptyTrajectory = (): Trajectory => ({ firstChoice: null, timeToFirstChoiceMs: null, changes: [] });
 
-export function walkRawLog(rawLog: RawLogChunk[], rules: Rules): Timing {
+export function walkRawLog(rawLog: RawLogChunk[], rules: Rules): RawLogWalk {
   const questions = new Map<string, QuestionTiming>();
   const totals: SessionTotals = { answeringRawMs: 0, answeringActiveMs: 0, navigationMs: 0, excludedIdleMs: 0 };
   const timingOf = (questionId: string) => {
@@ -139,3 +140,5 @@ function chunkGaps(rawLog: RawLogChunk[]): ChunkGap[] {
     return wallMs < 0 ? { after: prev.n, wallMs: null, clockAnomaly: true } : { after: prev.n, wallMs, clockAnomaly: false };
   });
 }
+
+export const excludedIdleMs = (timing: QuestionTiming) => timing.excludedIdle.reduce((sum, idle) => sum + idle.excludedMs, 0);

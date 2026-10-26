@@ -2,12 +2,15 @@ import type { Question } from "../domain/types";
 import type { RawLogChunk } from "../recorder/recorder";
 import { singleAnswer } from "../questionTypes/singleAnswer";
 import { writeDigest } from "./digest";
+import type { OverrideValues } from "./overrides";
 import { emptyTiming, emptyTrajectory, walkRawLog, type ChunkGap, type QuestionTiming, type SessionTotals, type Trajectory } from "./timing";
 import type { Rules } from "../domain/settings";
 
+export { finalValues, type FinalValues, type OverrideValues } from "./overrides";
+
 // ADR-0002: a pure function from the Raw log to derived data. No DOM, no storage.
 
-/** Raised whenever a change to the rules below would change a derived value. 2: timing and trajectories. */
+/** Raised whenever a change to how Derivation computes (here, in timing.ts or in digest.ts) would change a derived value. 2: timing and trajectories. */
 export const ALGORITHM_VERSION = 2;
 
 export type DerivationInput = {
@@ -77,19 +80,11 @@ export function derive(input: DerivationInput): DerivationResult {
   };
 }
 
-/** The derived values a user can correct as an Override (GLOSSARY.md). */
-export type OverrideValues = { answeringActiveMs?: number; correct?: boolean };
-
-export type FinalValues = { answeringActiveMs: number; correct: boolean; overridden: (keyof OverrideValues)[] };
-
-/** The value to show and use: the Override where there is one, otherwise the derived value, which is left as it is. */
-export function finalValues(attempt: DerivedAttempt, override: OverrideValues = {}): FinalValues {
-  const overridden: (keyof OverrideValues)[] = [];
-  if (override.answeringActiveMs !== undefined) overridden.push("answeringActiveMs");
-  if (override.correct !== undefined) overridden.push("correct");
-  return {
-    answeringActiveMs: override.answeringActiveMs ?? attempt.timing.answeringActiveMs,
-    correct: override.correct ?? attempt.correct,
-    overridden,
-  };
+/** The Digest to copy: the derived one, with any Overrides set since in place of the derived time or result. */
+export function digestWithOverrides(
+  { title, questions }: Pick<DerivationInput, "title" | "questions">,
+  attempts: DerivedAttempt[],
+  overrides: Map<string, OverrideValues>,
+): string {
+  return writeDigest(title, attempts, new Map(questions.map((q) => [q.id, q])), overrides);
 }

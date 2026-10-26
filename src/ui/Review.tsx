@@ -3,7 +3,8 @@ import type { Question, QuestionSet, Session } from "../domain/types";
 import { blocksToText, letterAt, letterOf } from "../domain/display";
 import { t, type TranslationKey } from "../i18n/i18n";
 import { currentDerivation, loadOverrides, loadQuestions, setOverride, type Attempt, type Derivation, type Override } from "../session/sessions";
-import { finalValues, type OverrideValues } from "../derivation/derivation";
+import { digestWithOverrides, finalValues, type FinalValues, type OverrideValues } from "../derivation/derivation";
+import { excludedIdleMs } from "../derivation/timing";
 import { formatDuration } from "./format";
 import { storage } from "./appStorage";
 import { navigate } from "./App";
@@ -22,35 +23,35 @@ async function load(sessionId: string): Promise<Loaded | undefined> {
   return { session, set, derivation, attempts, questions, overrides: await loadOverrides(storage, sessionId) };
 }
 
-/** Correcting a derived time or result, shown under a Question. The derived value and the Raw log are never changed. */
-function Correction({ attempt, override, idleThresholdMs, onSave }: { attempt: Attempt; override?: Override; idleThresholdMs: number; onSave: (values: OverrideValues) => void }) {
+/** Setting an Override on a derived time or result, shown under a Question. The derived value and the Raw log are never changed. */
+function OverrideEditor({ attempt, final, idleThresholdMs, onSave }: { attempt: Attempt; final: FinalValues; idleThresholdMs: number; onSave: (values: OverrideValues) => void }) {
   const [seconds, setSeconds] = useState("");
   const idle = attempt.timing.excludedIdle;
   const enteredMs = Math.round(Number(seconds) * 1000);
   return (
-    <details class="correction">
-      <summary>{t(idle.length > 0 ? "review.idleExcluded" : "review.correctionOpen", { time: formatDuration(idle.reduce((sum, i) => sum + i.excludedMs, 0)) })}</summary>
+    <details class="override">
+      <summary>{t(idle.length > 0 ? "review.idleExcluded" : "review.overrideOpen", { time: formatDuration(excludedIdleMs(attempt.timing)) })}</summary>
       {idle.length > 0 && <p class="muted">{t("review.idleExplained", { seconds: idleThresholdMs / 1000 })}</p>}
       <p class="muted">{t("review.derivedTime", { time: formatDuration(attempt.timing.answeringActiveMs), raw: formatDuration(attempt.timing.answeringRawMs) })}</p>
       <div class="actions">
         <label>
-          {t("review.correctTimeLabel")}{" "}
+          {t("review.overrideTimeLabel")}{" "}
           <input type="number" min="0" step="1" inputMode="numeric" value={seconds} onInput={(e) => setSeconds(e.currentTarget.value)} />
         </label>
         <button class="secondary" disabled={seconds === "" || !(enteredMs >= 0)} onClick={() => onSave({ answeringActiveMs: enteredMs })}>
           {t("review.saveTime")}
         </button>
-        {override?.answeringActiveMs !== undefined && (
+        {final.overridden.includes("answeringActiveMs") && (
           <button class="secondary" onClick={() => onSave({ answeringActiveMs: undefined })}>
             {t("review.restoreTime")}
           </button>
         )}
       </div>
       <div class="actions">
-        <button class="secondary" onClick={() => onSave({ correct: !finalValues(attempt, override).correct })}>
-          {t(finalValues(attempt, override).correct ? "review.markWrong" : "review.markCorrect")}
+        <button class="secondary" onClick={() => onSave({ correct: !final.correct })}>
+          {t(final.correct ? "review.markWrong" : "review.markCorrect")}
         </button>
-        {override?.correct !== undefined && (
+        {final.overridden.includes("correct") && (
           <button class="secondary" onClick={() => onSave({ correct: undefined })}>
             {t("review.restoreResult")}
           </button>
@@ -78,9 +79,11 @@ export function Review({ sessionId }: { sessionId: string }) {
     const saved = await setOverride(storage, session.id, questionId, values);
     setLoaded({ ...loaded, overrides: new Map(overrides).set(questionId, saved) });
   };
+  // The copied Digest uses the Overrides set since the derivation, in place of the derived values.
+  const digest = overrides.size ? digestWithOverrides({ title: set.title, questions: [...questions.values()] }, attempts, overrides) : derivation.digest;
   const copyDigest = async () => {
     try {
-      await navigator.clipboard.writeText(derivation.digest);
+      await navigator.clipboard.writeText(digest);
       setCopyState("review.copied");
     } catch {
       setCopyState("review.copyFailed");
@@ -99,7 +102,7 @@ export function Review({ sessionId }: { sessionId: string }) {
         {copyState && <span class="muted">{t(copyState)}</span>}
       </div>
       {copyState === "review.copyFailed" && (
-        <textarea readOnly rows={10} value={derivation.digest} ref={(el) => el?.select()} />
+        <textarea readOnly rows={10} value={digest} ref={(el) => el?.select()} />
       )}
       {attempts.map((attempt) => {
         const question = questions.get(attempt.questionId)!;
@@ -139,7 +142,7 @@ export function Review({ sessionId }: { sessionId: string }) {
             </div>
             <p>{t("review.answerGiven", { answer: answerText(attempt.answer, order) })}</p>
             <p>{t("review.correctAnswer", { answer: answerText(question.answer, order) })}</p>
-            <Correction attempt={attempt} override={override} idleThresholdMs={derivation.parameters.idleThresholdMs} onSave={(values) => void saveOverride(attempt.questionId, values)} />
+            <OverrideEditor attempt={attempt} final={final} idleThresholdMs={derivation.parameters.idleThresholdMs} onSave={(values) => void saveOverride(attempt.questionId, values)} />
             {question.explanation.length > 0 && (
               <details>
                 <summary>{t("review.explanation")}</summary>

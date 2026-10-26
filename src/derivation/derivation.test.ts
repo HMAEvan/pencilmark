@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { derive, finalValues, type DerivationInput } from "./derivation";
+import { derive, digestWithOverrides, finalValues, type DerivationInput } from "./derivation";
 import type { Question } from "../domain/types";
 import type { RawEvent, RawEventBody, RawLogChunk } from "../recorder/recorder";
 import { DEFAULT_PREFERENCES } from "../domain/settings";
@@ -81,11 +81,15 @@ function sitting(chunks: ChunkSpec[], overrides: Partial<DerivationInput> = {}):
 
 const open = (q: Question) => ({ type: "navigate", questionId: q.id }) as const;
 const choose = (q: Question, optionId: string) => ({ type: "select", questionId: q.id, optionId }) as const;
-/** Derives, checking conservation on the way: Session active time is the Questions' answering time plus navigation time. */
-function deriveConserving(sat: DerivationInput) {
+/**
+ * Derives, checking conservation on the way: Session active time, worked out by hand as foreground time before
+ * submission less excluded idle time, equals the Questions' answering time plus navigation time.
+ */
+function deriveConserving(sat: DerivationInput, sessionActiveMs: number) {
   const result = derive(sat);
   const questionsMs = result.attempts.reduce((sum, a) => sum + a.timing.answeringActiveMs, 0);
-  expect(result.totals.answeringActiveMs).toBe(questionsMs + result.totals.navigationMs);
+  expect(result.totals.answeringActiveMs).toBe(sessionActiveMs);
+  expect(questionsMs + result.totals.navigationMs).toBe(sessionActiveMs);
   return result;
 }
 
@@ -159,6 +163,7 @@ describe("derive: timing", () => {
     // Q1 is open 0–20 s, Q2 20–42 s, then submitted.
     const result = deriveConserving(
       sitting([{ activeMs: 42_000, events: [[0, open(question)], [12_000, choose(question, "opt_a")], [20_000, open(second)], [35_000, choose(second, "opt_b")], [42_000, submit]] }]),
+      42_000,
     );
     expect(attemptOf(result, question).timing).toMatchObject({ answeringActiveMs: 20_000, visits: 1 });
     expect(attemptOf(result, second).timing).toMatchObject({ answeringActiveMs: 22_000, visits: 1 });
@@ -171,6 +176,7 @@ describe("derive: timing", () => {
         { activeMs: 15_000, events: [[0, open(question)], [10_000, choose(question, "opt_a")], [15_000, { type: "hide" }]] },
         { activeMs: 20_000, events: [[0, { type: "show", wall: 3_600_000 }], [8_000, open(second)], [20_000, submit]] },
       ]),
+      35_000,
     );
     expect(attemptOf(result, question).timing).toMatchObject({ answeringActiveMs: 23_000, visits: 1 });
     expect(attemptOf(result, second).timing).toMatchObject({ answeringActiveMs: 12_000, visits: 1 });
@@ -181,6 +187,7 @@ describe("derive: timing", () => {
     // Q1 0–10 s, Q2 flicked past 10–10.3 s, Q1 again 10.3–25 s.
     const result = deriveConserving(
       sitting([{ activeMs: 25_000, events: [[0, open(question)], [10_000, open(second)], [10_300, open(question)], [25_000, submit]] }]),
+      25_000,
     );
     expect(attemptOf(result, question).timing).toMatchObject({ answeringActiveMs: 24_700, visits: 2 });
     expect(attemptOf(result, second).timing).toMatchObject({ answeringActiveMs: 0, visits: 0 });
@@ -191,6 +198,7 @@ describe("derive: timing", () => {
     // Q1 opened at 0, nothing until a choice at 90 s, submitted at 100 s.
     const result = deriveConserving(
       sitting([{ activeMs: 100_000, events: [[0, open(question)], [90_000, choose(question, "opt_a")], [100_000, submit]] }]),
+      70_000,
     );
     expect(attemptOf(result, question).timing).toEqual({
       answeringRawMs: 100_000,
@@ -207,8 +215,8 @@ describe("derive: timing", () => {
       { startedAt: 1_000_000, activeMs: 20_000, events: [[0, open(question)], [20_000, { type: "hide" }]] },
       { startedAt: secondStart, activeMs: 15_000, events: [[0, { type: "show", wall: secondStart }], [5_000, open(second)], [15_000, submit]] },
     ];
-    const skewed = deriveConserving(sitting(chunks(900_000)));
-    const sane = deriveConserving(sitting(chunks(1_100_000)));
+    const skewed = deriveConserving(sitting(chunks(900_000)), 35_000);
+    const sane = deriveConserving(sitting(chunks(1_100_000)), 35_000);
 
     expect(skewed.chunkGaps).toEqual([{ after: 0, wallMs: null, clockAnomaly: true }]);
     expect(sane.chunkGaps).toEqual([{ after: 0, wallMs: 80_000, clockAnomaly: false }]);
@@ -229,6 +237,7 @@ describe("derive: trajectory", () => {
           events: [[0, open(question)], [8_000, choose(question, "opt_a")], [20_000, choose(question, "opt_c")], [26_000, choose(question, "opt_b")], [30_000, submit]],
         },
       ]),
+      30_000,
     );
     expect(attemptOf(result, question).trajectory).toEqual({
       firstChoice: ["opt_a"],
@@ -249,6 +258,7 @@ describe("derive: trajectory", () => {
         { activeMs: 30_000, events: [[0, { type: "show", wall: 3_600_000 }], [30_000, open(question)]] },
         { activeMs: 12_000, events: [[0, { type: "show", wall: 7_200_000 }], [3_000, choose(question, "opt_a")], [10_000, deselect], [12_000, submit]] },
       ]),
+      52_000,
     );
     expect(attemptOf(result, question).trajectory).toEqual({
       firstChoice: ["opt_a"],
@@ -272,6 +282,7 @@ describe("derive: Digest timing and trajectory", () => {
         ],
         { optionOrders: { [question.id]: ["opt_c", "opt_a", "opt_b"], [second.id]: ["opt_a", "opt_b"] } },
       ),
+      105_000,
     );
     expect(result.digest).toContain(
       ["- Answering time: 1m 20s (30s idle excluded)", "- First choice: B after 1m 0s", "- Answer changes: A at 1m 10s (after 10s), C at 1m 15s (after 5s)", ""].join("\n"),
@@ -322,5 +333,23 @@ describe("Overrides", () => {
     const recomputed = attemptOf(derive({ ...sat(), rules: { ...rules, idleThresholdMs: 20_000 } }), question);
     expect(recomputed.timing.answeringActiveMs).toBe(30_000);
     expect(finalValues(recomputed, { answeringActiveMs: 15_000, correct: true })).toEqual({ answeringActiveMs: 15_000, correct: true, overridden: ["answeringActiveMs", "correct"] });
+  });
+});
+
+describe("Digest with Overrides", () => {
+  const sat = () => sitting([{ activeMs: 40_000, events: [[0, open(question)], [30_000, choose(question, "opt_c")], [40_000, submit]] }]);
+
+  it("is the derived Digest when there are no Overrides", () => {
+    const result = derive(sat());
+    expect(digestWithOverrides(sat(), result.attempts, new Map())).toBe(result.digest);
+  });
+
+  it("shows an overridden time and result in place of the derived ones, naming the derived values", () => {
+    const result = derive(sat());
+    const digest = digestWithOverrides(sat(), result.attempts, new Map([[question.id, { answeringActiveMs: 120_000, correct: true }]]));
+    expect(digest).toContain(
+      ["- Result: correct (overridden by the user; derived: wrong)", "- Answering time: 2m 0s (overridden by the user; derived: 40s)", "- First choice: C after 30s"].join("\n"),
+    );
+    expect(digest).toContain(["- Result: wrong", "- Answering time: 0s", "- First choice: none"].join("\n"));
   });
 });

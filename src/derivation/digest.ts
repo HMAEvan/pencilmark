@@ -1,6 +1,8 @@
 import type { Question } from "../domain/types";
 import { blocksToText, letterAt, letterOf } from "../domain/display";
 import type { DerivedAttempt } from "./derivation";
+import { finalValues, type OverrideValues } from "./overrides";
+import { excludedIdleMs } from "./timing";
 
 // The Digest is written for an AI to grade from, so its labels are fixed English, not interface text.
 
@@ -14,17 +16,31 @@ function duration(ms: number): string {
   return seconds >= 60 ? `${Math.floor(seconds / 60)}m ${seconds % 60}s` : `${seconds}s`;
 }
 
-function timingLines({ timing, trajectory, optionOrder }: DerivedAttempt): string[] {
-  const excludedMs = timing.excludedIdle.reduce((sum, idle) => sum + idle.excludedMs, 0);
+const result = (correct: boolean) => (correct ? "correct" : "wrong");
+
+function outcomeLines(attempt: DerivedAttempt, override: OverrideValues | undefined): string[] {
+  const { timing, trajectory, optionOrder } = attempt;
+  const final = finalValues(attempt, override);
+  const idleMs = excludedIdleMs(timing);
+  const time = final.overridden.includes("answeringActiveMs")
+    ? `${duration(final.answeringActiveMs)} (overridden by the user; derived: ${duration(timing.answeringActiveMs)})`
+    : `${duration(timing.answeringActiveMs)}${idleMs > 0 ? ` (${duration(idleMs)} idle excluded)` : ""}`;
   const changes = trajectory.changes.map((c) => `${letters(c.answer, optionOrder)} at ${duration(c.atMs)} (after ${duration(c.dwellMs)})`);
   return [
-    `- Answering time: ${duration(timing.answeringActiveMs)}${excludedMs > 0 ? ` (${duration(excludedMs)} idle excluded)` : ""}`,
+    `- Result: ${result(final.correct)}${final.overridden.includes("correct") ? ` (overridden by the user; derived: ${result(attempt.correct)})` : ""}`,
+    `- Answering time: ${time}`,
     `- First choice: ${trajectory.firstChoice ? `${letters(trajectory.firstChoice, optionOrder)} after ${duration(trajectory.timeToFirstChoiceMs!)}` : "none"}`,
     `- Answer changes: ${changes.length ? changes.join(", ") : "none"}`,
   ];
 }
 
-export function writeDigest(title: string, attempts: DerivedAttempt[], questions: Map<string, Question>): string {
+/** Uses each Question's Override, if any, in place of the derived time or result. */
+export function writeDigest(
+  title: string,
+  attempts: DerivedAttempt[],
+  questions: Map<string, Question>,
+  overrides: Map<string, OverrideValues> = new Map(),
+): string {
   const lines = [`# Digest: ${title}`, ""];
   for (const attempt of attempts) {
     const question = questions.get(attempt.questionId)!;
@@ -42,8 +58,7 @@ export function writeDigest(title: string, attempts: DerivedAttempt[], questions
       "",
       `- Answer given: ${letters(attempt.answer, order)}`,
       `- Correct answer: ${letters(question.answer, order)}`,
-      `- Result: ${attempt.correct ? "correct" : "wrong"}`,
-      ...timingLines(attempt),
+      ...outcomeLines(attempt, overrides.get(attempt.questionId)),
       "",
     );
   }

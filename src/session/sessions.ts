@@ -3,7 +3,7 @@ import { newId } from "../domain/ids";
 import type { Storage } from "../storage/storage";
 import { readRawLog, recoverRawLog, type Recorder } from "../recorder/recorder";
 import { DEFAULT_PREFERENCES, settingsSnapshot } from "../domain/settings";
-import { ALGORITHM_VERSION, derive, type DerivationResult, type DerivedAttempt, type OverrideValues } from "../derivation/derivation";
+import { ALGORITHM_VERSION, derive, type DerivationInput, type DerivationResult, type DerivedAttempt, type OverrideValues } from "../derivation/derivation";
 
 // Wires Storage, the Recorder and Derivation together for the UI.
 
@@ -18,7 +18,7 @@ export type Derivation = Omit<DerivationResult, "attempts"> & {
 
 export type Attempt = DerivedAttempt & { id: string; derivationId: string; sessionId: string; source: "user"; updatedAt: number };
 
-/** A user's corrections for one Question of one Session. Kept apart from derivations, so it survives recomputation. */
+/** A user's Overrides for one Question of one Session. Kept apart from derivations, so it survives recomputation. */
 export type Override = OverrideValues & { id: string; sessionId: string; questionId: string; overriddenAt: number; source: "user"; updatedAt: number };
 
 const overrideId = (sessionId: string, questionId: string) => `${sessionId}_${questionId}`;
@@ -84,16 +84,22 @@ export async function abandonSession(storage: Storage, session: Session): Promis
   await storage.set<Session>("sessions", { ...session, status: "abandoned", endedAt: now, updatedAt: now });
 }
 
-/** Answers selected so far, read back from the sealed Raw log so a reload shows them. Call it after opening the Recorder, which recovers a buffer a killed page left behind. */
-export async function currentAnswers(storage: Storage, session: Session, set: QuestionSet): Promise<Record<string, string[]>> {
-  const { attempts } = derive({
+/** What Derivation reads for a Session: its Raw log, the Question revisions it was sat against, its orders and rules. */
+async function derivationInput(storage: Storage, session: Session, set: QuestionSet): Promise<DerivationInput> {
+  return {
     title: set.title,
     rawLog: await readRawLog(storage, session.id),
     questions: await loadQuestions(storage, set),
     questionOrder: session.questionOrder,
     optionOrders: session.optionOrders,
-    rules: session.settings.rules,
-  });
+    // Sessions from before settings snapshots were kept all ran with the defaults: there was no settings screen.
+    rules: session.settings?.rules ?? DEFAULT_PREFERENCES.rules,
+  };
+}
+
+/** Answers selected so far, read back from the sealed Raw log so a reload shows them. Call it after opening the Recorder, which recovers a buffer a killed page left behind. */
+export async function currentAnswers(storage: Storage, session: Session, set: QuestionSet): Promise<Record<string, string[]>> {
+  const { attempts } = derive(await derivationInput(storage, session, set));
   return Object.fromEntries(attempts.map((a) => [a.questionId, a.answer]));
 }
 
@@ -102,15 +108,7 @@ export async function currentAnswers(storage: Storage, session: Session, set: Qu
  * Earlier derivations and their Attempts are kept (ADR-0002); Overrides are stored apart and still apply.
  */
 export async function deriveSession(storage: Storage, session: Session, set: QuestionSet): Promise<Session> {
-  const { attempts, ...derived } = derive({
-    title: set.title,
-    rawLog: await readRawLog(storage, session.id),
-    questions: await loadQuestions(storage, set),
-    questionOrder: session.questionOrder,
-    optionOrders: session.optionOrders,
-    // Sessions from before settings snapshots were kept all ran with the defaults: there was no settings screen.
-    rules: session.settings?.rules ?? DEFAULT_PREFERENCES.rules,
-  });
+  const { attempts, ...derived } = derive(await derivationInput(storage, session, set));
 
   const now = Date.now();
   const derivation: Derivation = { ...derived, id: newId("dv", new Date(now)), sessionId: session.id, computedAt: now, source: "user", updatedAt: now };
