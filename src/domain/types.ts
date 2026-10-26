@@ -29,6 +29,9 @@ export type Question = Provenance & {
   answer: string[];
   explanation: ContentBlock[];
   batchId: string;
+  /** Topics the Question sits under, possibly across Tracks, and the Tracks those Topics belong to. */
+  topicIds: string[];
+  trackIds: string[];
   tags: string[];
   createdAt: number;
   deprecated: boolean;
@@ -38,6 +41,32 @@ export type Batch = Provenance & {
   id: string;
   title: string;
   material?: string;
+  /** The Topic the Questions were generated from, and which attempt at that Topic this Batch is. */
+  sourceTopicId?: string;
+  sequence?: number;
+  createdAt: number;
+};
+
+/** A Track created by import knows only its title, so it starts as a domain; course details come later. */
+export type Track = Provenance & {
+  id: string;
+  kind: "course" | "domain";
+  title: string;
+  code?: string;
+  academicYear?: string;
+  yearOfStudy?: number;
+  term?: string;
+  description?: string;
+  createdAt: number;
+};
+
+export type Topic = Provenance & {
+  id: string;
+  trackId: string;
+  /** Absent at the top level of the Track. */
+  parentId?: string;
+  title: string;
+  order: number;
   createdAt: number;
 };
 

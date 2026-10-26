@@ -1,6 +1,13 @@
+import Ajv, { type ErrorObject } from "ajv";
 import type { Batch, ContentBlock, Option, Question, QuestionSet } from "../domain/types";
 import { newId } from "../domain/ids";
 import type { Storage } from "../storage/storage";
+import packSchema from "../../schema/question-pack.schema.json";
+import { duplicateKeys } from "./normalise";
+import { topicResolver } from "./topics";
+import { packWarnings, type PackWarning } from "./warnings";
+
+export type { PackWarning };
 
 // A Question pack carries pack-local labels only; real IDs are assigned on commit (ADR-0003).
 export type PackQuestion = {
@@ -11,13 +18,15 @@ export type PackQuestion = {
   optionOrder?: "shuffle" | "fixed";
   answer: string[];
   explanation?: ContentBlock[];
+  /** Topic paths such as "BIOL101 / Genetics / Lecture 5"; the first segment names the Track. */
+  topics?: string[];
   tags?: string[];
 };
 
 export type QuestionPack = {
   kind: "question_pack";
   schemaVersion: 1;
-  batch: { title: string; model?: string; material?: string };
+  batch: { title: string; model?: string; material?: string; topic?: string };
   questions: PackQuestion[];
 };
 
@@ -28,62 +37,166 @@ export type ParseResult = { ok: true; pack: QuestionPack } | { ok: false; errors
 
 const isRecord = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null && !Array.isArray(v);
 
-const isBlocks = (v: unknown): v is ContentBlock[] =>
-  Array.isArray(v) && v.every((b) => isRecord(b) && b.type === "text" && typeof b.text === "string");
+const validatePack = new Ajv({ allErrors: true }).compile(packSchema);
 
-// Minimal hand-written checks for the tracer bullet; JSON Schema validation replaces this in issue #6.
-function validateQuestion(q: unknown, index: number, errors: PackError[]) {
-  const label = isRecord(q) && typeof q.label === "string" ? q.label : `#${index + 1}`;
-  const fail = (field: string, message: string) => errors.push({ question: label, field, message });
-  if (!isRecord(q)) return fail("", "must be an object");
-  if (typeof q.label !== "string") fail("label", "must be a string such as \"q1\"");
-  if (q.type !== "single_answer") fail("type", "must be \"single_answer\"");
-  if (!isBlocks(q.stem)) fail("stem", "must be a list of text blocks");
-  if (q.explanation !== undefined && !isBlocks(q.explanation)) fail("explanation", "must be a list of text blocks");
+/** "/questions/2/options/0/pin" → question index 2, field "options[0].pin". */
+function locate(error: ErrorObject, data: unknown): PackError {
+  const segments = error.instancePath.split("/").slice(1);
+  if (error.keyword === "required") segments.push(String(error.params.missingProperty));
+  if (error.keyword === "additionalProperties") segments.push(String(error.params.additionalProperty));
 
-  const options = Array.isArray(q.options) ? q.options : undefined;
-  if (!options || options.length < 2) return fail("options", "must list at least two Options");
-  options.forEach((o, i) => {
-    if (!isRecord(o) || typeof o.id !== "string") return fail(`options[${i}].id`, "must be a string such as \"opt_a\"");
-    if (!isBlocks(o.content)) fail(`options[${i}].content`, "must be a list of text blocks");
-    if (o.rationale !== undefined && !isBlocks(o.rationale)) fail(`options[${i}].rationale`, "must be a list of text blocks");
-  });
+  let question: string | undefined;
+  if (segments[0] === "questions" && segments.length > 1) {
+    const index = Number(segments[1]);
+    const q = isRecord(data) && Array.isArray(data.questions) ? data.questions[index] : undefined;
+    question = isRecord(q) && typeof q.label === "string" && q.label ? q.label : `#${index + 1}`;
+    segments.splice(0, 2);
+  }
+  const field = segments.map((s, i) => (/^\d+$/.test(s) ? `[${s}]` : i === 0 ? s : `.${s}`)).join("");
 
-  if (q.answer === undefined) return fail("answer", "is missing");
-  const ids = new Set(options.map((o) => (isRecord(o) ? o.id : undefined)));
-  if (!Array.isArray(q.answer) || q.answer.length !== 1) return fail("answer", "must list exactly one Option id");
-  if (!ids.has(q.answer[0])) fail("answer", `names "${String(q.answer[0])}", which is not an Option of this Question`);
+  let message: string;
+  if (error.keyword === "required") message = "is missing";
+  else if (error.keyword === "additionalProperties") message = "is not a field of the Question pack format; remove it";
+  else if (error.keyword === "enum") message = `must be one of ${(error.params.allowedValues as unknown[]).map((v) => JSON.stringify(v)).join(", ")}`;
+  else if (error.keyword === "const") message = `must be ${JSON.stringify(error.params.allowedValue)}`;
+  else message = error.message ?? "is invalid";
+  return question === undefined ? { field, message } : { question, field, message };
+}
+
+// What the JSON Schema cannot express: references between fields.
+function checkReferences(pack: QuestionPack): PackError[] {
+  const errors: PackError[] = [];
+  const labels = new Set<string>();
+  for (const q of pack.questions) {
+    const fail = (field: string, message: string) => errors.push({ question: q.label, field, message });
+    if (labels.has(q.label)) fail("label", "is used by another Question in this pack; labels must be unique");
+    labels.add(q.label);
+    const ids = new Set<string>();
+    q.options.forEach((o, i) => {
+      if (ids.has(o.id)) fail(`options[${i}].id`, `"${o.id}" is used by another Option of this Question`);
+      ids.add(o.id);
+    });
+    q.answer.forEach((id) => {
+      if (!ids.has(id)) fail("answer", `names "${id}", which is not an Option of this Question`);
+    });
+  }
+  return errors;
+}
+
+/** An AI's reply often wraps the pack in a Markdown code fence, with chat text around it. */
+function stripCodeFence(text: string): string {
+  const fenced = /^[ \t]*(`{3,}|~{3,})[^\n]*\n([\s\S]*?)\n[ \t]*\1[ \t]*$/m.exec(text);
+  return fenced ? fenced[2]! : text;
 }
 
 export function parseQuestionPack(text: string): ParseResult {
   let data: unknown;
   try {
-    data = JSON.parse(text);
+    data = JSON.parse(stripCodeFence(text));
   } catch (e) {
     return { ok: false, errors: [{ field: "", message: `is not valid JSON: ${(e as Error).message}` }] };
   }
-  const errors: PackError[] = [];
-  if (!isRecord(data)) return { ok: false, errors: [{ field: "", message: "must be a JSON object" }] };
-  if (data.kind !== "question_pack") errors.push({ field: "kind", message: "must be \"question_pack\"" });
-  if (data.schemaVersion !== 1) errors.push({ field: "schemaVersion", message: "must be 1" });
-  if (!isRecord(data.batch) || typeof data.batch.title !== "string") errors.push({ field: "batch.title", message: "must be a string" });
-  if (!Array.isArray(data.questions) || data.questions.length === 0) {
-    errors.push({ field: "questions", message: "must list at least one Question" });
-  } else {
-    data.questions.forEach((q, i) => validateQuestion(q, i, errors));
-  }
-  return errors.length ? { ok: false, errors } : { ok: true, pack: data as QuestionPack };
+  if (!validatePack(data)) return { ok: false, errors: (validatePack.errors ?? []).map((e) => locate(e, data)) };
+  const pack = data as QuestionPack;
+  const errors = checkReferences(pack);
+  return errors.length ? { ok: false, errors } : { ok: true, pack };
 }
 
-export async function commitQuestionPack(pack: QuestionPack, storage: Storage, now: Date = new Date()): Promise<{ setId: string }> {
+/** The errors as plain text, to paste back to the AI that wrote the pack. */
+export function packErrorsText(errors: PackError[]): string {
+  const lines = errors.map((e) => {
+    const where = [e.question && `Question "${e.question}"`, e.field && `field "${e.field}"`].filter(Boolean).join(", ");
+    return `- ${where || "The pack"}: ${e.message}`;
+  });
+  return ["The Question pack could not be imported. Please fix these errors and send the whole pack again:", ...lines].join("\n");
+}
+
+const unique = <T>(values: T[]) => [...new Set(values)];
+
+export type ImportStatus = "new" | "skipped" | "conflict";
+
+/**
+ * One pack Question in the preview. A skipped Question is identical to `existingId` in the bank or to
+ * the earlier pack Question `sameAs`; a conflict asks the same thing as `existingId` with a different answer.
+ */
+export type PreviewQuestion = { label: string; status: ImportStatus; existingId?: string; sameAs?: string };
+
+/** What an import would do. Building it writes nothing. */
+export type ImportPreview = {
+  pack: QuestionPack;
+  questions: PreviewQuestion[];
+  /** Topic paths that name a Track or Topic not yet in the bank; the user confirms them before commit. */
+  newTopicPaths: string[];
+  warnings: PackWarning[];
+};
+
+const packPaths = (pack: QuestionPack) => [...(pack.batch.topic ? [pack.batch.topic] : []), ...pack.questions.flatMap((q) => q.topics ?? [])];
+
+export async function previewImport(pack: QuestionPack, storage: Storage): Promise<ImportPreview> {
+  type Known = { full: string; existingId?: string; sameAs?: string };
+  const known = new Map<string, Known>();
+  for (const q of await storage.query<Question>("questions")) {
+    const keys = duplicateKeys(q);
+    if (!known.has(keys.text)) known.set(keys.text, { full: keys.full, existingId: q.id });
+  }
+
+  const questions = pack.questions.map((q): PreviewQuestion => {
+    const keys = duplicateKeys(q);
+    const match = known.get(keys.text);
+    if (!match) {
+      known.set(keys.text, { full: keys.full, sameAs: q.label });
+      return { label: q.label, status: "new" };
+    }
+    const status = match.full === keys.full ? "skipped" : "conflict";
+    return match.existingId ? { label: q.label, status, existingId: match.existingId } : { label: q.label, status, sameAs: match.sameAs };
+  });
+  const topics = await topicResolver(storage, { source: "ai", updatedAt: 0 }, new Date());
+  packPaths(pack).forEach(topics.resolve);
+  return { pack, questions, newTopicPaths: topics.newPaths, warnings: pack.questions.flatMap(packWarnings) };
+}
+
+export async function commitImport(
+  preview: ImportPreview,
+  storage: Storage,
+  options: { newTopicsConfirmed?: boolean } = {},
+  now: Date = new Date(),
+): Promise<{ setId: string }> {
+  const { pack } = preview;
   const at = now.getTime();
   const provenance = { source: "ai" as const, model: pack.batch.model, updatedAt: at };
 
-  const batch: Batch = { ...provenance, id: newId("b", now), title: pack.batch.title, material: pack.batch.material, createdAt: at };
-  await storage.set("batches", batch);
+  const topics = await topicResolver(storage, provenance, now);
+  const resolved = new Map(packPaths(pack).map((path) => [path, topics.resolve(path)]));
+  if (topics.newPaths.length && !options.newTopicsConfirmed) {
+    throw new Error(`New Topic paths were not confirmed: ${topics.newPaths.join("; ")}`);
+  }
+  for (const track of topics.created.tracks) await storage.add("tracks", track);
+  for (const topic of topics.created.topics) await storage.add("topics", topic);
 
+  const sourceTopicId = pack.batch.topic ? resolved.get(pack.batch.topic)?.topicId : undefined;
+  const sequence = sourceTopicId ? (await storage.query<Batch>("batches", { sourceTopicId })).length + 1 : undefined;
+  const batch: Batch = {
+    ...provenance,
+    id: newId("b", now),
+    title: pack.batch.title,
+    material: pack.batch.material,
+    sourceTopicId,
+    sequence,
+    createdAt: at,
+  };
+  await storage.add("batches", batch);
+
+  // Skipped Questions join the Set as the Question they duplicate; conflicts wait for the Tier 2 choice (issue #11).
+  const idByLabel = new Map<string, string>();
   const questionIds: string[] = [];
-  for (const q of pack.questions) {
+  for (const [i, q] of pack.questions.entries()) {
+    const shown = preview.questions[i]!;
+    if (shown.status === "conflict") continue;
+    if (shown.status === "skipped") {
+      const id = shown.existingId ?? idByLabel.get(shown.sameAs!)!;
+      if (!questionIds.includes(id)) questionIds.push(id);
+      continue;
+    }
     const question: Question = {
       ...provenance,
       id: newId("q", now),
@@ -96,11 +209,14 @@ export async function commitQuestionPack(pack: QuestionPack, storage: Storage, n
       answer: q.answer,
       explanation: q.explanation ?? [],
       batchId: batch.id,
+      topicIds: unique((q.topics ?? []).flatMap((path) => resolved.get(path)?.topicId ?? [])),
+      trackIds: unique((q.topics ?? []).map((path) => resolved.get(path)!.trackId)),
       tags: q.tags ?? [],
       createdAt: at,
       deprecated: false,
     };
-    await storage.set("questions", question);
+    await storage.add("questions", question);
+    idByLabel.set(q.label, question.id);
     questionIds.push(question.id);
   }
 
@@ -113,6 +229,6 @@ export async function commitQuestionPack(pack: QuestionPack, storage: Storage, n
     createdAt: at,
     archived: false,
   };
-  await storage.set("sets", set);
+  await storage.add("sets", set);
   return { setId: set.id };
 }

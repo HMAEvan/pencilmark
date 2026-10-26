@@ -18,6 +18,8 @@ const question: Question = {
   answer: ["opt_a"],
   explanation: [],
   batchId: "b_20261026_bbbbbb",
+  topicIds: [],
+  trackIds: [],
   tags: [],
   createdAt: 0,
   deprecated: false,

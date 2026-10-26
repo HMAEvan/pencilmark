@@ -1,10 +1,10 @@
 import "fake-indexeddb/auto";
 import { describe, expect, it } from "vitest";
-import { commitQuestionPack, parseQuestionPack } from "./importer";
+import { commitImport, packErrorsText, parseQuestionPack, previewImport, type ImportPreview } from "./importer";
 import { createMemoryStorage } from "../storage/memoryStorage";
 import { createIndexedDbStorage } from "../storage/indexedDbStorage";
 import type { Storage } from "../storage/storage";
-import type { Question, QuestionSet } from "../domain/types";
+import type { Question, QuestionSet, Topic, Track } from "../domain/types";
 
 const onePack = {
   kind: "question_pack",
@@ -25,19 +25,156 @@ const onePack = {
   ],
 };
 
+const question = (label: string, stem: string, options: string[], overrides: Record<string, unknown> = {}) => ({
+  label,
+  type: "single_answer",
+  stem: [{ type: "text", text: stem }],
+  options: options.map((text, i) => ({ id: `opt_${i}`, content: [{ type: "text", text }] })),
+  answer: ["opt_0"],
+  ...overrides,
+});
+
+const threePack = {
+  kind: "question_pack",
+  schemaVersion: 1,
+  batch: { title: "Genetics", model: "claude-opus-5-5" },
+  questions: [
+    question("q1", "What carries genetic information?", ["DNA", "Lipid", "Starch"], { topics: ["BIOL101 / Genetics / Lecture 1"] }),
+    question("q2", "Which base pairs with adenine in DNA?", ["Thymine", "Uracil", "Cytosine"], { topics: ["BIOL101 / Genetics / Lecture 1"] }),
+    question("q3", "Where is mRNA translated?", ["Ribosome", "Nucleus", "Golgi body"], { topics: ["BIOL101 / Genetics / Lecture 2"] }),
+  ],
+};
+
 let dbCounter = 0;
 const adapters: [string, () => Storage][] = [
   ["in-memory", () => createMemoryStorage()],
   ["IndexedDB", () => createIndexedDbStorage(`pencilmark-test-${++dbCounter}`)],
 ];
 
+async function preview(storage: Storage, pack: unknown): Promise<ImportPreview> {
+  const parsed = parseQuestionPack(JSON.stringify(pack));
+  if (!parsed.ok) throw new Error(JSON.stringify(parsed.errors));
+  return previewImport(parsed.pack, storage);
+}
+
+async function importPack(storage: Storage, pack: unknown, now?: Date) {
+  return commitImport(await preview(storage, pack), storage, { newTopicsConfirmed: true }, now);
+}
+
+const everything = async (storage: Storage) =>
+  (await Promise.all(["sets", "questions", "batches", "tracks", "topics"].map((c) => storage.query(c)))).flat();
+
 describe.each(adapters)("Importer with the %s Storage adapter", (_name, makeStorage) => {
+  it("writes nothing until the preview is confirmed, and the preview counts new Questions", async () => {
+    const storage = makeStorage();
+    const shown = await preview(storage, threePack);
+
+    expect(shown.questions.map((q) => [q.label, q.status])).toEqual([
+      ["q1", "new"],
+      ["q2", "new"],
+      ["q3", "new"],
+    ]);
+    expect(await everything(storage)).toEqual([]);
+
+    const { setId } = await commitImport(shown, storage, { newTopicsConfirmed: true });
+    const set = await storage.get<QuestionSet>("sets", setId);
+    expect(set?.entries).toHaveLength(3);
+  });
+
+  it("skips every Question the second time a pack is imported, even with different spacing, width and Option order", async () => {
+    const storage = makeStorage();
+    const first = await importPack(storage, threePack);
+
+    const respaced = {
+      ...threePack,
+      questions: [
+        question("again1", "  What carries\n genetic   information？ ", ["Starch", "Lipid", "ＤＮＡ"], { answer: ["opt_2"] }),
+        question("again2", "Which base pairs with adenine in DNA?\n", ["Cytosine", "Thymine", "Uracil"], { answer: ["opt_1"] }),
+        question("again3", "Where is mRNA translated?", ["Golgi  body", "Nucleus", "Ribosome"], { answer: ["opt_2"] }),
+      ],
+    };
+    const shown = await preview(storage, respaced);
+    expect(shown.questions.map((q) => q.status)).toEqual(["skipped", "skipped", "skipped"]);
+
+    const second = await commitImport(shown, storage, { newTopicsConfirmed: true });
+    expect(await storage.query("questions")).toHaveLength(3);
+    const entries = async (setId: string) => (await storage.get<QuestionSet>("sets", setId))!.entries.map((e) => e.questionId);
+    expect(await entries(second.setId)).toEqual(await entries(first.setId));
+  });
+
+  it("does not skip a Question whose text matches but whose answer differs; it is a conflict", async () => {
+    const storage = makeStorage();
+    await importPack(storage, threePack);
+    const changed = { ...threePack, questions: [{ ...threePack.questions[0]!, answer: ["opt_1"] }] };
+    const shown = await preview(storage, changed);
+    expect(shown.questions.map((q) => q.status)).toEqual(["conflict"]);
+  });
+
+  it("lists unknown Topic paths for confirmation and writes nothing if they are not confirmed", async () => {
+    const storage = makeStorage();
+    const shown = await preview(storage, threePack);
+    expect(shown.newTopicPaths).toEqual(["BIOL101 / Genetics / Lecture 1", "BIOL101 / Genetics / Lecture 2"]);
+
+    await expect(commitImport(shown, storage, { newTopicsConfirmed: false })).rejects.toThrow();
+    expect(await everything(storage)).toEqual([]);
+  });
+
+  it("creates the Track and Topics once the new Topic paths are confirmed, and files Questions under them", async () => {
+    const storage = makeStorage();
+    const { setId } = await importPack(storage, threePack);
+
+    const tracks = await storage.query<Track>("tracks");
+    expect(tracks.map((t) => t.title)).toEqual(["BIOL101"]);
+    const topics = await storage.query<Topic>("topics");
+    const genetics = topics.find((t) => t.title === "Genetics")!;
+    expect(genetics).toMatchObject({ trackId: tracks[0]!.id, parentId: undefined });
+    expect(genetics.id).toMatch(/^tp_\d{8}_[a-z2-9]{6}$/);
+    const lecture2 = topics.find((t) => t.title === "Lecture 2")!;
+    expect(lecture2.parentId).toBe(genetics.id);
+    expect(topics).toHaveLength(3);
+
+    const set = await storage.get<QuestionSet>("sets", setId);
+    const q3 = await storage.get<Question>("questions", set!.entries[2]!.questionId);
+    expect(q3?.topicIds).toEqual([lecture2.id]);
+    expect(q3?.trackIds).toEqual([tracks[0]!.id]);
+  });
+
+  it("reuses existing Topics, matching paths despite spacing, and asks only about the new part", async () => {
+    const storage = makeStorage();
+    await importPack(storage, threePack);
+    const next = {
+      ...threePack,
+      questions: [
+        question("q1", "What is a codon?", ["Three bases", "One base"], { topics: ["BIOL101/Genetics /  Lecture 1"] }),
+        question("q2", "What is a gene?", ["A DNA segment", "A protein"], { topics: ["BIOL101 / Genetics / Lecture 3"] }),
+      ],
+    };
+    const shown = await preview(storage, next);
+    expect(shown.newTopicPaths).toEqual(["BIOL101 / Genetics / Lecture 3"]);
+    await commitImport(shown, storage, { newTopicsConfirmed: true });
+    expect(await storage.query("tracks")).toHaveLength(1);
+    expect(await storage.query("topics")).toHaveLength(4);
+  });
+
+  it("warns about an unpinned \"all of the above\" Option and a bare letter reference", async () => {
+    const storage = makeStorage();
+    const shown = await preview(storage, {
+      ...threePack,
+      questions: [
+        question("q1", "Which are nucleic acids?", ["DNA", "RNA", "All of the above"]),
+        question("q2", "Which is not a base? Compare with (B).", ["Adenine", "Ribose", "Guanine"]),
+        question("q3", "Which are lipids?", ["Fat", "Wax", "以上都是"], { options: [{ id: "a", content: [{ type: "text", text: "Fat" }] }, { id: "b", content: [{ type: "text", text: "以上都是" }], pin: "last" }], answer: ["a"] }),
+      ],
+    });
+    expect(shown.warnings).toEqual([
+      { question: "q1", field: "options[2].content", message: expect.any(String) },
+      { question: "q2", field: "stem", message: expect.any(String) },
+    ]);
+  });
+
   it("commits a one-question pack as a Question and a Set", async () => {
     const storage = makeStorage();
-    const parsed = parseQuestionPack(JSON.stringify(onePack));
-    if (!parsed.ok) throw new Error(JSON.stringify(parsed.errors));
-
-    const { setId } = await commitQuestionPack(parsed.pack, storage);
+    const { setId } = await importPack(storage, onePack);
 
     const sets = await storage.query<QuestionSet>("sets");
     expect(sets).toHaveLength(1);
@@ -55,10 +192,7 @@ describe.each(adapters)("Importer with the %s Storage adapter", (_name, makeStor
 
   it("assigns real IDs instead of the pack's local labels", async () => {
     const storage = makeStorage();
-    const parsed = parseQuestionPack(JSON.stringify(onePack));
-    if (!parsed.ok) throw new Error(JSON.stringify(parsed.errors));
-
-    const { setId } = await commitQuestionPack(parsed.pack, storage, new Date("2026-10-26T09:00:00Z"));
+    const { setId } = await importPack(storage, onePack, new Date("2026-10-26T09:00:00Z"));
 
     const set = await storage.get<QuestionSet>("sets", setId);
     const questionId = set!.entries[0]!.questionId;
@@ -70,6 +204,12 @@ describe.each(adapters)("Importer with the %s Storage adapter", (_name, makeStor
 });
 
 describe("parseQuestionPack", () => {
+  it("imports a pack wrapped in a Markdown code fence as if unwrapped", () => {
+    const pasted = "Here is your pack:\n\n```json\n" + JSON.stringify(onePack, null, 2) + "\n```\n";
+    const parsed = parseQuestionPack(pasted);
+    expect(parsed.ok && parsed.pack.batch.title).toBe("Cell biology warm-up");
+  });
+
   it("reports text that is not JSON instead of throwing", () => {
     const parsed = parseQuestionPack("Here are your questions!");
     expect(parsed.ok).toBe(false);
@@ -79,6 +219,27 @@ describe("parseQuestionPack", () => {
     const { answer: _answer, ...withoutAnswer } = onePack.questions[0]!;
     const parsed = parseQuestionPack(JSON.stringify({ ...onePack, questions: [withoutAnswer] }));
     expect(parsed).toEqual({ ok: false, errors: [{ question: "q1", field: "answer", message: expect.any(String) }] });
+  });
+
+  it("names the third Question and its field when its answer is missing, ready to copy back to the AI", () => {
+    const { answer: _answer, ...withoutAnswer } = threePack.questions[2]!;
+    const parsed = parseQuestionPack(JSON.stringify({ ...threePack, questions: [...threePack.questions.slice(0, 2), withoutAnswer] }));
+    expect(parsed).toEqual({ ok: false, errors: [{ question: "q3", field: "answer", message: expect.any(String) }] });
+    if (parsed.ok) return;
+    const copied = packErrorsText(parsed.errors);
+    expect(copied).toContain("q3");
+    expect(copied).toContain("answer");
+  });
+
+  it("locates schema violations inside an Option", () => {
+    const bad = { ...threePack.questions[0]!, options: [{ ...threePack.questions[0]!.options[0]!, pin: "middle" }, threePack.questions[0]!.options[1]] };
+    const parsed = parseQuestionPack(JSON.stringify({ ...threePack, questions: [bad] }));
+    expect(parsed).toEqual({ ok: false, errors: [{ question: "q1", field: "options[0].pin", message: expect.any(String) }] });
+  });
+
+  it("rejects fields the schema does not know, naming them", () => {
+    const parsed = parseQuestionPack(JSON.stringify({ ...threePack, questions: [{ ...threePack.questions[0]!, id: "q_20260101_abcdef" }] }));
+    expect(parsed).toEqual({ ok: false, errors: [{ question: "q1", field: "id", message: expect.any(String) }] });
   });
 
   it("rejects an answer that names no Option of the Question", () => {

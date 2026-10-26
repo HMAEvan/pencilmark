@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from "preact/hooks";
 import type { QuestionSet, Session } from "../domain/types";
 import { t } from "../i18n/i18n";
-import { commitQuestionPack, parseQuestionPack, type PackError } from "../importer/importer";
 import { abandonSession, latestSession, startSession } from "../session/sessions";
 import { storage } from "./appStorage";
 import { navigate } from "./App";
+import { ImportForm } from "./ImportForm";
 
 type SetRow = { set: QuestionSet; latest?: Session };
 
@@ -12,52 +12,6 @@ async function loadRows(): Promise<SetRow[]> {
   const sets = await storage.query<QuestionSet>("sets", { archived: false });
   sets.sort((a, b) => b.createdAt - a.createdAt);
   return Promise.all(sets.map(async (set) => ({ set, latest: await latestSession(storage, set.id) })));
-}
-
-function errorLine(error: PackError): string {
-  const question = error.question ?? t("import.packLevel");
-  const location = error.field ? t("import.errorLocation", { question, field: error.field }) : question;
-  // `message` is the Importer's English text, written for the AI that will fix the pack.
-  return t("import.errorLine", { location, message: error.message });
-}
-
-function ImportForm({ onImported }: { onImported: () => void }) {
-  const [text, setText] = useState("");
-  const [errors, setErrors] = useState<PackError[]>([]);
-  const [imported, setImported] = useState<string>();
-
-  const submit = async (e: Event) => {
-    e.preventDefault();
-    setImported(undefined);
-    const parsed = parseQuestionPack(text);
-    if (!parsed.ok) return setErrors(parsed.errors);
-    setErrors([]);
-    await commitQuestionPack(parsed.pack, storage);
-    setText("");
-    setImported(parsed.pack.batch.title);
-    onImported();
-  };
-
-  return (
-    <form class="card" onSubmit={submit}>
-      <h2>{t("import.heading")}</h2>
-      <textarea rows={6} value={text} placeholder={t("import.placeholder")} onInput={(e) => setText(e.currentTarget.value)} />
-      <button type="submit" disabled={!text.trim()}>
-        {t("import.submit")}
-      </button>
-      {imported && <p class="ok">{t("import.success", { title: imported })}</p>}
-      {errors.length > 0 && (
-        <div class="errors">
-          <p>{t("import.errorsHeading")}</p>
-          <ul>
-            {errors.map((error, i) => (
-              <li key={i}>{errorLine(error)}</li>
-            ))}
-          </ul>
-        </div>
-      )}
-    </form>
-  );
 }
 
 export function Home() {

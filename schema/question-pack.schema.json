@@ -1,0 +1,69 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://hmaevan.github.io/pencilmark/schema/question-pack.schema.json",
+  "title": "PencilMark Question pack",
+  "description": "Questions written by an AI for import. Carries pack-local labels only; the tool assigns real IDs on import.",
+  "type": "object",
+  "required": ["kind", "schemaVersion", "batch", "questions"],
+  "additionalProperties": false,
+  "properties": {
+    "kind": { "const": "question_pack" },
+    "schemaVersion": { "const": 1 },
+    "batch": {
+      "type": "object",
+      "required": ["title"],
+      "additionalProperties": false,
+      "properties": {
+        "title": { "type": "string", "minLength": 1 },
+        "model": { "type": "string" },
+        "material": { "type": "string" },
+        "topic": { "$ref": "#/definitions/topicPath", "description": "The Topic the Questions were generated from." }
+      }
+    },
+    "questions": { "type": "array", "minItems": 1, "items": { "$ref": "#/definitions/question" } }
+  },
+  "definitions": {
+    "blocks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["type", "text"],
+        "additionalProperties": false,
+        "properties": { "type": { "const": "text" }, "text": { "type": "string" } }
+      }
+    },
+    "topicPath": {
+      "type": "string",
+      "description": "Track and Topics joined by \" / \", such as \"BIOL101 / Genetics / Lecture 5\".",
+      "pattern": "\\S"
+    },
+    "option": {
+      "type": "object",
+      "required": ["id", "content"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "description": "Unique within its Question, such as \"opt_a\"." },
+        "content": { "$ref": "#/definitions/blocks" },
+        "rationale": { "$ref": "#/definitions/blocks" },
+        "misconception": { "$ref": "#/definitions/blocks" },
+        "pin": { "enum": ["first", "last"] }
+      }
+    },
+    "question": {
+      "type": "object",
+      "required": ["label", "type", "stem", "options", "answer"],
+      "additionalProperties": false,
+      "properties": {
+        "label": { "type": "string", "minLength": 1, "description": "Pack-local, such as \"q1\"." },
+        "type": { "const": "single_answer" },
+        "stem": { "$ref": "#/definitions/blocks" },
+        "options": { "type": "array", "minItems": 2, "items": { "$ref": "#/definitions/option" } },
+        "optionOrder": { "enum": ["shuffle", "fixed"] },
+        "answer": { "type": "array", "minItems": 1, "maxItems": 1, "items": { "type": "string" } },
+        "explanation": { "$ref": "#/definitions/blocks" },
+        "topics": { "type": "array", "items": { "$ref": "#/definitions/topicPath" } },
+        "tags": { "type": "array", "items": { "type": "string" } }
+      }
+    }
+  }
+}

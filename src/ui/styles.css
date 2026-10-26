@@ -61,3 +61,6 @@ textarea {
 .letter { font-weight: 600; min-width: 1.2em; }
 details { margin-top: 8px; }
 .confirm { border-color: var(--accent); }
+.warnings { color: var(--muted); }
+label.file { color: var(--accent); cursor: pointer; }
+label.file input { display: none; }
