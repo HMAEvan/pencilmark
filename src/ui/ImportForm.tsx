@@ -1,6 +1,6 @@
 import { useRef, useState } from "preact/hooks";
 import { t, type TranslationKey } from "../i18n/i18n";
-import { commitImport, packErrorsText, parseQuestionPack, previewImport, type ImportPreview, type PackError } from "../importer/importer";
+import { commitImport, packErrorsText, parseQuestionPack, previewImport, type ImportPreview, type ImportStatus, type PackError } from "../importer/importer";
 import { storage } from "./appStorage";
 
 function locatedLine(error: PackError): string {
@@ -41,8 +41,9 @@ function Errors({ errors }: { errors: PackError[] }) {
 }
 
 function Preview({ preview, onConfirm, onCancel }: { preview: ImportPreview; onConfirm: () => void; onCancel: () => void }) {
-  const count = (status: string) => preview.questions.filter((q) => q.status === status).length;
-  const labels = (status: string) => preview.questions.filter((q) => q.status === status).map((q) => q.label).join(t("import.listSeparator"));
+  const withStatus = (status: ImportStatus) => preview.questions.filter((q) => q.status === status);
+  const count = (status: ImportStatus) => withStatus(status).length;
+  const labels = (status: ImportStatus) => withStatus(status).map((q) => q.label).join(t("import.listSeparator"));
   return (
     <div class="confirm" role="alertdialog" aria-label={t("import.previewHeading")}>
       <h3>{t("import.previewHeading")}</h3>
@@ -103,8 +104,8 @@ export function ImportForm({ onImported }: { onImported: () => void }) {
     if (!preview || committing.current) return;
     committing.current = true;
     try {
-      // Showing the new Topic paths and confirming here is the user's confirmation of them.
-      await commitImport(preview, storage, { newTopicsConfirmed: true });
+      // The preview listed these paths, so confirming it confirms them.
+      await commitImport(preview, storage, { confirmedTopicPaths: preview.newTopicPaths });
       setText("");
       setPreview(undefined);
       setImported(preview.pack.batch.title);

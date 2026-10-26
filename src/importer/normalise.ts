@@ -15,16 +15,21 @@ export function normaliseText(text: string): string {
     .trim();
 }
 
-const blocksText = (blocks: ContentBlock[]) => normaliseText(blocks.map((b) => b.text).join("\n"));
+/** `{{opt:<optionId>}}`: how text refers to an Option, replaced by its displayed letter at render time. */
+export const OPTION_PLACEHOLDER = /\{\{opt:([^}]+)\}\}/g;
+
+export const joinBlocks = (blocks: ContentBlock[] | undefined) => (blocks ?? []).map((b) => b.text).join("\n");
+
+const blocksText = (blocks: ContentBlock[]) => normaliseText(joinBlocks(blocks));
 
 /**
- * Comparison keys for layer-1 duplicate detection. Options compare as a set, and Option placeholders
+ * Comparison keys for exact-duplicate detection. Options compare as a set, and Option placeholders
  * compare by the content they point at, since Option ids are local to each pack.
  * `text` covers what the Question asks; `full` adds which Options are correct.
  */
 export function duplicateKeys(q: Comparable): { text: string; full: string } {
   const optionText = new Map(q.options.map((o) => [o.id, blocksText(o.content)]));
-  const withPlaceholders = (text: string) => text.replace(/\{\{opt:([^}]+)\}\}/g, (match, id: string) => `{{opt:${optionText.get(id) ?? match}}}`);
+  const withPlaceholders = (text: string) => text.replace(OPTION_PLACEHOLDER, (match, id: string) => `{{opt:${optionText.get(id) ?? match}}}`);
   const options = [...optionText.values()].map(withPlaceholders).sort();
   const answer = q.answer.map((id) => withPlaceholders(optionText.get(id) ?? id)).sort();
   const text = JSON.stringify([q.type, withPlaceholders(blocksText(q.stem)), options]);

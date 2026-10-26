@@ -58,7 +58,8 @@ async function preview(storage: Storage, pack: unknown): Promise<ImportPreview> 
 }
 
 async function importPack(storage: Storage, pack: unknown, now?: Date) {
-  return commitImport(await preview(storage, pack), storage, { newTopicsConfirmed: true }, now);
+  const shown = await preview(storage, pack);
+  return commitImport(shown, storage, { confirmedTopicPaths: shown.newTopicPaths }, now);
 }
 
 const everything = async (storage: Storage) =>
@@ -76,7 +77,7 @@ describe.each(adapters)("Importer with the %s Storage adapter", (_name, makeStor
     ]);
     expect(await everything(storage)).toEqual([]);
 
-    const { setId } = await commitImport(shown, storage, { newTopicsConfirmed: true });
+    const { setId } = await commitImport(shown, storage, { confirmedTopicPaths: shown.newTopicPaths });
     const set = await storage.get<QuestionSet>("sets", setId);
     expect(set?.entries).toHaveLength(3);
   });
@@ -96,7 +97,7 @@ describe.each(adapters)("Importer with the %s Storage adapter", (_name, makeStor
     const shown = await preview(storage, respaced);
     expect(shown.questions.map((q) => q.status)).toEqual(["skipped", "skipped", "skipped"]);
 
-    const second = await commitImport(shown, storage, { newTopicsConfirmed: true });
+    const second = await commitImport(shown, storage, { confirmedTopicPaths: shown.newTopicPaths });
     expect(await storage.query("questions")).toHaveLength(3);
     const entries = async (setId: string) => (await storage.get<QuestionSet>("sets", setId))!.entries.map((e) => e.questionId);
     expect(await entries(second.setId)).toEqual(await entries(first.setId));
@@ -115,8 +116,31 @@ describe.each(adapters)("Importer with the %s Storage adapter", (_name, makeStor
     const shown = await preview(storage, threePack);
     expect(shown.newTopicPaths).toEqual(["BIOL101 / Genetics / Lecture 1", "BIOL101 / Genetics / Lecture 2"]);
 
-    await expect(commitImport(shown, storage, { newTopicsConfirmed: false })).rejects.toThrow();
+    await expect(commitImport(shown, storage, { confirmedTopicPaths: [] })).rejects.toThrow();
     expect(await everything(storage)).toEqual([]);
+  });
+
+  it("refuses to create a Topic path that appeared after the preview was confirmed", async () => {
+    const storage = makeStorage();
+    const stale = await preview(storage, threePack);
+    const confirmed = stale.newTopicPaths;
+    const changed = { ...stale, pack: { ...stale.pack, batch: { ...stale.pack.batch, topic: "BIOL101 / Unseen" } } };
+
+    await expect(commitImport(changed, storage, { confirmedTopicPaths: confirmed })).rejects.toThrow(/BIOL101 \/ Unseen/);
+    expect(await everything(storage)).toEqual([]);
+  });
+
+  it("skips a duplicate of a deprecated Question without putting it back into a Set", async () => {
+    const storage = makeStorage();
+    const first = await importPack(storage, onePack);
+    const set = await storage.get<QuestionSet>("sets", first.setId);
+    const old = await storage.get<Question>("questions", set!.entries[0]!.questionId);
+    await storage.set("questions", { ...old!, deprecated: true });
+
+    const shown = await preview(storage, onePack);
+    expect(shown.questions.map((q) => q.status)).toEqual(["skipped"]);
+    const second = await commitImport(shown, storage, { confirmedTopicPaths: [] });
+    expect((await storage.get<QuestionSet>("sets", second.setId))!.entries).toEqual([]);
   });
 
   it("creates the Track and Topics once the new Topic paths are confirmed, and files Questions under them", async () => {
@@ -151,7 +175,7 @@ describe.each(adapters)("Importer with the %s Storage adapter", (_name, makeStor
     };
     const shown = await preview(storage, next);
     expect(shown.newTopicPaths).toEqual(["BIOL101 / Genetics / Lecture 3"]);
-    await commitImport(shown, storage, { newTopicsConfirmed: true });
+    await commitImport(shown, storage, { confirmedTopicPaths: shown.newTopicPaths });
     expect(await storage.query("tracks")).toHaveLength(1);
     expect(await storage.query("topics")).toHaveLength(4);
   });
@@ -170,6 +194,15 @@ describe.each(adapters)("Importer with the %s Storage adapter", (_name, makeStor
       { question: "q1", field: "options[2].content", message: expect.any(String) },
       { question: "q2", field: "stem", message: expect.any(String) },
     ]);
+  });
+
+  it("does not warn about ordinary text that merely contains 以上 or a letter before 项目", async () => {
+    const storage = makeStorage();
+    const shown = await preview(storage, {
+      ...threePack,
+      questions: [question("q1", "维生素B项目的负责人是谁？", ["50以上", "20以下"])],
+    });
+    expect(shown.warnings).toEqual([]);
   });
 
   it("commits a one-question pack as a Question and a Set", async () => {

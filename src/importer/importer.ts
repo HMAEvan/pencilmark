@@ -158,7 +158,7 @@ export async function previewImport(pack: QuestionPack, storage: Storage): Promi
 export async function commitImport(
   preview: ImportPreview,
   storage: Storage,
-  options: { newTopicsConfirmed?: boolean } = {},
+  options: { confirmedTopicPaths: string[] },
   now: Date = new Date(),
 ): Promise<{ setId: string }> {
   const { pack } = preview;
@@ -167,9 +167,9 @@ export async function commitImport(
 
   const topics = await topicResolver(storage, provenance, now);
   const resolved = new Map(packPaths(pack).map((path) => [path, topics.resolve(path)]));
-  if (topics.newPaths.length && !options.newTopicsConfirmed) {
-    throw new Error(`New Topic paths were not confirmed: ${topics.newPaths.join("; ")}`);
-  }
+  // Resolved again here, so a path the user did not see in the preview is refused rather than created.
+  const unconfirmed = topics.newPaths.filter((path) => !options.confirmedTopicPaths.includes(path));
+  if (unconfirmed.length) throw new Error(`New Topic paths were not confirmed: ${unconfirmed.join("; ")}`);
   for (const track of topics.created.tracks) await storage.add("tracks", track);
   for (const topic of topics.created.topics) await storage.add("topics", topic);
 
@@ -186,7 +186,8 @@ export async function commitImport(
   };
   await storage.add("batches", batch);
 
-  // Skipped Questions join the Set as the Question they duplicate; conflicts wait for the Tier 2 choice (issue #11).
+  // Skipped Questions join the Set as the Question they duplicate, unless it is deprecated (excluded from new Sets);
+  // conflicts wait for the Tier 2 choice (issue #11).
   const idByLabel = new Map<string, string>();
   const questionIds: string[] = [];
   for (const [i, q] of pack.questions.entries()) {
@@ -194,7 +195,8 @@ export async function commitImport(
     if (shown.status === "conflict") continue;
     if (shown.status === "skipped") {
       const id = shown.existingId ?? idByLabel.get(shown.sameAs!)!;
-      if (!questionIds.includes(id)) questionIds.push(id);
+      const deprecated = shown.existingId !== undefined && (await storage.get<Question>("questions", id))?.deprecated;
+      if (!deprecated && !questionIds.includes(id)) questionIds.push(id);
       continue;
     }
     const question: Question = {
