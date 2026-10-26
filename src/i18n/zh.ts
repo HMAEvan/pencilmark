@@ -67,6 +67,8 @@ export const zh = {
   "flag.bad_question": "题目有问题",
   "review.confidence": "信心度：{confidence}",
   "review.confidenceNone": "未填",
+  "review.answeringNote": "作答时的备注：{note}",
+  "review.reviewingNote": "回顾备注",
   "review.heading": "结果：{title}",
   "review.score": "答对 {correct} / {total} 题",
   "review.questionNumber": "第 {n} 题",

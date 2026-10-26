@@ -8,14 +8,21 @@ import type { RawLogChunk } from "../recorder/recorder";
 /** `at` is when the Flag was last added: wall-clock UTC epoch ms. */
 export type FlagMark = { flag: Flag; phase: Phase; at: number };
 
-export type QuestionMarks = { confidence: Confidence | null; flags: FlagMark[]; note: string | null };
+/** One Note per Phase, so a Note written after seeing the answer is kept apart; a Phase without one is absent. */
+export type PhaseNotes = Partial<Record<Phase, string>>;
 
-export const emptyMarks = (): QuestionMarks => ({ confidence: null, flags: [], note: null });
+export type QuestionMarks = { confidence: Confidence | null; flags: FlagMark[]; notes: PhaseNotes };
 
-export function walkMarks(rawLog: RawLogChunk[], rules: Rules): Map<string, QuestionMarks> {
+/** Every removal of a Flag, in order, as the Flag was before removal. Keyed by Question id; stored, so a plain record. */
+export type RemovedFlags = Record<string, FlagMark[]>;
+
+export const emptyMarks = (): QuestionMarks => ({ confidence: null, flags: [], notes: {} });
+
+export function walkMarks(rawLog: RawLogChunk[], rules: Rules): { marks: Map<string, QuestionMarks>; removedFlags: RemovedFlags } {
   const confidence = new Map<string, Confidence | null>();
   const flags = new Map<string, Map<Flag, FlagMark>>();
-  const notes = new Map<string, string>();
+  const notes = new Map<string, PhaseNotes>();
+  const removedFlags: RemovedFlags = {};
   const flagsOf = (questionId: string) => {
     let f = flags.get(questionId);
     if (!f) flags.set(questionId, (f = new Map()));
@@ -36,9 +43,15 @@ export function walkMarks(rawLog: RawLogChunk[], rules: Rules): Map<string, Ques
         marks.delete(event.flag);
         marks.set(event.flag, { flag: event.flag, phase, at });
       } else if (event.type === "unflag") {
+        const removed = flagsOf(event.questionId).get(event.flag);
+        if (!removed) continue;
         flagsOf(event.questionId).delete(event.flag);
+        (removedFlags[event.questionId] ??= []).push(removed);
       } else if (event.type === "note") {
-        notes.set(event.questionId, event.text);
+        const phaseNotes = notes.get(event.questionId) ?? {};
+        if (event.text) phaseNotes[phase] = event.text;
+        else delete phaseNotes[phase];
+        notes.set(event.questionId, phaseNotes);
       }
     }
   }
@@ -48,8 +61,8 @@ export function walkMarks(rawLog: RawLogChunk[], rules: Rules): Map<string, Ques
     marks.set(questionId, {
       confidence: confidence.get(questionId) ?? null,
       flags: [...(flags.get(questionId)?.values() ?? [])],
-      note: notes.get(questionId) || null,
+      notes: notes.get(questionId) ?? {},
     });
   }
-  return marks;
+  return { marks, removedFlags };
 }

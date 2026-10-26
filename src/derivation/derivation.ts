@@ -5,7 +5,7 @@ import { writeDigest } from "./digest";
 import type { OverrideValues } from "./overrides";
 import { emptyTiming, emptyTrajectory, walkRawLog, type ChunkGap, type QuestionTiming, type SessionTotals, type Trajectory } from "./timing";
 import type { Rules } from "../domain/settings";
-import { emptyMarks, walkMarks, type QuestionMarks } from "./marks";
+import { emptyMarks, walkMarks, type QuestionMarks, type RemovedFlags } from "./marks";
 
 export { finalValues, type FinalValues, type OverrideValues } from "./overrides";
 
@@ -46,12 +46,14 @@ export type DerivationResult = {
   attempts: DerivedAttempt[];
   totals: SessionTotals;
   chunkGaps: ChunkGap[];
+  /** Flags removed and the Phase each was added in, by Question id. Kept out of the Attempts, which hold only the final Flags. */
+  removedFlags: RemovedFlags;
   digest: string;
 };
 
 export function derive(input: DerivationInput): DerivationResult {
   const walk = walkRawLog(input.rawLog, input.rules);
-  const marks = walkMarks(input.rawLog, input.rules);
+  const { marks, removedFlags } = walkMarks(input.rawLog, input.rules);
   const byId = new Map(input.questions.map((q) => [q.id, q]));
 
   const attempts = input.questionOrder.map((questionId, index): DerivedAttempt => {
@@ -79,15 +81,16 @@ export function derive(input: DerivationInput): DerivationResult {
     attempts,
     totals: walk.totals,
     chunkGaps: walk.chunkGaps,
-    digest: writeDigest(input.title, attempts, byId, input.rules.collectConfidence),
+    removedFlags,
+    digest: writeDigest(input.title, attempts, byId, input.rules.collectConfidence, removedFlags),
   };
 }
 
 /** The Digest to copy: the derived one, with any Overrides set since in place of the derived time or result. */
 export function digestWithOverrides(
   { title, questions, rules }: Pick<DerivationInput, "title" | "questions" | "rules">,
-  attempts: DerivedAttempt[],
+  { attempts, removedFlags }: Pick<DerivationResult, "attempts" | "removedFlags">,
   overrides: Map<string, OverrideValues>,
 ): string {
-  return writeDigest(title, attempts, new Map(questions.map((q) => [q.id, q])), rules.collectConfidence, overrides);
+  return writeDigest(title, attempts, new Map(questions.map((q) => [q.id, q])), rules.collectConfidence, removedFlags, overrides);
 }

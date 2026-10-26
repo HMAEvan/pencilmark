@@ -345,12 +345,12 @@ describe("Digest with Overrides", () => {
 
   it("is the derived Digest when there are no Overrides", () => {
     const result = derive(sat());
-    expect(digestWithOverrides(sat(), result.attempts, new Map())).toBe(result.digest);
+    expect(digestWithOverrides(sat(), result, new Map())).toBe(result.digest);
   });
 
   it("shows an overridden time and result in place of the derived ones, naming the derived values", () => {
     const result = derive(sat());
-    const digest = digestWithOverrides(sat(), result.attempts, new Map([[question.id, { answeringActiveMs: 120_000, correct: true }]]));
+    const digest = digestWithOverrides(sat(), result, new Map([[question.id, { answeringActiveMs: 120_000, correct: true }]]));
     expect(digest).toContain(
       ["- Result: correct (overridden by the user; derived: wrong)", "- Answering time: 2m 0s (overridden by the user; derived: 40s)", "- First choice: C after 30s"].join("\n"),
     );
@@ -418,15 +418,16 @@ describe("derive: Flags", () => {
 describe("derive: Note", () => {
   const note = (q: Question, text: string) => ({ type: "note", questionId: q.id, text }) as const;
 
-  it("keeps the last Note saved, and leaves a Note saved empty as empty", () => {
+  it("keeps the last Note saved in each Phase, and leaves a Note saved empty as empty", () => {
+    // While answering: Q1's Note written then rewritten, Q2's written. On the review page: Q1 gets a reviewing Note; Q2's is written then emptied.
     const result = derive(
       sitting([
         { activeMs: 10_000, events: [[0, open(question)], [2_000, note(question, "Mixed up")], [3_000, note(question, "Mixed up ATP and GTP")], [4_000, note(second, "x")], [10_000, submit]] },
-        { activeMs: 1_000, events: [[1_000, note(second, "")]] },
+        { activeMs: 3_000, events: [[1_000, note(question, "GTP is for G proteins")], [2_000, note(second, "y")], [3_000, note(second, "")]] },
       ]),
     );
-    expect(attemptOf(result, question).note).toBe("Mixed up ATP and GTP");
-    expect(attemptOf(result, second).note).toBeNull();
+    expect(attemptOf(result, question).notes).toEqual({ answering: "Mixed up ATP and GTP", reviewing: "GTP is for G proteins" });
+    expect(attemptOf(result, second).notes).toEqual({ answering: "x" });
   });
 });
 
@@ -445,19 +446,53 @@ describe("derive: Digest marks", () => {
             [20_000, submit],
           ],
         },
-        { activeMs: 5_000, events: [[5_000, { type: "flag", questionId: question.id, flag: "bad_question" }]] },
+        { activeMs: 5_000, events: [[4_000, { type: "note", questionId: question.id, text: "It was the cristae" }], [5_000, { type: "flag", questionId: question.id, flag: "bad_question" }]] },
       ],
       { rules: { ...rules, collectConfidence } },
     );
 
-  it("shows Confidence and Flags with their Phase for every Question, and the Note where there is one", () => {
+  it("shows Confidence and Flags with their Phase for every Question, and each Phase's Note where there is one", () => {
     const { digest } = derive(marked(true));
-    expect(digest).toContain(["- Answer changes: none", "- Confidence: probably", "- Flags: concept confusion (answering), bad question (reviewing)", "- Note: Mixed up ATP and GTP", ""].join("\n"));
+    expect(digest).toContain(
+      ["- Answer changes: none", "- Confidence: probably", "- Flags: concept confusion (answering), bad question (reviewing)", "- Note (answering): Mixed up ATP and GTP", "- Note (reviewing): It was the cristae", ""].join("\n"),
+    );
     expect(digest).toContain(["- Answer changes: none", "- Confidence: none", "- Flags: none", ""].join("\n"));
   });
 
   it("says Confidence was not collected when collection was off", () => {
     const { digest } = derive(marked(false));
     expect(digest).toContain("- Confidence: not collected\n- Flags: concept confusion (answering), bad question (reviewing)\n");
+  });
+});
+
+describe("derive: removed Flags", () => {
+  // Q1: concept added while answering and removed, careless added; Q2: memory added and removed on the review page.
+  const sat = () =>
+    sitting([
+      {
+        activeMs: 10_000,
+        events: [
+          [0, open(question)],
+          [1_000, { type: "flag", questionId: question.id, flag: "concept" }],
+          [2_000, { type: "unflag", questionId: question.id, flag: "concept" }],
+          [3_000, { type: "flag", questionId: question.id, flag: "careless" }],
+          [10_000, submit],
+        ],
+      },
+      { activeMs: 5_000, events: [[1_000, { type: "flag", questionId: second.id, flag: "memory" }], [2_000, { type: "unflag", questionId: second.id, flag: "memory" }]] },
+    ]);
+
+  it("lists removed Flags in the Digest with the Phase they were added in, keeping the Attempt to the final Flags", () => {
+    const result = derive(sat());
+    expect(attemptOf(result, question).flags.map((f) => f.flag)).toEqual(["careless"]);
+    expect(attemptOf(result, second).flags).toEqual([]);
+    expect(result.digest).toContain("- Flags: careless (answering); removed: concept confusion (answering)\n");
+    expect(result.digest).toContain("- Flags: none; removed: memory (reviewing)\n");
+  });
+
+  it("keeps removed Flags in the Digest written with Overrides", () => {
+    const result = derive(sat());
+    const digest = digestWithOverrides(sat(), result, new Map([[question.id, { correct: true }]]));
+    expect(digest).toContain("- Flags: careless (answering); removed: concept confusion (answering)\n");
   });
 });

@@ -107,7 +107,7 @@ export function Review({ sessionId }: { sessionId: string }) {
     setLoaded({ ...loaded, overrides: new Map(overrides).set(questionId, saved) });
   };
   // The copied Digest uses the Overrides set since the derivation, in place of the derived values.
-  const digest = overrides.size ? digestWithOverrides({ title: set.title, questions: [...questions.values()], rules: derivation.parameters }, attempts, overrides) : derivation.digest;
+  const digest = overrides.size ? digestWithOverrides({ title: set.title, questions: [...questions.values()], rules: derivation.parameters }, { attempts, removedFlags: derivation.removedFlags }, overrides) : derivation.digest;
   const copyDigest = async () => {
     try {
       await navigator.clipboard.writeText(digest);
@@ -177,7 +177,14 @@ export function Review({ sessionId }: { sessionId: string }) {
               disabled={marking}
               onToggle={(flag: Flag, on) => void mark({ type: on ? "flag" : "unflag", questionId: attempt.questionId, flag })}
             />
-            <NoteField note={attempt.note ?? ""} disabled={marking} onSave={(text) => void mark({ type: "note", questionId: attempt.questionId, text })} />
+            {attempt.notes.answering && <p class="note-read">{t("review.answeringNote", { note: attempt.notes.answering })}</p>}
+            {/* Recorded after the reveal, so it is the reviewing Note; the answering Note is never changed here. */}
+            <NoteField
+              label="review.reviewingNote"
+              note={attempt.notes.reviewing ?? ""}
+              disabled={marking}
+              onSave={(text) => void mark({ type: "note", questionId: attempt.questionId, text })}
+            />
             <OverrideEditor attempt={attempt} final={final} idleThresholdMs={derivation.parameters.idleThresholdMs} onSave={(values) => void saveOverride(attempt.questionId, values)} />
             {question.explanation.length > 0 && (
               <details>

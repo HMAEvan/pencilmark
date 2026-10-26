@@ -99,6 +99,8 @@ export type Session = Provenance & {
 /** ADR-0008: `reviewing` starts when the answer is revealed. */
 export type Phase = "answering" | "reviewing" | "revisit";
 
+export const PHASES: Phase[] = ["answering", "reviewing", "revisit"];
+
 export type Confidence = "sure" | "probably" | "guessed";
 
 /** Concept confusion, careless, focus, memory, bad question. */

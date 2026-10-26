@@ -1,6 +1,7 @@
-import type { Flag, Question } from "../domain/types";
+import { PHASES, type Flag, type Question } from "../domain/types";
 import { blocksToText, letterAt, letterOf } from "../domain/display";
 import type { DerivedAttempt } from "./derivation";
+import type { FlagMark, RemovedFlags } from "./marks";
 import { finalValues, type OverrideValues } from "./overrides";
 import { excludedIdleMs } from "./timing";
 
@@ -20,12 +21,15 @@ const result = (correct: boolean) => (correct ? "correct" : "wrong");
 
 const FLAG_NAMES: Record<Flag, string> = { concept: "concept confusion", careless: "careless", focus: "focus", memory: "memory", bad_question: "bad question" };
 
-function markLines({ confidence, flags, note }: DerivedAttempt, collectConfidence: boolean): string[] {
+const flagList = (flags: FlagMark[]) => flags.map((f) => `${FLAG_NAMES[f.flag]} (${f.phase})`).join(", ");
+
+/** Removed Flags are listed too: taking a Flag back is evidence of hesitation. */
+function markLines({ confidence, flags, notes }: DerivedAttempt, removed: FlagMark[], collectConfidence: boolean): string[] {
   const lines = [
     `- Confidence: ${collectConfidence ? (confidence ?? "none") : "not collected"}`,
-    `- Flags: ${flags.length ? flags.map((f) => `${FLAG_NAMES[f.flag]} (${f.phase})`).join(", ") : "none"}`,
+    `- Flags: ${flags.length ? flagList(flags) : "none"}${removed.length ? `; removed: ${flagList(removed)}` : ""}`,
   ];
-  if (note) lines.push(`- Note: ${note}`);
+  for (const phase of PHASES) if (notes[phase]) lines.push(`- Note (${phase}): ${notes[phase]}`);
   return lines;
 }
 
@@ -51,6 +55,7 @@ export function writeDigest(
   attempts: DerivedAttempt[],
   questions: Map<string, Question>,
   collectConfidence: boolean,
+  removedFlags: RemovedFlags,
   overrides: Map<string, OverrideValues> = new Map(),
 ): string {
   const lines = [`# Digest: ${title}`, ""];
@@ -71,7 +76,7 @@ export function writeDigest(
       `- Answer given: ${letters(attempt.answer, order)}`,
       `- Correct answer: ${letters(question.answer, order)}`,
       ...outcomeLines(attempt, overrides.get(attempt.questionId)),
-      ...markLines(attempt, collectConfidence),
+      ...markLines(attempt, removedFlags[attempt.questionId] ?? [], collectConfidence),
       "",
     );
   }

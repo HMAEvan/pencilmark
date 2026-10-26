@@ -84,3 +84,4 @@ button.small { padding: 4px 10px; font-size: 0.9rem; }
 .drawer-body { margin-top: 4px; }
 .note { display: block; margin-top: 12px; color: var(--muted); font-size: 0.9rem; }
 .note textarea { margin-top: 4px; font: inherit; color: var(--fg); }
+.note-read { white-space: pre-wrap; color: var(--muted); font-size: 0.9rem; margin: 12px 0 0; }

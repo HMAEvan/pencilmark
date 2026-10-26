@@ -27,7 +27,7 @@ async function load(sessionId: string): Promise<(Loaded & { marked: Marked }) | 
     answers: Object.fromEntries(attempts.map((a) => [a.questionId, a.answer])),
     confidence: Object.fromEntries(attempts.map((a) => [a.questionId, a.confidence])),
     flags: Object.fromEntries(attempts.map((a) => [a.questionId, a.flags.map((f) => f.flag)])),
-    notes: Object.fromEntries(attempts.map((a) => [a.questionId, a.note ?? ""])),
+    notes: Object.fromEntries(attempts.map((a) => [a.questionId, a.notes.answering ?? ""])),
   };
   return { session, set, questions, marked, recorder };
 }

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "preact/hooks";
 import { FLAGS, type Confidence, type Flag } from "../domain/types";
-import { t } from "../i18n/i18n";
+import { t, type TranslationKey } from "../i18n/i18n";
 
 // Marks shared by the Player and the review page. Each change is reported to the caller, which records it in the Raw log.
 
@@ -36,12 +36,22 @@ export function FlagButtons({ flags, disabled, onToggle }: { flags: Flag[]; disa
 }
 
 /** The Note is recorded when the field loses focus, not on every keystroke. */
-export function NoteField({ note, disabled, onSave }: { note: string; disabled?: boolean; onSave: (text: string) => void }) {
+export function NoteField({
+  note,
+  label = "marks.note",
+  disabled,
+  onSave,
+}: {
+  note: string;
+  label?: TranslationKey;
+  disabled?: boolean;
+  onSave: (text: string) => void;
+}) {
   const [draft, setDraft] = useState(note);
   useEffect(() => setDraft(note), [note]);
   return (
     <label class="note">
-      {t("marks.note")}
+      {t(label)}
       <textarea
         rows={3}
         value={draft}
