@@ -34,6 +34,18 @@ Each Question is a `## Question n` section: the stem, the Options under their di
 
 The Digest carries no Explanations or Rationales, so judge every answer on the subject itself.
 
+## Reading each Question type
+
+What counts as hesitation depends on the type. A multiple-answer Question is marked `- Type: multiple answer (select all that apply)`; a single-answer Question carries no Type line. True/false is a single-answer Question with the two Options True and False.
+
+- **Single answer** and **true/false**: one click gives a complete answer, so every answer change is a real change of mind. On true/false, a change is a full reversal of the judgement; a fast answer is normal there, since there are only two Options.
+- **Multiple answer**: the learner builds the answer one Option at a time, and every tick is logged as an answer change. The **First choice** is only the first Option ticked, not a complete answer. A run of changes in which each answer only adds an Option to the one before (`A`, then `A, C`, then `A, C, D`) is the answer being assembled: read it as one decision and treat it as no hesitation at all. The hesitation signals are:
+  - an Option unticked after being ticked (an answer that drops a letter the previous one had);
+  - the same Option ticked, unticked and ticked again;
+  - a long gap (`after …`) before one particular Option was added or removed, which points at that Option as the doubtful one.
+
+  For teaching, name the Options the learner hesitated over, and the Options they missed or wrongly included, rather than the Question as a whole.
+
 ## Priority tiers
 
 **Tier 0: flagged as a bad question.** A `bad question` Flag means the learner suspects the Question, not themselves. Check it first, as a question: is the stem unambiguous, is the marked correct answer actually correct, is exactly the right set of Options correct? If the Question is faulty, say so plainly, give the correct reading, and do not count the result against the learner. If it is sound, say why, and then teach it in the tier it would otherwise fall into.
@@ -42,7 +54,7 @@ The Digest carries no Explanations or Rationales, so judge every answer on the s
 
 **Tier 2: hesitation or answer changes.** Any of these, whatever the result:
 
-- An answer change, above all a change away from the correct answer (the first instinct was right) or several changes on one Question.
+- An answer change that counts as hesitation for its type (see "Reading each Question type"), above all a change away from the correct answer (the first instinct was right) or several such changes on one Question.
 - A first choice that took much longer than on the other Questions, or a long answering time overall.
 - Confidence `guessed` on a correct answer: right, but not known.
 - A Flag removed, or a `concept confusion` Flag.
