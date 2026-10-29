@@ -32,7 +32,7 @@ export const en = {
   "import.conflictList": "Same stem as an earlier Question in this pack but a different answer, not imported: {labels}",
   "import.similarHeading": "These Questions are similar to existing ones. Choose what to do with each:",
   "import.diffLegend": "Green: the same in both. Red, struck through: only in the existing Question. Red, underlined: only in the incoming one.",
-  "import.similarTitle": "“{label}” is {percent}% alike an existing Question (revision {revision})",
+  "import.similarTitle": "“{label}” is {percent}% similar to an existing Question (revision {revision})",
   "import.stemLabel": "Stem",
   "import.optionsLabel": "Options",
   "import.optionCorrect": " (correct)",
