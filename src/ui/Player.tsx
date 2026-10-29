@@ -4,7 +4,7 @@ import type { Confidence, Flag, ItemFlag, Question, QuestionSet, Session } from 
 import { blocksToText, letterAt } from "../domain/display";
 import { t } from "../i18n/i18n";
 import { openRecorder, type Recorder } from "../recorder/recorder";
-import { currentAttempts, loadOverrides, loadQuestions, setOverride, submitSession, type Override } from "../session/sessions";
+import { abandonSession, currentAttempts, loadOverrides, loadQuestions, setOverride, submitSession, type Override } from "../session/sessions";
 import { DEFAULT_PREFERENCES, type Display, type Rules } from "../domain/settings";
 import { answeringTimesSoFar } from "../derivation/derivation";
 import { AnsweringTime, TimeOverrideField } from "./AnsweringTime";
@@ -15,6 +15,7 @@ import { displayOf, formatDuration } from "./format";
 import { isGraded, questionTypeOf } from "../questionTypes/questionType";
 import { multipleAnswer } from "../questionTypes/multipleAnswer";
 import { useRecorder } from "./useRecorder";
+import { Dialog } from "./Dialog";
 
 type Loaded = { session: Session; set: QuestionSet; questions: Map<string, Question>; overrides: Map<string, Override>; recorder: Recorder };
 
@@ -99,6 +100,8 @@ export function Player({ sessionId }: { sessionId: string }) {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  /** The Leave dialog's step: choosing, or confirming the Abandon. */
+  const [leaving, setLeaving] = useState<"choose" | "abandon">();
 
   const recorderRef = useRecorder(
     async () => {
@@ -185,7 +188,6 @@ export function Player({ sessionId }: { sessionId: string }) {
     const saved = await setOverride(storage, session.id, questionId, values);
     setLoaded({ ...loaded, overrides: new Map(overrides).set(questionId, saved) });
   };
-  // Confirmed in the page, not with confirm(): some embedded browsers suppress native dialogs.
   const submit = async () => {
     // The ref, not the state, guards: two clicks can land before a re-render.
     if (!recorderRef.current) return;
@@ -194,11 +196,26 @@ export function Player({ sessionId }: { sessionId: string }) {
     await submitSession(storage, session, set, recorder);
     navigate("review", session.id);
   };
+  // Leaving the Player hides the page in the Raw log and seals the chunk, so the time away never counts. Browser back and closing the page do the same.
+  const continueLater = () => navigate();
+  const abandon = async () => {
+    if (!recorderRef.current) return;
+    setSubmitting(true);
+    recorderRef.current = undefined;
+    await recorder.hide();
+    await abandonSession(storage, session);
+    navigate();
+  };
 
   return (
     <main>
       {!recorder.integrity.ok && <p class="bad">{t("player.integrityFailed", { chunk: recorder.integrity.chunkId })}</p>}
-      <p class="muted">{t("player.questionNumber", { n: index + 1, total })}</p>
+      <div class="player-header">
+        <p class="muted">{t("player.questionNumber", { n: index + 1, total })}</p>
+        <button class="secondary small" disabled={leaving !== undefined} onClick={() => setLeaving("choose")}>
+          {t("player.leave")}
+        </button>
+      </div>
       <Timers recorder={recorder} rules={rules} display={displayOf(session)} questionId={questionId} override={overrides.get(questionId)} />
       <nav class="question-nav" aria-label={t("player.navigation")}>
         {session.questionOrder.map((id, i) => {
@@ -286,7 +303,7 @@ export function Player({ sessionId }: { sessionId: string }) {
         )}
       </div>
       {confirming && (
-        <div class="card confirm" role="alertdialog" aria-label={t("player.confirmSubmit")}>
+        <Dialog label={t("player.confirmSubmit")} onCancel={() => !submitting && setConfirming(false)}>
           <p>{t("player.confirmSubmit")}</p>
           <div class="actions">
             <button disabled={submitting} onClick={submit}>
@@ -296,7 +313,35 @@ export function Player({ sessionId }: { sessionId: string }) {
               {t("player.cancel")}
             </button>
           </div>
-        </div>
+        </Dialog>
+      )}
+      {leaving === "choose" && (
+        <Dialog label={t("player.leaveHeading")} onCancel={() => setLeaving(undefined)}>
+          <h3>{t("player.leaveHeading")}</h3>
+          <p>{t("player.leaveExplained")}</p>
+          <div class="actions">
+            <button onClick={continueLater}>{t("player.continueLater")}</button>
+            <button class="secondary" onClick={() => setLeaving("abandon")}>
+              {t("player.abandon")}
+            </button>
+            <button class="secondary" onClick={() => setLeaving(undefined)}>
+              {t("player.cancel")}
+            </button>
+          </div>
+        </Dialog>
+      )}
+      {leaving === "abandon" && (
+        <Dialog label={t("player.confirmAbandon")} onCancel={() => !submitting && setLeaving(undefined)}>
+          <p>{t("player.confirmAbandon")}</p>
+          <div class="actions">
+            <button disabled={submitting} onClick={abandon}>
+              {t("player.confirmAbandonYes")}
+            </button>
+            <button class="secondary" disabled={submitting} onClick={() => setLeaving(undefined)}>
+              {t("player.cancel")}
+            </button>
+          </div>
+        </Dialog>
       )}
     </main>
   );

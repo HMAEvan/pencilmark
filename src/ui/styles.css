@@ -66,7 +66,6 @@ details { margin-top: 8px; }
 .rationale { margin-top: 4px; }
 .rationale summary { color: var(--muted); font-size: 0.9rem; cursor: pointer; }
 .explanation h4 { margin: 12px 0 0; font-size: 0.95rem; }
-.confirm { border-color: var(--accent); }
 .similar { border: 1px solid var(--border); border-radius: 8px; padding: 8px 12px; margin: 12px 0; }
 .similar legend { font-weight: 600; padding: 0 4px; }
 .similar ul { margin: 4px 0; padding-left: 1.2em; }
@@ -115,3 +114,12 @@ button.small { padding: 4px 10px; font-size: 0.9rem; }
 .hint.used { border-left-color: var(--accent); }
 .hint .stem { margin: 4px 0 0; }
 .appeal { margin-top: 12px; }
+.dialog-backdrop {
+  position: fixed; inset: 0; z-index: 10; display: flex; align-items: center; justify-content: center;
+  padding: 16px; background: rgb(0 0 0 / 0.4);
+}
+.dialog { width: 100%; max-width: 32rem; max-height: calc(100vh - 32px); overflow-y: auto; margin: 0; border-color: var(--accent); }
+.dialog.wide { max-width: 48rem; }
+.dialog:focus { outline: none; }
+.player-header { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.player-header p { margin: 0; }

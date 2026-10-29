@@ -11,7 +11,7 @@ import { buildAnswerPack } from "../exports/answerPack";
 import { gradingMaterials } from "../exports/skills";
 import { CopyButton } from "./CopyButton";
 import { AnsweringTime, TimeOverrideField } from "./AnsweringTime";
-import { formatDuration, formatScore, timePrecisionOf } from "./format";
+import { formatDateTime, formatDuration, formatScore, timePrecisionOf } from "./format";
 import { DEFAULT_PREFERENCES, type TimePrecision } from "../domain/settings";
 import { isGraded, questionTypeOf } from "../questionTypes/questionType";
 import { multipleAnswer } from "../questionTypes/multipleAnswer";
@@ -209,6 +209,10 @@ export function Review({ sessionId }: { sessionId: string }) {
   return (
     <main>
       <h1>{t("review.heading", { title: set.title })}</h1>
+      <p class="muted">
+        {t("review.started", { time: formatDateTime(session.startedAt) })}
+        {session.endedAt !== undefined && t("review.submitted", { time: formatDateTime(session.endedAt) })}
+      </p>
       <p>
         {partial
           ? t("review.partialTotal", { score: formatScore(finals.reduce((sum, f) => sum + (f.partialScore ?? 0), 0)), total: finals.length })

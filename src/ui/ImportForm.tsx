@@ -18,6 +18,7 @@ import { questionWritingPrompt } from "../exports/skills";
 import samplePack from "../../samples/general-science.json?raw";
 import { storage } from "./appStorage";
 import { CopyButton } from "./CopyButton";
+import { Dialog } from "./Dialog";
 
 function locatedLine(error: PackError): string {
   const question = error.question ?? t("import.packLevel");
@@ -114,7 +115,7 @@ function Preview({
   const labels = (status: ImportStatus) => withStatus(status).map((q) => q.label).join(t("import.listSeparator"));
   const unchosen = withStatus("similar").some((q) => !choices[q.label]);
   return (
-    <div class="confirm" role="alertdialog" aria-label={t("import.previewHeading")}>
+    <Dialog label={t("import.previewHeading")} onCancel={onCancel} wide>
       <h3>{t("import.previewHeading")}</h3>
       <p>
         {t("import.previewCounts", { title: preview.pack.batch.title, new: count("new"), skipped: count("skipped"), similar: count("similar"), conflict: count("conflict") })}
@@ -159,7 +160,7 @@ function Preview({
           {t("player.cancel")}
         </button>
       </div>
-    </div>
+    </Dialog>
   );
 }
 

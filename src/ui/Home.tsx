@@ -5,6 +5,7 @@ import { abandonSession, latestSession, startSession } from "../session/sessions
 import { storage } from "./appStorage";
 import { navigate } from "./App";
 import { ImportForm } from "./ImportForm";
+import { Dialog } from "./Dialog";
 
 type SetRow = { set: QuestionSet; latest?: Session };
 
@@ -73,7 +74,7 @@ export function Home() {
             )}
           </div>
           {latest?.status === "in_progress" && confirmingAbandon === set.id && (
-            <div class="confirm" role="alertdialog" aria-label={t("home.confirmAbandon")}>
+            <Dialog label={t("home.confirmAbandon")} onCancel={() => setConfirmingAbandon(undefined)}>
               <p>{t("home.confirmAbandon")}</p>
               <div class="actions">
                 <button onClick={() => restart(set, latest)}>{t("home.confirmAbandonYes")}</button>
@@ -81,7 +82,7 @@ export function Home() {
                   {t("player.cancel")}
                 </button>
               </div>
-            </div>
+            </Dialog>
           )}
         </section>
       ))}
