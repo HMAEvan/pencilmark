@@ -3,12 +3,15 @@ import { describe, expect, it } from "vitest";
 import { openRecorder, readRawLog, recoverRawLog, type RawLogChunk } from "./recorder";
 import { createMemoryStorage } from "../storage/memoryStorage";
 import { createIndexedDbStorage } from "../storage/indexedDbStorage";
+import { createArtifactDbStorage } from "../storage/artifactDbStorage";
+import { createFakeArtifactDb } from "../storage/fakeArtifactDb";
 import type { Storage } from "../storage/storage";
 
 let dbCounter = 0;
 const adapters: [string, () => Storage][] = [
   ["in-memory", () => createMemoryStorage()],
   ["IndexedDB", () => createIndexedDbStorage(`pencilmark-recorder-test-${++dbCounter}`)],
+  ["Artifact database", () => createArtifactDbStorage(createFakeArtifactDb("u_viewer").db, "u_viewer", { pageSize: 2 })],
 ];
 
 /** A fake pair of clocks: wall-clock UTC ms and monotonic ms, advanced together. */

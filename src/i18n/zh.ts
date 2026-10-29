@@ -117,6 +117,9 @@ export const zh = {
   "common.copyFailed": "无法自动复制，请手动复制下面的内容",
   "common.loading": "加载中…",
   "common.notFound": "找不到该内容",
+  "storage.local": "数据保存在本浏览器中。",
+  "storage.artifact": "数据保存在 Artifact 数据库中，在其他设备上打开也能看到。",
+  "storage.artifactUnavailable": "无法使用 Artifact 数据库（可能未登录或未授予权限）。现在的记录只保存在本浏览器中，换设备看不到，也可能丢失。",
 } as const;
 
 export type TranslationKey = keyof typeof zh;

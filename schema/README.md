@@ -18,7 +18,10 @@ The importer also checks what a JSON Schema cannot express: labels unique in the
 
 ## Database
 
-All data lives in the browser's IndexedDB, in a database named `pencilmark`. Documents are grouped into collections and addressed by `id`.
+Documents are grouped into collections and addressed by `id`. Where they live depends on the copy:
+
+- **Local mode** (GitHub Pages, or any copy outside claude.ai): the browser's IndexedDB, in a database named `pencilmark`.
+- **Artifact mode** (published as a claude.ai Artifact): the Artifact's database, under the viewer's private subtree, one document per PencilMark document at `data/users/<viewer id>/pencilmark/<collection>/<id>`. Nobody else can read it, the Artifact's owner included. A document there is at most 256 KiB, and an Artifact's database holds at most 25,000 documents.
 
 Conventions for every document:
 

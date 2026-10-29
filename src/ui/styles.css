@@ -29,6 +29,8 @@ body {
   font: 16px/1.6 system-ui, -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
 }
 main { max-width: 720px; margin: 0 auto; padding: 16px; }
+.storage-warning { max-width: 720px; margin: 16px auto 0; }
+.storage-mode { max-width: 720px; margin: 0 auto; padding: 0 16px 16px; font-size: 0.85rem; }
 h1 { font-size: 1.5rem; }
 h2 { font-size: 1.15rem; margin-top: 1.5rem; }
 h3 { font-size: 1rem; margin: 0 0 0.5rem; }

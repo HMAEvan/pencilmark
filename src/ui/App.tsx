@@ -2,6 +2,8 @@ import { useEffect, useState } from "preact/hooks";
 import { Home } from "./Home";
 import { Player } from "./Player";
 import { Review } from "./Review";
+import { storageMode, type StorageMode } from "./appStorage";
+import { t } from "../i18n/i18n";
 
 // Hash routes keep the single-file build working under /pencilmark/ on GitHub Pages.
 function currentRoute(): string[] {
@@ -20,8 +22,15 @@ export function App() {
     return () => removeEventListener("hashchange", onChange);
   }, []);
 
+  const [mode, setMode] = useState<StorageMode>();
+  useEffect(() => void storageMode.then(setMode), []);
+
   const [page, id] = route;
-  if (page === "session" && id) return <Player key={id} sessionId={id} />;
-  if (page === "review" && id) return <Review key={id} sessionId={id} />;
-  return <Home />;
+  return (
+    <>
+      {mode === "artifactUnavailable" && <p class="card bad storage-warning">{t("storage.artifactUnavailable")}</p>}
+      {page === "session" && id ? <Player key={id} sessionId={id} /> : page === "review" && id ? <Review key={id} sessionId={id} /> : <Home />}
+      {mode && <footer class="muted storage-mode">{t(mode === "artifact" ? "storage.artifact" : "storage.local")}</footer>}
+    </>
+  );
 }

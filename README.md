@@ -2,7 +2,7 @@
 
 A revision tool that records how each question was answered (hesitation, answer changes, eliminations, hints, confidence, marks), so that AI grading can focus its explanation on where the reasoning actually wavered, not just on what was wrong.
 
-PencilMark runs entirely in the browser and keeps its data on your device (IndexedDB). It is served from GitHub Pages at <https://hmaevan.github.io/pencilmark/>.
+PencilMark runs entirely in the browser. It is served from GitHub Pages at <https://hmaevan.github.io/pencilmark/>, where it keeps its data on your device (IndexedDB), and can also run as a claude.ai Artifact, keeping its data in the Artifact's database so it follows you to any device (see [Artifact mode](#artifact-mode)). The footer says which one a copy is using.
 
 > Work in progress. The interface is in Chinese for now; English follows.
 
@@ -30,7 +30,7 @@ PencilMark treats everything an AI writes, and every file it imports, as untrust
 - **AI-generated text is never trusted as HTML.** Question text is shown as plain text: the interface escapes it, and no code path inserts raw HTML. When Markdown and maths rendering arrive, the generated HTML is sanitised before it reaches the page.
 - **Imports are validated before anything is written.** A Question pack is parsed as JSON and validated against [its JSON Schema](schema/question-pack.schema.json), which rejects unknown fields, and then against the rules a schema cannot express (answers naming real Options, unique labels, the true/false convention). Errors are located by Question and field. A valid pack is shown as a preview first, and new Tracks and Topics are created only once you confirm them. The pack's own labels are never used as IDs: the tool assigns its own. Nothing is imported automatically, the sample Set included.
 - **The Raw log cannot be quietly rewritten.** Sealed chunks are never written again, and each carries a hash of itself and of the chunk before it, so corruption or tampering is reported when the Session is opened. This detects accidents and casual edits; it is not a signature.
-- **Your data and keys stay on your device.** There is no PencilMark server ([ADR-0006](docs/adr/0006-no-self-hosted-server.md)); data lives in your browser's IndexedDB. The current version uses no API keys: you copy text to and from AI chats yourself. When an API mode arrives, a key you enter will be stored only on your device and sent only to the AI provider it belongs to.
+- **Your data and keys stay yours.** There is no PencilMark server ([ADR-0006](docs/adr/0006-no-self-hosted-server.md)); data lives in your browser's IndexedDB, or, in Artifact mode, in your private part of the Artifact's database, which nobody else can read, the Artifact's owner included. The current version uses no API keys: you copy text to and from AI chats yourself. When an API mode arrives, a key you enter will be stored only on your device and sent only to the AI provider it belongs to.
 
 ## Development
 
@@ -43,6 +43,18 @@ npm test           # Vitest
 npm run typecheck
 npm run build      # single self-contained dist/index.html
 ```
+
+## Artifact mode
+
+The same build runs as a claude.ai Artifact. Inside claude.ai it stores everything in the Artifact's database, under your private path (`data/users/<your id>/pencilmark/…`), so a Session's Raw log, derivations and Attempts survive a reload and appear on any device where you open the Artifact. Opened anywhere else, it uses IndexedDB as before. If it is opened inside claude.ai but the database is unavailable (signed out, or the permission not granted), it says so at the top of the page and keeps the data in that browser only.
+
+To publish, or to release a new version:
+
+1. `npm run build`.
+2. Publish `dist/index.html` as an Artifact with the capabilities `{ "db": {}, "user": {} }`. From Claude Code: ask Claude to publish `dist/index.html` as an Artifact with those capabilities.
+3. On later releases, update the **same Artifact URL** (publish to it again) rather than creating a new Artifact: the database belongs to the Artifact, so a new Artifact starts empty.
+
+Each copy has its own data: the GitHub Pages copy and the Artifact do not share anything. Moving data between them needs Backup ([#13](https://github.com/HMAEvan/pencilmark/issues/13)), which does not exist yet.
 
 ## Licence
 
