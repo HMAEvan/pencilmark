@@ -5,6 +5,7 @@ export type Comparable = {
   stem: ContentBlock[];
   options: { id: string; content: ContentBlock[] }[];
   answer: string[];
+  hints?: ContentBlock[][];
 };
 
 /** Unifies full-width and half-width characters, collapses whitespace and line breaks, and trims. */
@@ -25,13 +26,14 @@ const blocksText = (blocks: ContentBlock[]) => normaliseText(joinBlocks(blocks))
 /**
  * Comparison keys for exact-duplicate detection. Options compare as a set, and Option placeholders
  * compare by the content they point at, since Option ids are local to each pack.
- * `text` covers what the Question asks; `full` adds which Options are correct.
+ * `text` covers what the Question asks; `full` adds which Options are correct; `hints` covers its Hints, in level order.
  */
-export function duplicateKeys(q: Comparable): { text: string; full: string } {
+export function duplicateKeys(q: Comparable): { text: string; full: string; hints: string } {
   const optionText = new Map(q.options.map((o) => [o.id, blocksText(o.content)]));
   const withPlaceholders = (text: string) => text.replace(OPTION_PLACEHOLDER, (match, id: string) => `{{opt:${optionText.get(id) ?? match}}}`);
   const options = [...optionText.values()].map(withPlaceholders).sort();
   const answer = q.answer.map((id) => withPlaceholders(optionText.get(id) ?? id)).sort();
   const text = JSON.stringify([q.type, withPlaceholders(blocksText(q.stem)), options]);
-  return { text, full: JSON.stringify([text, answer]) };
+  const hints = JSON.stringify((q.hints ?? []).map((hint) => withPlaceholders(blocksText(hint))));
+  return { text, full: JSON.stringify([text, answer]), hints };
 }

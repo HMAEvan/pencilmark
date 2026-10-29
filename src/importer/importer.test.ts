@@ -583,3 +583,57 @@ describe("Importer: Hints", () => {
     expect(parsed.ok).toBe(false);
   });
 });
+
+describe("Importer: Hints in duplicate detection", () => {
+  const atpHints = [[{ type: "text", text: "Think about energy." }], [{ type: "text", text: "Not {{opt:opt_1}}." }]];
+  const withHints = (hints: unknown) => withQuestions({ ...atpPack.questions[0]!, label: "atp-hints", hints });
+
+  it("shows a Question that adds Hints to an existing one as similar, with the added Hints marked, whatever the threshold", async () => {
+    const storage = createMemoryStorage();
+    const [existing] = await questionsInSet(storage, (await importPack(storage, atpPack)).setId);
+    await saveDisplayPreferences(storage, { similarityThreshold: 1 });
+
+    const shown = await preview(storage, withHints(atpHints));
+    const similar = shown.questions[0]!;
+    expect(similar).toMatchObject({ status: "similar", existingId: existing!.id, existingRevision: 1 });
+    expect(similar.comparison!.similarity).toBe(1);
+    expect(similar.comparison!.hints).toEqual([[{ kind: "added", text: "Think about energy." }], [{ kind: "added", text: "Not Ribosome." }]]);
+  });
+
+  it("shows removed and changed Hints as similar, paired by level", async () => {
+    const storage = createMemoryStorage();
+    await importPack(storage, withHints(atpHints));
+    const shown = await preview(storage, withHints([[{ type: "text", text: "Think about power." }]]));
+    expect(shown.questions.map((q) => q.status)).toEqual(["similar"]);
+    expect(shown.questions[0]!.comparison!.hints).toEqual([
+      [
+        { kind: "same", text: "Think about " },
+        { kind: "removed", text: "energy" },
+        { kind: "added", text: "power" },
+        { kind: "same", text: "." },
+      ],
+      [{ kind: "removed", text: "Not Ribosome." }],
+    ]);
+  });
+
+  it("still skips a Question identical in stem, Options and Hints, even with different spacing and width", async () => {
+    const storage = createMemoryStorage();
+    await importPack(storage, withHints(atpHints));
+    const respaced = [[{ type: "text", text: "  Think about\n energy． " }], [{ type: "text", text: "Not {{opt:opt_1}}." }]];
+    const shown = await preview(storage, withHints(respaced));
+    expect(shown.questions.map((q) => q.status)).toEqual(["skipped"]);
+  });
+
+  it("\"Update\" makes revision 2 with the Hints; a Session started before it still sees revision 1 without them", async () => {
+    const storage = createMemoryStorage();
+    const { setId } = await importPack(storage, atpPack);
+    const set = (await storage.get<QuestionSet>("sets", setId))!;
+    const session = await startSession(storage, set);
+    await importChoosing(storage, withHints(atpHints), "update");
+
+    const [sat] = await loadQuestions(storage, set, session);
+    expect(sat).toMatchObject({ revision: 1, hints: [] });
+    const later = await startSession(storage, { ...set, id: "s_other" });
+    expect((await loadQuestions(storage, set, later))[0]).toMatchObject({ revision: 2, hints: atpHints });
+  });
+});

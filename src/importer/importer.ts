@@ -165,19 +165,24 @@ function mostSimilar(q: PackQuestion, bank: Question[], threshold: number): { ex
 }
 
 export async function previewImport(pack: QuestionPack, storage: Storage): Promise<ImportPreview> {
-  type Known = { full: string; existingId?: string; sameAs?: string };
+  type Known = { full: string; hints?: string; existing?: Question; sameAs?: string };
   const known = new Map<string, Known>();
   const bank = await storage.query<Question>("questions");
   for (const q of bank) {
     const keys = duplicateKeys(q);
-    if (!known.has(keys.text)) known.set(keys.text, { full: keys.full, existingId: q.id });
+    if (!known.has(keys.text)) known.set(keys.text, { full: keys.full, hints: keys.hints, existing: q });
   }
   const { similarityThreshold } = (await loadPreferences(storage)).display;
 
   const questions = pack.questions.map((q): PreviewQuestion => {
     const keys = duplicateKeys(q);
     const match = known.get(keys.text);
-    if (match?.full === keys.full) return match.existingId ? { label: q.label, status: "skipped", existingId: match.existingId } : { label: q.label, status: "skipped", sameAs: match.sameAs };
+    const existing = match?.existing;
+    // Hints are shown while answering, so changing them makes a new revision (ADR-0004): similar, whatever the score.
+    if (match?.full === keys.full && existing && !existing.deprecated && match.hints !== keys.hints) {
+      return { label: q.label, status: "similar", existingId: existing.id, existingRevision: existing.revision, comparison: compareQuestions(existing, q, 0)! };
+    }
+    if (match?.full === keys.full) return existing ? { label: q.label, status: "skipped", existingId: existing.id } : { label: q.label, status: "skipped", sameAs: match.sameAs };
     if (match?.sameAs) return { label: q.label, status: "conflict", sameAs: match.sameAs };
     // Tier 2, after exact duplicates: an existing Question asking almost, or exactly, the same thing.
     const similar = mostSimilar(q, bank, similarityThreshold);

@@ -86,6 +86,12 @@ function SimilarQuestion({ shown, choice, onChoose }: { shown: PreviewQuestion; 
           );
         })}
       </ul>
+      {comparison.hints.map((parts, level) => (
+        <p key={level} class="stem">
+          <span class="muted">{t("hints.label", { n: level + 1 })}: </span>
+          <Diff parts={parts} />
+        </p>
+      ))}
       <div class="choices">
         {CHOICES.map(([value, label]) => (
           <label key={value}>
