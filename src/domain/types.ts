@@ -92,6 +92,8 @@ export type Session = Provenance & {
   endedAt?: number;
   questionOrder: string[];
   optionOrders: Record<string, string[]>;
+  /** The Question revision each Question was sat against (ADR-0004). Absent on Sessions from before revisions, all sat against revision 1. */
+  questionRevisions?: Record<string, number>;
   settings: SettingsSnapshot;
   currentDerivationId?: string;
 };

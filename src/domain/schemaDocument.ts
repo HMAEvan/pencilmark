@@ -43,7 +43,7 @@ const CONVENTIONS = [
   "rawLogChunks are sealed: never write, change or delete one. Everything about a Session is derived from them.",
   "derivations and attempts are computed by the tool from the Raw log. Every computation adds a new derivation; earlier ones are never overwritten. Read the one named by the Session's currentDerivationId.",
   "overrides hold the user's corrections to derived values. The final value is the Override where one exists, otherwise the derived value. An answering time overridden while answering also records answeringActiveMsAtOverride, the derived time at that moment: the final time is the overridden time plus however much the derived time exceeds it.",
-  "A Question with Attempts is never deleted, only deprecated. A change to what is shown while answering, or to how it is graded, is a new revision.",
+  "A Question with Attempts is never deleted, only deprecated. A change to what is shown while answering, or to how it is graded, is a new revision. questions holds each Question's latest revision; earlier ones are kept in questionRevisions under the ID <questionId>_r<revision>. A Session's questionRevisions names the revision each Question was sat against (revision 1 where absent).",
 ];
 
 export function schemaDocument(updatedAt: number): SchemaDocument {

@@ -1,14 +1,18 @@
 import Ajv, { type ErrorObject } from "ajv";
-import type { Batch, ContentBlock, Option, Question, QuestionSet } from "../domain/types";
+import type { Batch, ContentBlock, Option, Provenance, Question, QuestionSet } from "../domain/types";
 import { newId } from "../domain/ids";
+import { loadPreferences } from "../domain/settings";
+import { storeNextRevision } from "../domain/questionRevisions";
 import type { Storage } from "../storage/storage";
 import packSchema from "../../schema/question-pack.schema.json";
 import { duplicateKeys } from "./normalise";
+import { compareQuestions, type Comparison } from "./similarity";
 import { topicResolver } from "./topics";
 import { packWarnings, type PackWarning } from "./warnings";
 import { isTrueFalse } from "../questionTypes/singleAnswer";
 
 export type { PackWarning };
+export type { Comparison, DiffPart, OptionComparison } from "./similarity";
 export { topicPaths } from "./topics";
 
 // A Question pack carries pack-local labels only; real IDs are assigned on commit (ADR-0003).
@@ -123,13 +127,18 @@ export function packErrorsText(errors: PackError[]): string {
 
 const unique = <T>(values: T[]) => [...new Set(values)];
 
-export type ImportStatus = "new" | "skipped" | "conflict";
+export type ImportStatus = "new" | "skipped" | "similar" | "conflict";
 
 /**
  * One pack Question in the preview. A skipped Question is identical to `existingId` in the bank or to
- * the earlier pack Question `sameAs`; a conflict asks the same thing as `existingId` with a different answer.
+ * the earlier pack Question `sameAs`. A similar Question is at or above the similarity threshold to revision
+ * `existingRevision` of `existingId`, and waits for a SimilarChoice. A conflict asks the same thing as the
+ * earlier pack Question `sameAs` with a different answer, and is not imported.
  */
-export type PreviewQuestion = { label: string; status: ImportStatus; existingId?: string; sameAs?: string };
+export type PreviewQuestion = { label: string; status: ImportStatus; existingId?: string; existingRevision?: number; sameAs?: string; comparison?: Comparison };
+
+/** What to do with a similar Question: import nothing, make it the existing Question's next revision, or import it as a separate Question. */
+export type SimilarChoice = "skip" | "update" | "new";
 
 /** What an import would do. Building it writes nothing. */
 export type ImportPreview = {
@@ -142,23 +151,37 @@ export type ImportPreview = {
 
 const packPaths = (pack: QuestionPack) => [...(pack.batch.topic ? [pack.batch.topic] : []), ...pack.questions.flatMap((q) => q.topics ?? [])];
 
+/** The existing, not deprecated, Question most alike to `q` at or above `threshold`, comparing only the same type and Option count. */
+function mostSimilar(q: PackQuestion, bank: Question[], threshold: number): { existing: Question; comparison: Comparison } | undefined {
+  let best: { existing: Question; comparison: Comparison } | undefined;
+  for (const existing of bank) {
+    if (existing.deprecated || existing.type !== q.type || existing.options.length !== q.options.length) continue;
+    const comparison = compareQuestions(existing, q, threshold);
+    if (comparison && (!best || comparison.similarity > best.comparison.similarity)) best = { existing, comparison };
+  }
+  return best;
+}
+
 export async function previewImport(pack: QuestionPack, storage: Storage): Promise<ImportPreview> {
   type Known = { full: string; existingId?: string; sameAs?: string };
   const known = new Map<string, Known>();
-  for (const q of await storage.query<Question>("questions")) {
+  const bank = await storage.query<Question>("questions");
+  for (const q of bank) {
     const keys = duplicateKeys(q);
     if (!known.has(keys.text)) known.set(keys.text, { full: keys.full, existingId: q.id });
   }
+  const { similarityThreshold } = (await loadPreferences(storage)).display;
 
   const questions = pack.questions.map((q): PreviewQuestion => {
     const keys = duplicateKeys(q);
     const match = known.get(keys.text);
-    if (!match) {
-      known.set(keys.text, { full: keys.full, sameAs: q.label });
-      return { label: q.label, status: "new" };
-    }
-    const status = match.full === keys.full ? "skipped" : "conflict";
-    return match.existingId ? { label: q.label, status, existingId: match.existingId } : { label: q.label, status, sameAs: match.sameAs };
+    if (match?.full === keys.full) return match.existingId ? { label: q.label, status: "skipped", existingId: match.existingId } : { label: q.label, status: "skipped", sameAs: match.sameAs };
+    if (match?.sameAs) return { label: q.label, status: "conflict", sameAs: match.sameAs };
+    // Tier 2, after exact duplicates: an existing Question asking almost, or exactly, the same thing.
+    const similar = mostSimilar(q, bank, similarityThreshold);
+    if (similar) return { label: q.label, status: "similar", existingId: similar.existing.id, existingRevision: similar.existing.revision, comparison: similar.comparison };
+    known.set(keys.text, { full: keys.full, sameAs: q.label });
+    return { label: q.label, status: "new" };
   });
   const topics = await topicResolver(storage, { source: "ai", updatedAt: 0 }, new Date());
   packPaths(pack).forEach(topics.resolve);
@@ -168,12 +191,25 @@ export async function previewImport(pack: QuestionPack, storage: Storage): Promi
 export async function commitImport(
   preview: ImportPreview,
   storage: Storage,
-  options: { confirmedTopicPaths: string[] },
+  options: { confirmedTopicPaths: string[]; similarChoices?: Record<string, SimilarChoice> },
   now: Date = new Date(),
 ): Promise<{ setId: string }> {
   const { pack } = preview;
   const at = now.getTime();
   const provenance = { source: "ai" as const, model: pack.batch.model, updatedAt: at };
+
+  // Checked before anything is written: a choice for every similar Question, and each Question to update still as previewed.
+  const updating = new Map<string, Question>();
+  for (const shown of preview.questions.filter((q) => q.status === "similar")) {
+    const choice = options.similarChoices?.[shown.label];
+    if (!choice) throw new Error(`No choice was made for the similar Question "${shown.label}"`);
+    if (choice !== "update") continue;
+    const existing = await storage.get<Question>("questions", shown.existingId!);
+    if (existing?.revision !== shown.existingRevision || updating.has(shown.existingId!)) {
+      throw new Error(`The Question that "${shown.label}" would update has changed since the preview`);
+    }
+    updating.set(shown.existingId!, existing!);
+  }
 
   const topics = await topicResolver(storage, provenance, now);
   const resolved = new Map(packPaths(pack).map((path) => [path, topics.resolve(path)]));
@@ -196,40 +232,38 @@ export async function commitImport(
   };
   await storage.add("batches", batch);
 
-  // Skipped Questions join the Set as the Question they duplicate, unless it is deprecated (excluded from new Sets);
-  // conflicts wait for the Tier 2 choice (issue #11).
+  // Skipped Questions join the Set as the Question they duplicate, unless it is deprecated (excluded from new Sets).
+  // Conflicts, and similar Questions the user chose to skip, are left out.
   const idByLabel = new Map<string, string>();
   const questionIds: string[] = [];
   for (const [i, q] of pack.questions.entries()) {
     const shown = preview.questions[i]!;
-    if (shown.status === "conflict") continue;
+    const choice = shown.status === "similar" ? options.similarChoices![shown.label]! : undefined;
+    if (shown.status === "conflict" || choice === "skip") continue;
     if (shown.status === "skipped") {
       const id = shown.existingId ?? idByLabel.get(shown.sameAs!)!;
       const deprecated = shown.existingId !== undefined && (await storage.get<Question>("questions", id))?.deprecated;
       if (!deprecated && !questionIds.includes(id)) questionIds.push(id);
       continue;
     }
-    const question: Question = {
-      ...provenance,
-      id: newId("q", now),
-      revision: 1,
-      type: q.type,
-      typeVersion: 1,
-      stem: q.stem,
-      options: q.options.map((o) => ({ ...o, rationale: o.rationale ?? [] })),
-      optionOrder: q.optionOrder ?? (isTrueFalse(q) ? "fixed" : "shuffle"),
-      answer: q.answer,
-      explanation: q.explanation ?? [],
-      batchId: batch.id,
-      topicIds: unique((q.topics ?? []).flatMap((path) => resolved.get(path)?.topicId ?? [])),
-      trackIds: unique((q.topics ?? []).map((path) => resolved.get(path)!.trackId)),
-      tags: q.tags ?? [],
-      createdAt: at,
-      deprecated: false,
-    };
-    await storage.add("questions", question);
-    idByLabel.set(q.label, question.id);
-    questionIds.push(question.id);
+    const fromPack = questionFromPack(q, { ...provenance, batchId: batch.id, resolved, now });
+    if (choice === "update") {
+      const existing = updating.get(shown.existingId!)!;
+      const next: Question = {
+        ...fromPack,
+        id: existing.id,
+        revision: existing.revision + 1,
+        topicIds: unique([...existing.topicIds, ...fromPack.topicIds]),
+        trackIds: unique([...existing.trackIds, ...fromPack.trackIds]),
+        createdAt: existing.createdAt,
+      };
+      await storeNextRevision(storage, existing, next);
+      if (!questionIds.includes(next.id)) questionIds.push(next.id);
+      continue;
+    }
+    await storage.add("questions", fromPack);
+    idByLabel.set(q.label, fromPack.id);
+    questionIds.push(fromPack.id);
   }
 
   const set: QuestionSet = {
@@ -243,4 +277,29 @@ export async function commitImport(
   };
   await storage.add("sets", set);
   return { setId: set.id };
+}
+
+/** A pack Question as revision 1 of a new Question, with a real ID (ADR-0003) and its Topic paths resolved. */
+function questionFromPack(
+  q: PackQuestion,
+  { batchId, resolved, now, ...provenance }: Provenance & { batchId: string; resolved: Map<string, { trackId: string; topicId?: string }>; now: Date },
+): Question {
+  return {
+    ...provenance,
+    id: newId("q", now),
+    revision: 1,
+    type: q.type,
+    typeVersion: 1,
+    stem: q.stem,
+    options: q.options.map((o) => ({ ...o, rationale: o.rationale ?? [] })),
+    optionOrder: q.optionOrder ?? (isTrueFalse(q) ? "fixed" : "shuffle"),
+    answer: q.answer,
+    explanation: q.explanation ?? [],
+    batchId,
+    topicIds: unique((q.topics ?? []).flatMap((path) => resolved.get(path)?.topicId ?? [])),
+    trackIds: unique((q.topics ?? []).map((path) => resolved.get(path)!.trackId)),
+    tags: q.tags ?? [],
+    createdAt: provenance.updatedAt,
+    deprecated: false,
+  };
 }

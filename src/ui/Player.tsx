@@ -24,7 +24,7 @@ async function load(sessionId: string): Promise<(Loaded & { marked: Marked }) | 
   const session = await storage.get<Session>("sessions", sessionId);
   const set = session && (await storage.get<QuestionSet>("sets", session.setId));
   if (!session || !set) return undefined;
-  const questions = new Map((await loadQuestions(storage, set)).map((q) => [q.id, q]));
+  const questions = new Map((await loadQuestions(storage, set, session)).map((q) => [q.id, q]));
   // Opened first: it seals a buffer a killed page left behind, so those answers are read back too.
   const recorder = await openRecorder(storage, session.id);
   const attempts = await currentAttempts(storage, session, set);

@@ -1,6 +1,6 @@
 import type { ContentBlock } from "../domain/types";
 
-type Comparable = {
+export type Comparable = {
   type: string;
   stem: ContentBlock[];
   options: { id: string; content: ContentBlock[] }[];

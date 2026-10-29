@@ -1,6 +1,19 @@
 import { useRef, useState } from "preact/hooks";
-import { t } from "../i18n/i18n";
-import { commitImport, packErrorsText, parseQuestionPack, previewImport, topicPaths, type ImportPreview, type ImportStatus, type PackError } from "../importer/importer";
+import { t, type TranslationKey } from "../i18n/i18n";
+import {
+  commitImport,
+  packErrorsText,
+  parseQuestionPack,
+  previewImport,
+  topicPaths,
+  type DiffPart,
+  type ImportPreview,
+  type ImportStatus,
+  type OptionComparison,
+  type PackError,
+  type PreviewQuestion,
+  type SimilarChoice,
+} from "../importer/importer";
 import { questionWritingPrompt } from "../exports/skills";
 import samplePack from "../../samples/general-science.json?raw";
 import { storage } from "./appStorage";
@@ -29,16 +42,94 @@ function Errors({ errors }: { errors: PackError[] }) {
   );
 }
 
-function Preview({ preview, onConfirm, onCancel }: { preview: ImportPreview; onConfirm: () => void; onCancel: () => void }) {
+/** Matches in green; differences in red, struck through for the existing text and underlined for the incoming text. */
+function Diff({ parts }: { parts: DiffPart[] }) {
+  return (
+    <span class="diff">
+      {parts.map((part, i) =>
+        part.kind === "removed" ? <del key={i}>{part.text}</del> : part.kind === "added" ? <ins key={i}>{part.text}</ins> : <span key={i} class="same">{part.text}</span>,
+      )}
+    </span>
+  );
+}
+
+function correctness({ existing, incoming }: OptionComparison): string {
+  if (existing.correct !== incoming.correct) return t(incoming.correct ? "import.optionBecomesCorrect" : "import.optionBecomesWrong");
+  return incoming.correct ? t("import.optionCorrect") : "";
+}
+
+const CHOICES: [SimilarChoice, TranslationKey][] = [
+  ["skip", "import.choiceSkip"],
+  ["update", "import.choiceUpdate"],
+  ["new", "import.choiceNew"],
+];
+
+function SimilarQuestion({ shown, choice, onChoose }: { shown: PreviewQuestion; choice?: SimilarChoice; onChoose: (choice: SimilarChoice) => void }) {
+  const comparison = shown.comparison!;
+  return (
+    <fieldset class="similar">
+      <legend>{t("import.similarTitle", { label: shown.label, percent: Math.floor(comparison.similarity * 100), revision: shown.existingRevision! })}</legend>
+      <p class="stem">
+        <span class="muted">{t("import.stemLabel")}: </span>
+        <Diff parts={comparison.stem} />
+      </p>
+      <p class="muted">{t("import.optionsLabel")}:</p>
+      <ul>
+        {comparison.options.map((option) => {
+          const changed = option.existing.correct !== option.incoming.correct;
+          return (
+            <li key={option.existing.optionId}>
+              <Diff parts={option.parts} />
+              <span class={changed ? "bad" : "muted"}>{changed ? <strong>{correctness(option)}</strong> : correctness(option)}</span>
+            </li>
+          );
+        })}
+      </ul>
+      <div class="choices">
+        {CHOICES.map(([value, label]) => (
+          <label key={value}>
+            <input type="radio" name={`similar-${shown.label}`} checked={choice === value} onChange={() => onChoose(value)} /> {t(label)}
+          </label>
+        ))}
+      </div>
+    </fieldset>
+  );
+}
+
+function Preview({
+  preview,
+  choices,
+  onChoose,
+  onConfirm,
+  onCancel,
+}: {
+  preview: ImportPreview;
+  choices: Record<string, SimilarChoice>;
+  onChoose: (label: string, choice: SimilarChoice) => void;
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
   const withStatus = (status: ImportStatus) => preview.questions.filter((q) => q.status === status);
   const count = (status: ImportStatus) => withStatus(status).length;
   const labels = (status: ImportStatus) => withStatus(status).map((q) => q.label).join(t("import.listSeparator"));
+  const unchosen = withStatus("similar").some((q) => !choices[q.label]);
   return (
     <div class="confirm" role="alertdialog" aria-label={t("import.previewHeading")}>
       <h3>{t("import.previewHeading")}</h3>
-      <p>{t("import.previewCounts", { title: preview.pack.batch.title, new: count("new"), skipped: count("skipped"), conflict: count("conflict") })}</p>
+      <p>
+        {t("import.previewCounts", { title: preview.pack.batch.title, new: count("new"), skipped: count("skipped"), similar: count("similar"), conflict: count("conflict") })}
+      </p>
       {count("skipped") > 0 && <p class="muted">{t("import.skippedList", { labels: labels("skipped") })}</p>}
       {count("conflict") > 0 && <p class="muted">{t("import.conflictList", { labels: labels("conflict") })}</p>}
+      {count("similar") > 0 && (
+        <div>
+          <p>{t("import.similarHeading")}</p>
+          <p class="muted">{t("import.diffLegend")}</p>
+          {withStatus("similar").map((q) => (
+            <SimilarQuestion key={q.label} shown={q} choice={choices[q.label]} onChoose={(choice) => onChoose(q.label, choice)} />
+          ))}
+        </div>
+      )}
       {preview.warnings.length > 0 && (
         <div class="warnings">
           <p>{t("import.warningsHeading")}</p>
@@ -59,8 +150,9 @@ function Preview({ preview, onConfirm, onCancel }: { preview: ImportPreview; onC
           </ul>
         </div>
       )}
+      {unchosen && <p class="muted">{t("import.chooseAll")}</p>}
       <div class="actions">
-        <button type="button" onClick={onConfirm}>
+        <button type="button" disabled={unchosen} onClick={onConfirm}>
           {preview.newTopicPaths.length ? t("import.confirmWithTopics") : t("import.confirm")}
         </button>
         <button type="button" class="secondary" onClick={onCancel}>
@@ -75,7 +167,13 @@ function Preview({ preview, onConfirm, onCancel }: { preview: ImportPreview; onC
 export function ImportForm({ onImported, offerSample }: { onImported: () => void; offerSample: boolean }) {
   const [text, setText] = useState("");
   const [errors, setErrors] = useState<PackError[]>([]);
-  const [preview, setPreview] = useState<ImportPreview>();
+  const [preview, setPreviewState] = useState<ImportPreview>();
+  const [choices, setChoices] = useState<Record<string, SimilarChoice>>({});
+  // A new preview starts with no choices made.
+  const setPreview = (next: ImportPreview | undefined) => {
+    setPreviewState(next);
+    setChoices({});
+  };
   const [imported, setImported] = useState<string>();
   // A ref, not state: two clicks can land before a re-render and would import twice.
   const committing = useRef(false);
@@ -98,7 +196,7 @@ export function ImportForm({ onImported, offerSample }: { onImported: () => void
     committing.current = true;
     try {
       // The preview listed these paths, so confirming it confirms them.
-      await commitImport(preview, storage, { confirmedTopicPaths: preview.newTopicPaths });
+      await commitImport(preview, storage, { confirmedTopicPaths: preview.newTopicPaths, similarChoices: choices });
       setText("");
       setPreview(undefined);
       setImported(preview.pack.batch.title);
@@ -151,7 +249,15 @@ export function ImportForm({ onImported, offerSample }: { onImported: () => void
       </div>
       {imported && <p class="ok">{t("import.success", { title: imported })}</p>}
       {errors.length > 0 && <Errors errors={errors} />}
-      {preview && <Preview preview={preview} onConfirm={confirm} onCancel={() => setPreview(undefined)} />}
+      {preview && (
+        <Preview
+          preview={preview}
+          choices={choices}
+          onChoose={(label, choice) => setChoices((current) => ({ ...current, [label]: choice }))}
+          onConfirm={confirm}
+          onCancel={() => setPreview(undefined)}
+        />
+      )}
     </form>
   );
 }

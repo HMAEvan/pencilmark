@@ -67,6 +67,14 @@ details { margin-top: 8px; }
 .rationale summary { color: var(--muted); font-size: 0.9rem; cursor: pointer; }
 .explanation h4 { margin: 12px 0 0; font-size: 0.95rem; }
 .confirm { border-color: var(--accent); }
+.similar { border: 1px solid var(--border); border-radius: 8px; padding: 8px 12px; margin: 12px 0; }
+.similar legend { font-weight: 600; padding: 0 4px; }
+.similar ul { margin: 4px 0; padding-left: 1.2em; }
+.diff .same { color: var(--ok); }
+.diff del { color: var(--bad); text-decoration: line-through; }
+.diff ins { color: var(--bad); text-decoration: underline; }
+.choices { display: flex; flex-direction: column; gap: 4px; margin-top: 8px; }
+.choices label { display: flex; gap: 6px; align-items: baseline; }
 .override summary { color: var(--muted); font-size: 0.9rem; cursor: pointer; }
 .override input { width: 6em; font: inherit; padding: 4px 8px; background: var(--bg); color: var(--fg); border: 1px solid var(--border); border-radius: 6px; }
 .idle-mark { cursor: help; }

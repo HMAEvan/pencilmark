@@ -1,6 +1,9 @@
 import "fake-indexeddb/auto";
 import { describe, expect, it } from "vitest";
-import { commitImport, packErrorsText, parseQuestionPack, previewImport, topicPaths, type ImportPreview, type QuestionPack } from "./importer";
+import { commitImport, packErrorsText, parseQuestionPack, previewImport, topicPaths, type ImportPreview, type QuestionPack, type SimilarChoice } from "./importer";
+import { loadQuestionRevision } from "../domain/questionRevisions";
+import { saveDisplayPreferences } from "../domain/settings";
+import { loadQuestions, startSession } from "../session/sessions";
 import { isTrueFalse } from "../questionTypes/singleAnswer";
 import { createMemoryStorage } from "../storage/memoryStorage";
 import { createIndexedDbStorage } from "../storage/indexedDbStorage";
@@ -105,12 +108,24 @@ describe.each(adapters)("Importer with the %s Storage adapter", (_name, makeStor
     expect(await entries(second.setId)).toEqual(await entries(first.setId));
   });
 
-  it("does not skip a Question whose text matches but whose answer differs; it is a conflict", async () => {
+  it("does not skip a Question whose text matches an existing one but whose answer differs; it is shown for comparison", async () => {
     const storage = makeStorage();
     await importPack(storage, threePack);
     const changed = { ...threePack, questions: [{ ...threePack.questions[0]!, answer: ["opt_1"] }] };
     const shown = await preview(storage, changed);
-    expect(shown.questions.map((q) => q.status)).toEqual(["conflict"]);
+    expect(shown.questions.map((q) => q.status)).toEqual(["similar"]);
+    const options = shown.questions[0]!.comparison!.options;
+    expect(options.map((o) => [o.existing.correct, o.incoming.correct])).toEqual([
+      [true, false],
+      [false, true],
+      [false, false],
+    ]);
+  });
+
+  it("does not import the second of two pack Questions that ask the same thing with different answers; it is a conflict", async () => {
+    const storage = makeStorage();
+    const shown = await preview(storage, { ...threePack, questions: [threePack.questions[0]!, { ...threePack.questions[0]!, label: "q1b", answer: ["opt_1"] }] });
+    expect(shown.questions.map((q) => q.status)).toEqual(["new", "conflict"]);
   });
 
   it("lists unknown Topic paths for confirmation and writes nothing if they are not confirmed", async () => {
@@ -326,6 +341,169 @@ describe("Importer: question types", () => {
     expect(parse(trueFalse({ options: ["True", "False", "Unknown"].map((text, i) => ({ id: `opt_${i}`, content: [{ type: "text", text }] })) }))).toEqual(fail("options"));
     expect(parse(trueFalse({ optionOrder: "shuffle" }))).toEqual(fail("optionOrder"));
     expect(parse(trueFalse({ type: "multiple_answer" }))).toEqual(fail("type"));
+  });
+});
+
+const organelles = ["Mitochondrion", "Ribosome", "Golgi body", "Lysosome"];
+const atpPack = {
+  ...threePack,
+  batch: { title: "Organelles", model: "claude-opus-5-5" },
+  questions: [question("atp", "Which organelle produces most of the ATP in a typical animal cell?", organelles, { topics: ["BIOL101 / Cells"] })],
+};
+const withQuestions = (...questions: unknown[]) => ({ ...atpPack, batch: { title: "Organelles again", model: "claude-opus-5-5" }, questions });
+const plantCell = question("plant", "Which organelle produces most of the ATP in a typical plant cell?", organelles, { topics: ["BIOL101 / Cells / Plants"] });
+
+const questionsInSet = async (storage: Storage, setId: string) => {
+  const set = await storage.get<QuestionSet>("sets", setId);
+  return Promise.all(set!.entries.map(async (e) => (await storage.get<Question>("questions", e.questionId))!));
+};
+
+/** Imports `pack`, answering every similar Question with `choice`. */
+async function importChoosing(storage: Storage, pack: unknown, choice: SimilarChoice) {
+  const shown = await preview(storage, pack);
+  const similarChoices = Object.fromEntries(shown.questions.filter((q) => q.status === "similar").map((q) => [q.label, choice]));
+  return { shown, ...(await commitImport(shown, storage, { confirmedTopicPaths: shown.newTopicPaths, similarChoices })) };
+}
+
+describe("Importer: similar Questions", () => {
+  it("shows a Question differing by one word for comparison, with that word marked as old and new", async () => {
+    const storage = createMemoryStorage();
+    const [existing] = await questionsInSet(storage, (await importPack(storage, atpPack)).setId);
+
+    const shown = await preview(storage, withQuestions(plantCell));
+    const similar = shown.questions[0]!;
+    expect(similar).toMatchObject({ label: "plant", status: "similar", existingId: existing!.id, existingRevision: 1 });
+    expect(similar.comparison!.similarity).toBeGreaterThanOrEqual(0.9);
+    expect(similar.comparison!.similarity).toBeLessThan(1);
+    expect(similar.comparison!.stem).toEqual([
+      { kind: "same", text: "Which organelle produces most of the ATP in a typical " },
+      { kind: "removed", text: "animal " },
+      { kind: "added", text: "plant " },
+      { kind: "same", text: "cell?" },
+    ]);
+    expect(similar.comparison!.options.map((o) => o.parts)).toEqual(organelles.map((text) => [{ kind: "same", text }]));
+  });
+
+  it("pairs Options by their text whatever order they come in, and marks a changed Option", async () => {
+    const storage = createMemoryStorage();
+    await importPack(storage, atpPack);
+    const reordered = question("atp2", "Which organelle produces most of the ATP in a typical animal cell?", ["Lysosome", "Golgi apparatus", "Ribosome", "Mitochondrion"], { answer: ["opt_3"] });
+
+    const shown = await preview(storage, withQuestions(reordered));
+    const options = shown.questions[0]!.comparison!.options;
+    expect(options.map((o) => [o.existing.optionId, o.incoming.optionId])).toEqual([
+      ["opt_0", "opt_3"],
+      ["opt_1", "opt_2"],
+      ["opt_2", "opt_1"],
+      ["opt_3", "opt_0"],
+    ]);
+    expect(options[2]!.parts).toEqual([
+      { kind: "same", text: "Golgi " },
+      { kind: "removed", text: "body" },
+      { kind: "added", text: "apparatus" },
+    ]);
+    expect(options.every((o) => o.existing.correct === o.incoming.correct)).toBe(true);
+  });
+
+  it("imports a Question below the threshold as new, without asking", async () => {
+    const storage = createMemoryStorage();
+    await importPack(storage, atpPack);
+    const lysosome = question("digest", "Which organelle digests worn-out parts of the cell?", organelles, { answer: ["opt_3"] });
+    const shown = await preview(storage, withQuestions(lysosome));
+    expect(shown.questions.map((q) => q.status)).toEqual(["new"]);
+  });
+
+  it("takes the threshold from the similarityThreshold preference", async () => {
+    const storage = createMemoryStorage();
+    await importPack(storage, atpPack);
+    await saveDisplayPreferences(storage, { similarityThreshold: 0.99 });
+    const shown = await preview(storage, withQuestions(plantCell));
+    expect(shown.questions.map((q) => q.status)).toEqual(["new"]);
+  });
+
+  it("never compares Questions of a different type or Option count", async () => {
+    const storage = createMemoryStorage();
+    await importPack(storage, atpPack);
+    const multiple = { ...plantCell, label: "multiple", type: "multiple_answer" };
+    const fewer = question("fewer", "Which organelle produces most of the ATP in a typical plant cell?", organelles.slice(0, 3));
+    const shown = await preview(storage, withQuestions(multiple, fewer));
+    expect(shown.questions.map((q) => q.status)).toEqual(["new", "new"]);
+  });
+
+  it("does not compare with a deprecated Question", async () => {
+    const storage = createMemoryStorage();
+    const [existing] = await questionsInSet(storage, (await importPack(storage, atpPack)).setId);
+    await storage.set("questions", { ...existing!, deprecated: true });
+    const shown = await preview(storage, withQuestions(plantCell));
+    expect(shown.questions.map((q) => q.status)).toEqual(["new"]);
+  });
+
+  it("refuses to commit until every similar Question has a choice, and writes nothing", async () => {
+    const storage = createMemoryStorage();
+    await importPack(storage, atpPack);
+    const before = await everything(storage);
+    const shown = await preview(storage, withQuestions(plantCell));
+    await expect(commitImport(shown, storage, { confirmedTopicPaths: shown.newTopicPaths })).rejects.toThrow(/plant/);
+    expect(await everything(storage)).toEqual(before);
+  });
+
+  it("\"Skip\" writes no Question and leaves it out of the Set", async () => {
+    const storage = createMemoryStorage();
+    await importPack(storage, atpPack);
+    const before = await storage.query<Question>("questions");
+    const { setId } = await importChoosing(storage, withQuestions(plantCell), "skip");
+    expect(await storage.query("questions")).toEqual(before);
+    expect(await storage.query("questionRevisions")).toEqual([]);
+    expect(await questionsInSet(storage, setId)).toEqual([]);
+  });
+
+  it("\"Create as new\" adds a separate Question and leaves the existing one as it was", async () => {
+    const storage = createMemoryStorage();
+    const [existing] = await questionsInSet(storage, (await importPack(storage, atpPack)).setId);
+    const { setId } = await importChoosing(storage, withQuestions(plantCell), "new");
+
+    const [created] = await questionsInSet(storage, setId);
+    expect(created!.id).not.toBe(existing!.id);
+    expect(created!.revision).toBe(1);
+    expect(await storage.get("questions", existing!.id)).toEqual(existing);
+    expect(await storage.query("questions")).toHaveLength(2);
+  });
+
+  it("\"Update\" makes the pack Question revision 2 of the existing one, keeping revision 1", async () => {
+    const storage = createMemoryStorage();
+    const [existing] = await questionsInSet(storage, (await importPack(storage, atpPack, new Date("2026-10-01T09:00:00Z"))).setId);
+    const shown = await preview(storage, withQuestions(plantCell));
+    const { setId } = await commitImport(shown, storage, { confirmedTopicPaths: shown.newTopicPaths, similarChoices: { plant: "update" } }, new Date("2026-10-29T09:00:00Z"));
+
+    const [updated] = await questionsInSet(storage, setId);
+    expect(updated).toMatchObject({ id: existing!.id, revision: 2, createdAt: existing!.createdAt, updatedAt: Date.parse("2026-10-29T09:00:00Z") });
+    expect(updated!.stem).toEqual(plantCell.stem);
+    expect(updated!.topicIds).toHaveLength(2);
+    expect(updated!.topicIds).toContain(existing!.topicIds[0]);
+    expect(await storage.query("questions")).toHaveLength(1);
+    expect(await loadQuestionRevision(storage, existing!.id, 1)).toEqual(existing);
+    expect(await loadQuestionRevision(storage, existing!.id, 2)).toEqual(updated);
+  });
+
+  it("refuses an update when the existing Question changed after the preview", async () => {
+    const storage = createMemoryStorage();
+    await importPack(storage, atpPack);
+    const stale = await preview(storage, withQuestions(plantCell));
+    await importChoosing(storage, withQuestions(plantCell), "update");
+    await expect(commitImport(stale, storage, { confirmedTopicPaths: stale.newTopicPaths, similarChoices: { plant: "update" } })).rejects.toThrow(/plant/);
+  });
+
+  it("keeps a Session started before an update on revision 1", async () => {
+    const storage = createMemoryStorage();
+    const { setId } = await importPack(storage, atpPack);
+    const set = (await storage.get<QuestionSet>("sets", setId))!;
+    const session = await startSession(storage, set);
+    await importChoosing(storage, withQuestions(plantCell), "update");
+
+    const [sat] = await loadQuestions(storage, set, session);
+    expect(sat).toMatchObject({ revision: 1, stem: atpPack.questions[0]!.stem });
+    const later = await startSession(storage, { ...set, id: "s_other" });
+    expect((await loadQuestions(storage, set, later))[0]).toMatchObject({ revision: 2, stem: plantCell.stem });
   });
 });
 

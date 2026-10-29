@@ -1,5 +1,6 @@
 import type { Question, QuestionSet, Session } from "../domain/types";
 import { newId } from "../domain/ids";
+import { loadQuestionRevision } from "../domain/questionRevisions";
 import type { Storage } from "../storage/storage";
 import { readRawLog, recoverRawLog, type RawEventBody, type Recorder } from "../recorder/recorder";
 import { DEFAULT_PREFERENCES, loadPreferences, settingsSnapshot } from "../domain/settings";
@@ -39,8 +40,13 @@ export async function setOverride(storage: Storage, sessionId: string, questionI
   return merged;
 }
 
-export async function loadQuestions(storage: Storage, set: QuestionSet): Promise<Question[]> {
-  const questions = await Promise.all(set.entries.map((e) => storage.get<Question>("questions", e.questionId)));
+/** The Set's Questions: for a Session, the revisions it was sat against (ADR-0004); otherwise the latest revisions. */
+export async function loadQuestions(storage: Storage, set: QuestionSet, session?: Session): Promise<Question[]> {
+  const questions = await Promise.all(
+    set.entries.map((e) =>
+      session ? loadQuestionRevision(storage, e.questionId, session.questionRevisions?.[e.questionId] ?? 1) : storage.get<Question>("questions", e.questionId),
+    ),
+  );
   return questions.filter((q): q is Question => q !== undefined);
 }
 
@@ -69,6 +75,7 @@ export async function startSession(storage: Storage, set: QuestionSet): Promise<
     status: "in_progress",
     startedAt: now.getTime(),
     ...displayOrders(questions, settings.rules),
+    questionRevisions: Object.fromEntries(questions.map((q) => [q.id, q.revision])),
     settings,
     source: "user",
     updatedAt: now.getTime(),
@@ -89,7 +96,7 @@ async function derivationInput(storage: Storage, session: Session, set: Question
   return {
     title: set.title,
     rawLog: await readRawLog(storage, session.id),
-    questions: await loadQuestions(storage, set),
+    questions: await loadQuestions(storage, set, session),
     questionOrder: session.questionOrder,
     optionOrders: session.optionOrders,
     // Sessions from before settings snapshots were kept all ran with the defaults: there was no settings screen.
@@ -147,7 +154,7 @@ export async function loadDerivedSession(storage: Storage, sessionId: string): P
   const session = (await storage.get<Session>("sessions", sessionId))!;
   const attempts = await storage.query<Attempt>("attempts", { derivationId: derivation.id });
   attempts.sort((a, b) => a.displayedNumber - b.displayedNumber);
-  return { session, set, derivation, attempts, questions: await loadQuestions(storage, set), overrides: await loadOverrides(storage, sessionId) };
+  return { session, set, derivation, attempts, questions: await loadQuestions(storage, set, session), overrides: await loadOverrides(storage, sessionId) };
 }
 
 export async function submitSession(storage: Storage, session: Session, set: QuestionSet, recorder: Recorder): Promise<void> {
