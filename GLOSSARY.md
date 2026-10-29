@@ -104,6 +104,10 @@ _Avoid_: Option flag, strike-through
 Free text the user attaches to an Attempt.
 _Avoid_: Comment
 
+**Appeal** (申诉):
+The user's "I think the answer is wrong" on a Question, with a required reason. Adds the bad-question Flag and keeps the reason, with its Phase and time. In code: `appeal` event, `Appeal`, `AppealForm`.
+_Avoid_: Complaint, dispute, report
+
 **Raw log** (原始记录):
 The untouched, time-ordered record of everything the user did during a Session. Never edited; everything else about the Session is derived from it.
 _Avoid_: Event history, trace
@@ -192,10 +196,4 @@ _Status_: provisional, not yet agreed
 
 **Flag type** (标记类型):
 One kind of Flag as the Schema document lists it: id, English name, colour, and level (`question` for Flags, `item` for Item flags). A retired Flag type is marked deprecated, never removed. In code: `FlagType`, `FLAG_TYPE`, `ITEM_FLAG_TYPE`, `FLAG_TYPES`.
-_Status_: provisional, not yet agreed
-
-Working name introduced while building issue #12, not yet agreed with /domain-modeling.
-
-**Appeal** (申诉):
-The user's "I think the answer is wrong" on a Question, with a required reason. Adds the bad-question Flag and keeps the reason, with its Phase and time. In code: `appeal` event, `Appeal`, `AppealForm`.
 _Status_: provisional, not yet agreed
