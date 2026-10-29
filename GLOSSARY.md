@@ -157,7 +157,7 @@ A file carrying Questions, with answers, Hints, Explanations, Rationales and Mis
 _Avoid_: Question bank, quiz file
 
 **Similar Question** (相似题目):
-A Question in a Question pack that is not an exact duplicate but is at or above the similarity threshold to an existing Question of the same Question type and Option count. Shown side by side with it before import; the user skips it (the existing Question joins the new Set instead), makes it the existing Question's next Question revision, or creates it as new. In code: status `"similar"`, `SimilarChoice`.
+A Question in a Question pack that is not an exact duplicate but is at or above the similarity threshold to an existing Question of the same Question type and Option count, or that matches an existing Question in everything but its Hints, whatever its similarity. Shown side by side with it before import; the user skips it (the existing Question joins the new Set instead), makes it the existing Question's next Question revision, or creates it as new. In code: status `"similar"`, `SimilarChoice`.
 _Avoid_: Near-duplicate
 
 **Answer pack** (答卷包):

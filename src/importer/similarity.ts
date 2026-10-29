@@ -16,6 +16,8 @@ export type Comparison = {
   stem: DiffPart[];
   /** In the existing Question's Option order. */
   options: OptionComparison[];
+  /** One per Hint level in either Question, paired by level. Hints never count towards `similarity`. */
+  hints: DiffPart[][];
 };
 
 /** A word, a Han character or a punctuation mark: `key` is compared, `text` (with the spacing after it) is shown. */
@@ -29,7 +31,7 @@ function tokens(text: string): Token[] {
 function questionTokens(q: Comparable) {
   const optionText = new Map(q.options.map((o) => [o.id, normaliseText(joinBlocks(o.content))]));
   const text = (raw: string) => tokens(normaliseText(raw).replace(OPTION_PLACEHOLDER, (match, id: string) => optionText.get(id) ?? match));
-  return { stem: text(joinBlocks(q.stem)), options: q.options.map((o) => text(joinBlocks(o.content))) };
+  return { stem: text(joinBlocks(q.stem)), options: q.options.map((o) => text(joinBlocks(o.content))), hints: (q.hints ?? []).map((h) => text(joinBlocks(h))) };
 }
 
 /** Tokens in common, an upper bound on the longest common subsequence that is cheap to compute. */
@@ -129,5 +131,6 @@ export function compareQuestions(existing: Comparable, incoming: Comparable, thr
     similarity,
     stem: stem.parts,
     options: options.map(({ i, j, parts }) => ({ existing: compared(existing, i), incoming: compared(incoming, j), parts })),
+    hints: Array.from({ length: Math.max(a.hints.length, b.hints.length) }, (_, level) => diff(a.hints[level] ?? [], b.hints[level] ?? []).parts),
   };
 }
