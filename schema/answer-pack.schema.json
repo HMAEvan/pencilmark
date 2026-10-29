@@ -94,7 +94,8 @@
           }
         },
         "answer": { "$ref": "#/definitions/ids" },
-        "explanation": { "$ref": "#/definitions/blocks" }
+        "explanation": { "$ref": "#/definitions/blocks" },
+        "hints": { "type": "array", "items": { "$ref": "#/definitions/blocks" }, "description": "Graded Hints, lightest first. Absent on Questions imported before Hints." }
       }
     },
     "derivation": {

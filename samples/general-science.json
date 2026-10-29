@@ -29,6 +29,10 @@
       ],
       "answer": ["opt_n2"],
       "explanation": [{ "type": "text", "text": "Dry air is roughly 78% nitrogen, 21% oxygen and 0.9% argon, with carbon dioxide and other gases making up the rest." }],
+      "hints": [
+        [{ "type": "text", "text": "Oxygen is the gas we breathe, but it is not the most common one." }],
+        [{ "type": "text", "text": "The answer makes up about four fifths of the air." }]
+      ],
       "topics": ["General Science / Earth Science"]
     },
     {
@@ -43,6 +47,10 @@
       ],
       "answer": ["opt_20"],
       "explanation": [{ "type": "text", "text": "In free fall the speed grows by about 9.8 m/s every second, so after 2 seconds it is about 20 m/s. {{opt:opt_40}} confuses speed with the distance formula." }],
+      "hints": [
+        [{ "type": "text", "text": "Gravity adds about 10 m/s of speed every second." }],
+        [{ "type": "text", "text": "Speed after a time is acceleration times time: $10 \\times 2$." }]
+      ],
       "topics": ["General Science / Physics / Motion"]
     },
     {

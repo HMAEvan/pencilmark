@@ -276,7 +276,7 @@ export function Player({ sessionId }: { sessionId: string }) {
         {drawerOpen && (
           <div class="drawer-body">
             <FlagButtons flags={flags[questionId] ?? []} onToggle={toggleFlag} />
-            <AppealForm key={questionId} appeals={appeals[questionId] ?? []} onSubmit={appeal} />
+            <AppealForm key={`appeal-${questionId}`} appeals={appeals[questionId] ?? []} onSubmit={appeal} />
             <NoteField key={questionId} note={notes[questionId] ?? ""} onSave={saveNote} />
             <details class="override">
               <summary>{t("player.overrideTime")}</summary>
