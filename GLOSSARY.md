@@ -136,6 +136,10 @@ _Avoid_: Review, grading, comments
 A file carrying Questions, with answers, Hints, Explanations, Rationales and Misconceptions, and their Topic paths. Carries no answering data.
 _Avoid_: Question bank, quiz file
 
+**Similar Question** (相似题目):
+A Question in a Question pack that is not an exact duplicate but is at or above the similarity threshold to an existing Question of the same Question type and Option count. Shown side by side with it before import; the user skips it (the existing Question joins the new Set instead), makes it the existing Question's next Question revision, or creates it as new. In code: status `"similar"`, `SimilarChoice`.
+_Avoid_: Near-duplicate
+
 **Answer pack** (答卷包):
 A file carrying one Session for grading or re-import.
 _Avoid_: Results file
@@ -188,10 +192,4 @@ _Status_: provisional, not yet agreed
 
 **Flag type** (标记类型):
 One kind of Flag as the Schema document lists it: id, English name, colour, and level (`question` for Flags; Item flags will use `item`). A retired Flag type is marked deprecated, never removed. In code: `FlagType`, `FLAG_TYPE`, `FLAG_TYPES`.
-_Status_: provisional, not yet agreed
-
-Working name introduced while building issue #11, not yet agreed with /domain-modeling.
-
-**Similar Question** (相似题目):
-A Question in a Question pack that is not an exact duplicate but is at or above the similarity threshold to an existing Question of the same Question type and Option count. Shown side by side with it before import; the user skips it, makes it the existing Question's next Question revision, or creates it as new. In code: status `"similar"`, `SimilarChoice`.
 _Status_: provisional, not yet agreed
