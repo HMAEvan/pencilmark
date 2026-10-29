@@ -1,4 +1,4 @@
-import type { RawLogChunk } from "../recorder/recorder";
+import type { RecordedChunk } from "../recorder/recorder";
 import type { Rules } from "../domain/settings";
 
 // Time, answers and trajectories per Question, walked from the Raw log. Monotonic `at` is only compared within its own chunk,
@@ -68,7 +68,7 @@ export type SelectOption = (questionId: string, answer: string[], optionId: stri
 
 type Phase = "answering" | "reviewing";
 
-export function walkRawLog(rawLog: RawLogChunk[], rules: Rules, select: SelectOption): RawLogWalk {
+export function walkRawLog(rawLog: RecordedChunk[], rules: Rules, select: SelectOption): RawLogWalk {
   const questions = new Map<string, QuestionTiming>();
   const totals: SessionTotals = {
     answeringRawMs: 0,
@@ -181,7 +181,7 @@ export function walkRawLog(rawLog: RawLogChunk[], rules: Rules, select: SelectOp
   return { questions, answers, trajectories, totals, chunkGaps: chunkGaps(rawLog) };
 }
 
-function chunkGaps(rawLog: RawLogChunk[]): ChunkGap[] {
+function chunkGaps(rawLog: RecordedChunk[]): ChunkGap[] {
   return rawLog.slice(1).map((chunk, i) => {
     const prev = rawLog[i]!;
     const wallMs = chunk.startedAt - (prev.startedAt + prev.activeMs);

@@ -1,5 +1,5 @@
 import type { Question } from "../domain/types";
-import type { RawLogChunk } from "../recorder/recorder";
+import type { RawLogChunk, RecordedChunk } from "../recorder/recorder";
 import { questionTypeOf } from "../questionTypes/questionType";
 import { writeDigest } from "./digest";
 import type { OverrideValues } from "./overrides";
@@ -7,7 +7,7 @@ import { emptyTiming, emptyTrajectory, walkRawLog, type ChunkGap, type QuestionT
 import type { Rules } from "../domain/settings";
 import { emptyMarks, walkMarks, type QuestionMarks, type RemovedFlags } from "./marks";
 
-export { finalValues, type FinalValues, type OverrideValues } from "./overrides";
+export { finalAnsweringActiveMs, finalValues, type FinalValues, type OverriddenValue, type OverrideValues } from "./overrides";
 
 // ADR-0002: a pure function from the Raw log to derived data. No DOM, no storage.
 
@@ -96,6 +96,16 @@ export function derive(input: DerivationInput): DerivationResult {
     removedFlags,
     digest: writeDigest(input.title, attempts, byId, input.rules.collectConfidence, removedFlags),
   };
+}
+
+/**
+ * Each Question's answering time so far, from the Raw log as recorded up to now, the open chunk included: the times the
+ * Player shows. The same timing rules as `derive`, so a time shown while answering is the time derived once sealed.
+ */
+export function answeringTimesSoFar(rawLog: RecordedChunk[], rules: Rules): Map<string, number> {
+  // Answers play no part in time, so Options are not looked up.
+  const walk = walkRawLog(rawLog, rules, (_questionId, answer) => answer);
+  return new Map([...walk.questions].map(([questionId, timing]) => [questionId, timing.answeringActiveMs]));
 }
 
 /** The Digest to copy: the derived one, with any Overrides set since in place of the derived time or result. */

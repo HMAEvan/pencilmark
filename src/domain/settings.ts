@@ -36,7 +36,7 @@ export const DEFAULT_PREFERENCES: Preferences = {
   rules: { idleThresholdMs: 60_000, flickThresholdMs: 500, shuffleQuestions: true, shuffleOptions: true, collectConfidence: true },
   display: {
     sessionTimer: "shown",
-    questionTimer: "hidden",
+    questionTimer: "shown",
     timePrecision: "seconds",
     multipleAnswerScore: "partial",
     language: "zh",

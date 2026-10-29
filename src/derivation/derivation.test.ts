@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { derive, digestWithOverrides, finalValues, type DerivationInput } from "./derivation";
+import { answeringTimesSoFar, derive, digestWithOverrides, finalValues, type DerivationInput } from "./derivation";
 import type { Confidence, Flag, Question } from "../domain/types";
 import type { RawEvent, RawEventBody, RawLogChunk } from "../recorder/recorder";
 import { DEFAULT_PREFERENCES } from "../domain/settings";
@@ -424,6 +424,46 @@ describe("Overrides", () => {
     const recomputed = attemptOf(derive({ ...sat(), rules: { ...rules, idleThresholdMs: 20_000 } }), question);
     expect(recomputed.timing.answeringActiveMs).toBe(30_000);
     expect(finalValues(recomputed, { answeringActiveMs: 15_000, correct: true })).toEqual({ answeringActiveMs: 15_000, correct: true, partialScore: 1, overridden: ["answeringActiveMs", "correct"] });
+  });
+});
+
+describe("Overrides made while answering", () => {
+  // Q1 open for 25 s; the time was corrected to 15 s at a derived 20 s, while still answering.
+  const sat = () => sitting([{ activeMs: 25_000, events: [[0, open(question)], [25_000, submit]] }]);
+  const corrected = { answeringActiveMs: 15_000, answeringActiveMsAtOverride: 20_000 };
+
+  it("adds the answering time derived after the correction on top of the corrected time", () => {
+    const attempt = attemptOf(derive(sat()), question);
+    expect(attempt.timing.answeringActiveMs).toBe(25_000);
+    expect(finalValues(attempt, corrected)).toMatchObject({ answeringActiveMs: 20_000, overridden: ["answeringActiveMs"] });
+  });
+
+  it("adds nothing when the time was corrected after the answers were revealed", () => {
+    const attempt = attemptOf(derive(sat()), question);
+    expect(finalValues(attempt, { answeringActiveMs: 15_000, answeringActiveMsAtOverride: 25_000 }).answeringActiveMs).toBe(15_000);
+  });
+
+  it("reports the corrected time, with the time added since, beside the derived time in the Digest", () => {
+    const result = derive(sat());
+    expect(digestWithOverrides(sat(), result, new Map([[question.id, corrected]]))).toContain("- Answering time: 20.000 s (overridden by the user; derived: 25.000 s)");
+  });
+});
+
+describe("answering times so far", () => {
+  // Q1 for 10 s, then Q2 open for 4 s and still on screen: the chunk is not sealed and has no hash.
+  const recorded = () =>
+    [{ n: 0, startedAt: 0, activeMs: 14_000, events: [{ ...open(question), seq: 1, at: 0 }, { ...open(second), seq: 2, at: 10_000 }] }];
+
+  it("includes the Visit still open, as it would be derived once sealed", () => {
+    const times = answeringTimesSoFar(recorded(), rules);
+    expect(times.get(question.id)).toBe(10_000);
+    expect(times.get(second.id)).toBe(4_000);
+  });
+
+  it("leaves out idle beyond the threshold in the Visit still open", () => {
+    const idle = recorded();
+    idle[0]!.activeMs = 10_000 + rules.idleThresholdMs + 5_000;
+    expect(answeringTimesSoFar(idle, rules).get(second.id)).toBe(rules.idleThresholdMs);
   });
 });
 

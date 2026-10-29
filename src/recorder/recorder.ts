@@ -43,6 +43,9 @@ export type RawLogChunk = {
   hash: string;
 };
 
+/** A chunk as recorded, sealed or not: what Derivation needs to work out time. The open chunk has no id or hash yet. */
+export type RecordedChunk = Pick<RawLogChunk, "n" | "startedAt" | "events" | "activeMs">;
+
 /** The chunk being recorded, saved every few seconds by overwriting; one per Session, keyed by Session id. */
 type RawLogBuffer = { id: string; sessionId: string; n: number; startedAt: number; events: RawEvent[]; activeMs: number };
 
@@ -82,6 +85,8 @@ export type Recorder = {
   show(): void;
   /** Foreground time of the whole Session so far: earlier chunks plus the current one, never the gaps between. */
   activeMs(): number;
+  /** The Raw log recorded so far, the open chunk included as of now, for showing time while answering. Seals nothing. */
+  rawLog(): RecordedChunk[];
 };
 
 /** Raw log chunks use composite IDs (ADR-0003). */
@@ -116,6 +121,7 @@ export async function openRecorder(
   let n = last ? last.n + 1 : 0;
   let seq = sealed.reduce((max, chunk) => Math.max(max, ...chunk.events.map((e) => e.seq)), 0);
   let current: { startedAt: number; monotonicStart: number; events: RawEvent[]; bytes: number } | undefined;
+  const recorded: RecordedChunk[] = [...sealed];
   let sealedActiveMs = sealed.reduce((sum, chunk) => sum + chunk.activeMs, 0);
   // Monotonic time is only meaningful within the chunk it was read in.
   const elapsed = (chunk: { monotonicStart: number }) => Math.round(clock.monotonic() - chunk.monotonicStart);
@@ -149,6 +155,7 @@ export async function openRecorder(
       if (!current || current.events.length === 0) return writes;
       const body = { id: chunkId(sessionId, n), sessionId, n, startedAt: current.startedAt, events: current.events, activeMs: elapsed(current) };
       sealedActiveMs += body.activeMs;
+      recorded.push(body);
       n += 1;
       current = undefined;
       return enqueue(async () => {
@@ -172,6 +179,9 @@ export async function openRecorder(
     },
     activeMs() {
       return sealedActiveMs + (current ? elapsed(current) : 0);
+    },
+    rawLog() {
+      return current ? [...recorded, { n, startedAt: current.startedAt, events: [...current.events], activeMs: elapsed(current) }] : [...recorded];
     },
   };
   return recorder;

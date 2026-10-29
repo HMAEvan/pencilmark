@@ -3,17 +3,19 @@ import type { Confidence, Flag, Question, QuestionSet, Session } from "../domain
 import { blocksToText, letterAt } from "../domain/display";
 import { t } from "../i18n/i18n";
 import { openRecorder, type Recorder } from "../recorder/recorder";
-import { currentAttempts, loadQuestions, submitSession } from "../session/sessions";
-import { DEFAULT_PREFERENCES, type TimePrecision } from "../domain/settings";
+import { currentAttempts, loadOverrides, loadQuestions, setOverride, submitSession, type Override } from "../session/sessions";
+import { DEFAULT_PREFERENCES, type Display, type Rules } from "../domain/settings";
+import { answeringTimesSoFar } from "../derivation/derivation";
+import { AnsweringTime, TimeOverrideField } from "./AnsweringTime";
 import { ConfidenceButtons, FlagButtons, NoteField } from "./Marks";
 import { storage } from "./appStorage";
 import { navigate } from "./App";
-import { formatDuration, timePrecisionOf } from "./format";
+import { displayOf, formatDuration } from "./format";
 import { isGraded, questionTypeOf } from "../questionTypes/questionType";
 import { multipleAnswer } from "../questionTypes/multipleAnswer";
 import { useRecorder } from "./useRecorder";
 
-type Loaded = { session: Session; set: QuestionSet; questions: Map<string, Question>; recorder: Recorder };
+type Loaded = { session: Session; set: QuestionSet; questions: Map<string, Question>; overrides: Map<string, Override>; recorder: Recorder };
 
 /** What the user has done to each Question so far, keyed by Question id. */
 type Marked = { answers: Record<string, string[]>; confidence: Record<string, Confidence | null>; flags: Record<string, Flag[]>; notes: Record<string, string> };
@@ -32,17 +34,29 @@ async function load(sessionId: string): Promise<(Loaded & { marked: Marked }) | 
     flags: Object.fromEntries(attempts.map((a) => [a.questionId, a.flags.map((f) => f.flag)])),
     notes: Object.fromEntries(attempts.map((a) => [a.questionId, a.notes.answering ?? ""])),
   };
-  return { session, set, questions, marked, recorder };
+  return { session, set, questions, overrides: await loadOverrides(storage, session.id), marked, recorder };
 }
 
-/** The Session's active time, ticking once a second, or ten times a second when shown to the millisecond. */
-function Timer({ recorder, precision }: { recorder: Recorder; precision: TimePrecision }) {
-  const [ms, setMs] = useState(recorder.activeMs());
+/** The open Question's answering time so far, by the same rules as Derivation. */
+const answeringTimeSoFar = (recorder: Recorder, rules: Rules, questionId: string) => answeringTimesSoFar(recorder.rawLog(), rules).get(questionId) ?? 0;
+
+/**
+ * The Session's active time and the open Question's answering time, each shown unless its display preference hides it.
+ * They tick once a second, or ten times a second when shown to the millisecond. Hiding a timer never stops recording.
+ */
+function Timers({ recorder, rules, display, questionId, override }: { recorder: Recorder; rules: Rules; display: Display; questionId: string; override?: Override }) {
+  const precision = display.timePrecision;
+  const [, setTick] = useState(0);
   useEffect(() => {
-    const tick = setInterval(() => setMs(recorder.activeMs()), precision === "milliseconds" ? 100 : 1000);
+    const tick = setInterval(() => setTick((n) => n + 1), precision === "milliseconds" ? 100 : 1000);
     return () => clearInterval(tick);
-  }, [recorder, precision]);
-  return <span class="muted timer">{t("player.timer", { time: formatDuration(ms, precision) })}</span>;
+  }, [precision]);
+  return (
+    <div class="timers">
+      {display.sessionTimer === "shown" && <span class="muted">{t("player.sessionTimer", { time: formatDuration(recorder.activeMs(), precision) })}</span>}
+      {display.questionTimer === "shown" && <AnsweringTime label="player.questionTimer" derivedMs={answeringTimeSoFar(recorder, rules, questionId)} override={override} precision={precision} />}
+    </div>
+  );
 }
 
 export function Player({ sessionId }: { sessionId: string }) {
@@ -69,7 +83,7 @@ export function Player({ sessionId }: { sessionId: string }) {
   if (loaded === undefined) return <main>{t("common.loading")}</main>;
   if (loaded === null) return <main>{t("common.notFound")}</main>;
 
-  const { session, set, questions, recorder } = loaded;
+  const { session, set, questions, overrides, recorder } = loaded;
   const total = session.questionOrder.length;
   const questionId = session.questionOrder[index]!;
   const question = questions.get(questionId)!;
@@ -78,7 +92,7 @@ export function Player({ sessionId }: { sessionId: string }) {
   const { answers, confidence, flags, notes } = marked;
   const answer = answers[questionId] ?? [];
   // Sessions from before settings snapshots were kept all ran with the defaults.
-  const collectConfidence = (session.settings?.rules ?? DEFAULT_PREFERENCES.rules).collectConfidence;
+  const rules = session.settings?.rules ?? DEFAULT_PREFERENCES.rules;
 
   const goTo = (next: number) => {
     setIndex(next);
@@ -109,6 +123,12 @@ export function Player({ sessionId }: { sessionId: string }) {
     setMarked((m) => ({ ...m, notes: { ...m.notes, [questionId]: text } }));
     recorder.append({ type: "note", questionId, text });
   };
+  // An Override beside the derived time, which keeps counting: time spent on the Question afterwards is added on top.
+  const overrideTime = async (ms: number | undefined) => {
+    const values = ms === undefined ? { answeringActiveMs: undefined, answeringActiveMsAtOverride: undefined } : { answeringActiveMs: ms, answeringActiveMsAtOverride: answeringTimeSoFar(recorder, rules, questionId) };
+    const saved = await setOverride(storage, session.id, questionId, values);
+    setLoaded({ ...loaded, overrides: new Map(overrides).set(questionId, saved) });
+  };
   // Confirmed in the page, not with confirm(): some embedded browsers suppress native dialogs.
   const submit = async () => {
     // The ref, not the state, guards: two clicks can land before a re-render.
@@ -122,9 +142,8 @@ export function Player({ sessionId }: { sessionId: string }) {
   return (
     <main>
       {!recorder.integrity.ok && <p class="bad">{t("player.integrityFailed", { chunk: recorder.integrity.chunkId })}</p>}
-      <p class="muted">
-        {t("player.questionNumber", { n: index + 1, total })} · <Timer recorder={recorder} precision={timePrecisionOf(session)} />
-      </p>
+      <p class="muted">{t("player.questionNumber", { n: index + 1, total })}</p>
+      <Timers recorder={recorder} rules={rules} display={displayOf(session)} questionId={questionId} override={overrides.get(questionId)} />
       <nav class="question-nav" aria-label={t("player.navigation")}>
         {session.questionOrder.map((id, i) => {
           const answered = (answers[id]?.length ?? 0) > 0;
@@ -162,7 +181,7 @@ export function Player({ sessionId }: { sessionId: string }) {
             })}
           </div>
         )}
-        {isGraded(question) && collectConfidence && <ConfidenceButtons value={confidence[questionId] ?? null} onChange={setConfidence} />}
+        {isGraded(question) && rules.collectConfidence && <ConfidenceButtons value={confidence[questionId] ?? null} onChange={setConfidence} />}
       </div>
       <div class="actions">
         <button class="secondary" disabled={index === 0} onClick={() => goTo(index - 1)}>
@@ -185,6 +204,10 @@ export function Player({ sessionId }: { sessionId: string }) {
           <div class="drawer-body">
             <FlagButtons flags={flags[questionId] ?? []} onToggle={toggleFlag} />
             <NoteField key={questionId} note={notes[questionId] ?? ""} onSave={saveNote} />
+            <details class="override">
+              <summary>{t("player.overrideTime")}</summary>
+              <TimeOverrideField key={questionId} overridden={overrides.get(questionId)?.answeringActiveMs !== undefined} onSave={(ms) => void overrideTime(ms)} />
+            </details>
           </div>
         )}
       </div>

@@ -1,4 +1,4 @@
-import { DEFAULT_PREFERENCES, type TimePrecision } from "../domain/settings";
+import { DEFAULT_PREFERENCES, type Display, type TimePrecision } from "../domain/settings";
 import type { Session } from "../domain/types";
 
 /** A duration as mm:ss, or h:mm:ss from an hour; with milliseconds, mm:ss.SSS. */
@@ -10,9 +10,14 @@ export function formatDuration(ms: number, precision: TimePrecision = "seconds")
   return seconds >= 3600 ? `${Math.floor(seconds / 3600)}:${mm}:${ss}${fraction}` : `${mm}:${ss}${fraction}`;
 }
 
-/** A display preference: it changes what is shown, never what is stored. Snapshots from before it existed use the default. */
+/** Display preferences change what is shown, never what is stored. Sessions from before snapshots were kept used the defaults. */
+export function displayOf(session: Session): Display {
+  return session.settings?.display ?? DEFAULT_PREFERENCES.display;
+}
+
+/** Snapshots from before the time-precision preference existed use the default. */
 export function timePrecisionOf(session: Session): TimePrecision {
-  return session.settings?.display.timePrecision ?? DEFAULT_PREFERENCES.display.timePrecision;
+  return displayOf(session).timePrecision ?? DEFAULT_PREFERENCES.display.timePrecision;
 }
 
 /** A score to at most two decimal places: "2.5", "0.33". */

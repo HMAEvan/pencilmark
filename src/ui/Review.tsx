@@ -10,6 +10,7 @@ import { excludedIdleMs } from "../derivation/timing";
 import { buildAnswerPack } from "../exports/answerPack";
 import { gradingMaterials } from "../exports/skills";
 import { CopyButton } from "./CopyButton";
+import { AnsweringTime, TimeOverrideField } from "./AnsweringTime";
 import { formatDuration, formatScore, timePrecisionOf } from "./format";
 import { DEFAULT_PREFERENCES, type TimePrecision } from "../domain/settings";
 import { isGraded, questionTypeOf } from "../questionTypes/questionType";
@@ -92,28 +93,16 @@ function downloadJson(fileName: string, value: unknown) {
  * A Question that is not graded has no result to correct.
  */
 function OverrideEditor({ attempt, final, graded, idleThresholdMs, precision, onSave }: { attempt: Attempt; final: FinalValues; graded: boolean; idleThresholdMs: number; precision: TimePrecision; onSave: (values: OverrideValues) => void }) {
-  const [seconds, setSeconds] = useState("");
   const idle = attempt.timing.excludedIdle;
-  const enteredMs = Math.round(Number(seconds) * 1000);
+  // Answering time no longer changes after the reveal, so the derived time recorded here adds nothing on top.
+  const saveTime = (ms: number | undefined) =>
+    onSave(ms === undefined ? { answeringActiveMs: undefined, answeringActiveMsAtOverride: undefined } : { answeringActiveMs: ms, answeringActiveMsAtOverride: attempt.timing.answeringActiveMs });
   return (
     <details class="override">
       <summary>{t(idle.length > 0 ? "review.idleExcluded" : graded ? "review.overrideOpen" : "review.overrideTimeOpen", { time: formatDuration(excludedIdleMs(attempt.timing), precision) })}</summary>
       {idle.length > 0 && <p class="muted">{t("review.idleExplained", { seconds: idleThresholdMs / 1000 })}</p>}
       <p class="muted">{t("review.derivedTime", { time: formatDuration(attempt.timing.answeringActiveMs, precision), raw: formatDuration(attempt.timing.answeringRawMs, precision) })}</p>
-      <div class="actions">
-        <label>
-          {t("review.overrideTimeLabel")}{" "}
-          <input type="number" min="0" step="0.001" inputMode="decimal" value={seconds} onInput={(e) => setSeconds(e.currentTarget.value)} />
-        </label>
-        <button class="secondary" disabled={seconds === "" || !(enteredMs >= 0)} onClick={() => onSave({ answeringActiveMs: enteredMs })}>
-          {t("review.saveTime")}
-        </button>
-        {final.overridden.includes("answeringActiveMs") && (
-          <button class="secondary" onClick={() => onSave({ answeringActiveMs: undefined })}>
-            {t("review.restoreTime")}
-          </button>
-        )}
-      </div>
+      <TimeOverrideField overridden={final.overridden.includes("answeringActiveMs")} onSave={saveTime} />
       {graded && (
         <div class="actions">
           {final.correct !== true && (
@@ -258,16 +247,14 @@ export function Review({ sessionId }: { sessionId: string }) {
               {t("review.questionNumber", { n: attempt.displayedNumber })} <ResultMark final={final} multiple={questionTypeOf(question) === multipleAnswer} partial={partial} />
               {final.overridden.includes("correct") && <span class="muted"> {t("review.overridden")}</span>}
             </h3>
-            <p class="muted">
-              {t("review.answeringTime", { time: formatDuration(final.answeringActiveMs, precision) })}
-              {final.overridden.includes("answeringActiveMs") && ` ${t("review.overridden")}`}
+            <p class="times">
+              <AnsweringTime label="review.answeringTime" derivedMs={attempt.timing.answeringActiveMs} override={override} precision={precision} />
               {attempt.timing.excludedIdle.length > 0 && (
-                <span class="idle-mark" title={t("review.idleMarkTitle")}>
-                  {" "}
+                <span class="idle-mark muted" title={t("review.idleMarkTitle")}>
                   {t("review.idleMark")}
                 </span>
               )}
-              {attempt.timing.reviewingActiveMs > 0 && ` ${t("review.reviewingTime", { time: formatDuration(attempt.timing.reviewingActiveMs, precision) })}`}
+              {attempt.timing.reviewingActiveMs > 0 && <span class="muted">{t("review.reviewingTime", { time: formatDuration(attempt.timing.reviewingActiveMs, precision) })}</span>}
             </p>
             {!graded && <p class="muted">{t("player.unsupportedType")}</p>}
             <p class="stem">{blocksToText(question.stem, order)}</p>

@@ -271,6 +271,29 @@ describe.each(adapters)("Recorder with the %s Storage adapter", (_name, makeStor
     expect((await readRawLog(storage, "ss_20261026_abcdef"))[1]).toMatchObject({ interrupted: true, activeMs: 4000 });
   });
 
+  it("gives the Raw log recorded so far, the open chunk included as of now, for showing time while answering", async () => {
+    const storage = makeStorage();
+    const { clock, advance } = fakeClock(0);
+    await (await openRecorder(storage, "ss_20261026_abcdef", clock)).hide();
+    const recorder = await openRecorder(storage, "ss_20261026_abcdef", clock);
+    recorder.show();
+    recorder.append({ type: "navigate", questionId: "q_x" });
+    advance(2000);
+    await recorder.hide();
+    recorder.show();
+    advance(1500);
+
+    const recorded = recorder.rawLog();
+    expect(recorded.map(({ n, activeMs }) => ({ n, activeMs }))).toEqual([
+      { n: 0, activeMs: 0 },
+      { n: 1, activeMs: 2000 },
+      { n: 2, activeMs: 1500 },
+    ]);
+    expect(recorded[2]!.events).toEqual([{ seq: 5, at: 0, type: "show", wall: 2000 }]);
+    // The open chunk is not sealed by being read.
+    expect(await readRawLog(storage, "ss_20261026_abcdef")).toHaveLength(2);
+  });
+
   it("reports an intact hash chain on load", async () => {
     const storage = makeStorage();
     const { clock } = fakeClock(0);
