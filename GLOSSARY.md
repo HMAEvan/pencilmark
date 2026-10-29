@@ -62,11 +62,27 @@ _Avoid_: Quiz, question set, 题组
 One member of a Set: a single Question or a whole Case. Shuffling a Set moves whole Entries.
 _Avoid_: Item
 
+**Starred** (已收藏):
+A Set or a Question the user has marked to keep at hand. Starring a Question is not a Flag: a Flag belongs to one Attempt, a star to the Question across all its Sessions.
+_Avoid_: Favourite, bookmark, pinned
+
+**Star history** (收藏记录):
+Every starring and unstarring of a Question, with when and where it happened (a Phase of a Session, or outside any Session). Never edited; whether a Question is Starred is its latest entry. Starring inside a Session is in that Session's Raw log as well.
+_Avoid_: Favourite log, star log
+
 ## Answering
 
 **Session** (一轮):
 One complete sitting of a Set, from start to submission and beyond. Has a status and a Mode.
 _Avoid_: Attempt, run, round
+
+**Session number** (轮次编号):
+A Session's place among its Set's Sessions, counted by when they started. Abandoned Sessions keep their number, so numbers never change.
+_Avoid_: Attempt number, round number
+
+**Abandon** (放弃):
+To end an in-progress Session without submitting it. Its Raw log is kept; the Set's next sitting is a new Session.
+_Avoid_: Discard, exit without saving, delete
 
 **Exam mode** (考试模式):
 Answers can be changed freely until the whole Session is submitted; answers are revealed together afterwards.
