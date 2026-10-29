@@ -4,7 +4,7 @@ A revision tool that records how each question was answered (hesitation, answer 
 
 PencilMark runs entirely in the browser. It is served from GitHub Pages at <https://hmaevan.github.io/pencilmark/>, where it keeps its data on your device (IndexedDB), and can also run as a claude.ai Artifact, keeping its data in the Artifact's database so it follows you to any device (see [Artifact mode](#artifact-mode)). The footer says which one a copy is using.
 
-> Work in progress. The interface is in Chinese for now; English follows.
+> Work in progress. The interface is in Chinese and English, following the browser language; switch it at the bottom of any screen.
 
 ## How it works
 

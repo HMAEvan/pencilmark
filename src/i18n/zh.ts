@@ -120,6 +120,10 @@ export const zh = {
   "storage.local": "数据保存在本浏览器中。",
   "storage.artifact": "数据保存在 Artifact 数据库中，在其他设备上打开也能看到。",
   "storage.artifactUnavailable": "无法使用 Artifact 数据库（可能未登录或未授予权限）。现在的记录只保存在本浏览器中，换设备看不到，也可能丢失。",
+  "language.label": "语言",
+  "language.browser": "跟随浏览器",
+  "language.zh": "中文",
+  "language.en": "English",
 } as const;
 
 export type TranslationKey = keyof typeof zh;

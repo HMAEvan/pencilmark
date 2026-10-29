@@ -31,7 +31,7 @@ Conventions for every document:
 
 | Collection | Holds |
 |---|---|
-| `meta` | `schema`: the schema document, below. |
+| `meta` | `schema`: the schema document, below. `preferences`: the preferences the user has changed, as `rules` and `display` (for example `display.language`: `"zh"`, `"en"` or `"browser"`); anything absent is the default. |
 | `tracks` | Tracks: `kind` (`course` or `domain`), `title`, and course details where known. |
 | `topics` | Topics: `trackId`, `parentId` (absent at the top level), `title`, `order`. |
 | `batches` | Batches: `title`, `material`, the source Topic and which attempt at it this was. |

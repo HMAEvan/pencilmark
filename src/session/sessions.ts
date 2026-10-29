@@ -2,7 +2,7 @@ import type { Question, QuestionSet, Session } from "../domain/types";
 import { newId } from "../domain/ids";
 import type { Storage } from "../storage/storage";
 import { readRawLog, recoverRawLog, type RawEventBody, type Recorder } from "../recorder/recorder";
-import { DEFAULT_PREFERENCES, settingsSnapshot } from "../domain/settings";
+import { DEFAULT_PREFERENCES, loadPreferences, settingsSnapshot } from "../domain/settings";
 import { displayOrders } from "./displayOrder";
 import { ALGORITHM_VERSION, derive, type DerivationInput, type DerivationResult, type DerivedAttempt, type OverrideValues } from "../derivation/derivation";
 
@@ -61,7 +61,7 @@ export async function startSession(storage: Storage, set: QuestionSet): Promise<
 
   const questions = await loadQuestions(storage, set);
   const now = new Date();
-  const settings = settingsSnapshot();
+  const settings = settingsSnapshot(await loadPreferences(storage));
   const session: Session = {
     id: newId("ss", now),
     setId: set.id,
