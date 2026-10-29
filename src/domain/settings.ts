@@ -14,10 +14,14 @@ export type Rules = {
   collectConfidence: boolean;
 };
 
+export type TimePrecision = "seconds" | "milliseconds";
+
 /** Every other preference: what is shown and how. */
 export type Display = {
   sessionTimer: "shown" | "hidden";
   questionTimer: "shown" | "hidden";
+  /** How precisely times are shown on screen: "00:07" or "00:07.247". The Digest always shows milliseconds. */
+  timePrecision: TimePrecision;
   multipleAnswerScore: "partial" | "all_or_nothing";
   language: "zh";
   similarityThreshold: number;
@@ -33,6 +37,7 @@ export const DEFAULT_PREFERENCES: Preferences = {
   display: {
     sessionTimer: "shown",
     questionTimer: "hidden",
+    timePrecision: "seconds",
     multipleAnswerScore: "partial",
     language: "zh",
     similarityThreshold: 0.9,

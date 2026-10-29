@@ -4,11 +4,11 @@ import { blocksToText, letterAt } from "../domain/display";
 import { t } from "../i18n/i18n";
 import { openRecorder, type Recorder } from "../recorder/recorder";
 import { currentAttempts, loadQuestions, submitSession } from "../session/sessions";
-import { DEFAULT_PREFERENCES } from "../domain/settings";
+import { DEFAULT_PREFERENCES, type TimePrecision } from "../domain/settings";
 import { ConfidenceButtons, FlagButtons, NoteField } from "./Marks";
 import { storage } from "./appStorage";
 import { navigate } from "./App";
-import { formatDuration } from "./format";
+import { formatDuration, timePrecisionOf } from "./format";
 import { isGraded, questionTypeOf } from "../questionTypes/questionType";
 import { multipleAnswer } from "../questionTypes/multipleAnswer";
 import { useRecorder } from "./useRecorder";
@@ -35,14 +35,14 @@ async function load(sessionId: string): Promise<(Loaded & { marked: Marked }) | 
   return { session, set, questions, marked, recorder };
 }
 
-/** The Session's active time, ticking once a second. */
-function Timer({ recorder }: { recorder: Recorder }) {
+/** The Session's active time, ticking once a second, or ten times a second when shown to the millisecond. */
+function Timer({ recorder, precision }: { recorder: Recorder; precision: TimePrecision }) {
   const [ms, setMs] = useState(recorder.activeMs());
   useEffect(() => {
-    const tick = setInterval(() => setMs(recorder.activeMs()), 1000);
+    const tick = setInterval(() => setMs(recorder.activeMs()), precision === "milliseconds" ? 100 : 1000);
     return () => clearInterval(tick);
-  }, [recorder]);
-  return <span class="muted timer">{t("player.timer", { time: formatDuration(ms) })}</span>;
+  }, [recorder, precision]);
+  return <span class="muted timer">{t("player.timer", { time: formatDuration(ms, precision) })}</span>;
 }
 
 export function Player({ sessionId }: { sessionId: string }) {
@@ -123,7 +123,7 @@ export function Player({ sessionId }: { sessionId: string }) {
     <main>
       {!recorder.integrity.ok && <p class="bad">{t("player.integrityFailed", { chunk: recorder.integrity.chunkId })}</p>}
       <p class="muted">
-        {t("player.questionNumber", { n: index + 1, total })} · <Timer recorder={recorder} />
+        {t("player.questionNumber", { n: index + 1, total })} · <Timer recorder={recorder} precision={timePrecisionOf(session)} />
       </p>
       <nav class="question-nav" aria-label={t("player.navigation")}>
         {session.questionOrder.map((id, i) => {

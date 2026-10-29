@@ -10,8 +10,8 @@ import { excludedIdleMs } from "../derivation/timing";
 import { buildAnswerPack } from "../exports/answerPack";
 import { gradingMaterials } from "../exports/skills";
 import { CopyButton } from "./CopyButton";
-import { formatDuration, formatScore } from "./format";
-import { DEFAULT_PREFERENCES } from "../domain/settings";
+import { formatDuration, formatScore, timePrecisionOf } from "./format";
+import { DEFAULT_PREFERENCES, type TimePrecision } from "../domain/settings";
 import { isGraded, questionTypeOf } from "../questionTypes/questionType";
 import { multipleAnswer } from "../questionTypes/multipleAnswer";
 import { storage } from "./appStorage";
@@ -91,19 +91,19 @@ function downloadJson(fileName: string, value: unknown) {
  * Setting an Override on a derived time or result, shown under a Question. The derived value and the Raw log are never changed.
  * A Question that is not graded has no result to correct.
  */
-function OverrideEditor({ attempt, final, graded, idleThresholdMs, onSave }: { attempt: Attempt; final: FinalValues; graded: boolean; idleThresholdMs: number; onSave: (values: OverrideValues) => void }) {
+function OverrideEditor({ attempt, final, graded, idleThresholdMs, precision, onSave }: { attempt: Attempt; final: FinalValues; graded: boolean; idleThresholdMs: number; precision: TimePrecision; onSave: (values: OverrideValues) => void }) {
   const [seconds, setSeconds] = useState("");
   const idle = attempt.timing.excludedIdle;
   const enteredMs = Math.round(Number(seconds) * 1000);
   return (
     <details class="override">
-      <summary>{t(idle.length > 0 ? "review.idleExcluded" : graded ? "review.overrideOpen" : "review.overrideTimeOpen", { time: formatDuration(excludedIdleMs(attempt.timing)) })}</summary>
+      <summary>{t(idle.length > 0 ? "review.idleExcluded" : graded ? "review.overrideOpen" : "review.overrideTimeOpen", { time: formatDuration(excludedIdleMs(attempt.timing), precision) })}</summary>
       {idle.length > 0 && <p class="muted">{t("review.idleExplained", { seconds: idleThresholdMs / 1000 })}</p>}
-      <p class="muted">{t("review.derivedTime", { time: formatDuration(attempt.timing.answeringActiveMs), raw: formatDuration(attempt.timing.answeringRawMs) })}</p>
+      <p class="muted">{t("review.derivedTime", { time: formatDuration(attempt.timing.answeringActiveMs, precision), raw: formatDuration(attempt.timing.answeringRawMs, precision) })}</p>
       <div class="actions">
         <label>
           {t("review.overrideTimeLabel")}{" "}
-          <input type="number" min="0" step="1" inputMode="numeric" value={seconds} onInput={(e) => setSeconds(e.currentTarget.value)} />
+          <input type="number" min="0" step="0.001" inputMode="decimal" value={seconds} onInput={(e) => setSeconds(e.currentTarget.value)} />
         </label>
         <button class="secondary" disabled={seconds === "" || !(enteredMs >= 0)} onClick={() => onSave({ answeringActiveMs: enteredMs })}>
           {t("review.saveTime")}
@@ -175,6 +175,7 @@ export function Review({ sessionId }: { sessionId: string }) {
 
   const { session, set, derivation, attempts, questions, overrides, recorder } = loaded;
   // A display preference: it changes what is shown, never what is stored. Sessions from before snapshots used the default.
+  const precision = timePrecisionOf(session);
   const partial = (session.settings?.display.multipleAnswerScore ?? DEFAULT_PREFERENCES.display.multipleAnswerScore) === "partial";
   // Questions that are not graded count towards neither the score nor the total.
   const finals = attempts.filter((a) => isGraded(questions.get(a.questionId)!)).map((a) => finalValues(a, overrides.get(a.questionId)));
@@ -258,7 +259,7 @@ export function Review({ sessionId }: { sessionId: string }) {
               {final.overridden.includes("correct") && <span class="muted"> {t("review.overridden")}</span>}
             </h3>
             <p class="muted">
-              {t("review.answeringTime", { time: formatDuration(final.answeringActiveMs) })}
+              {t("review.answeringTime", { time: formatDuration(final.answeringActiveMs, precision) })}
               {final.overridden.includes("answeringActiveMs") && ` ${t("review.overridden")}`}
               {attempt.timing.excludedIdle.length > 0 && (
                 <span class="idle-mark" title={t("review.idleMarkTitle")}>
@@ -266,7 +267,7 @@ export function Review({ sessionId }: { sessionId: string }) {
                   {t("review.idleMark")}
                 </span>
               )}
-              {attempt.timing.reviewingActiveMs > 0 && ` ${t("review.reviewingTime", { time: formatDuration(attempt.timing.reviewingActiveMs) })}`}
+              {attempt.timing.reviewingActiveMs > 0 && ` ${t("review.reviewingTime", { time: formatDuration(attempt.timing.reviewingActiveMs, precision) })}`}
             </p>
             {!graded && <p class="muted">{t("player.unsupportedType")}</p>}
             <p class="stem">{blocksToText(question.stem, order)}</p>
@@ -317,7 +318,7 @@ export function Review({ sessionId }: { sessionId: string }) {
               disabled={marking}
               onSave={(text) => void mark({ type: "note", questionId: attempt.questionId, text })}
             />
-            <OverrideEditor attempt={attempt} final={final} graded={graded} idleThresholdMs={derivation.parameters.idleThresholdMs} onSave={(values) => void saveOverride(attempt.questionId, values)} />
+            <OverrideEditor attempt={attempt} final={final} graded={graded} idleThresholdMs={derivation.parameters.idleThresholdMs} precision={precision} onSave={(values) => void saveOverride(attempt.questionId, values)} />
           </section>
         );
       })}

@@ -15,10 +15,11 @@ function letters(optionIds: string[], optionOrder: string[]): string {
   return optionIds.length ? optionIds.map((id) => letterOf(id, optionOrder)).sort().join(", ") : "(blank)";
 }
 
-/** Whole seconds, with minutes once there is at least one: "45s", "1m 0s". */
+/** To the millisecond, so an AI can tell a flick from a pause: "7.247 s", and m:ss.SSS from one minute: "1:05.320". */
 function duration(ms: number): string {
-  const seconds = Math.round(ms / 1000);
-  return seconds >= 60 ? `${Math.floor(seconds / 60)}m ${seconds % 60}s` : `${seconds}s`;
+  const whole = Math.round(ms);
+  const seconds = (whole % 60_000) / 1000;
+  return whole >= 60_000 ? `${Math.floor(whole / 60_000)}:${seconds.toFixed(3).padStart(6, "0")}` : `${seconds.toFixed(3)} s`;
 }
 
 const flagList = (flags: FlagMark[]) => flags.map((f) => `${FLAG_TYPE[f.flag].name} (${f.phase})`).join(", ");

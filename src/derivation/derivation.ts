@@ -15,8 +15,9 @@ export { finalValues, type FinalValues, type OverrideValues } from "./overrides"
  * Raised whenever a change to how Derivation computes (here, in timing.ts, in marks.ts, in digest.ts or in a question type) would change a derived value.
  * 2: timing and trajectories. 3: unreleased; issues #5, #7 and #8 each used it on their own branch.
  * 4: multiple-answer Questions and partial scores; Confidence, Flags and Notes; reviewing time.
+ * 5: the Digest shows every time to the millisecond.
  */
-export const ALGORITHM_VERSION = 4;
+export const ALGORITHM_VERSION = 5;
 
 export type DerivationInput = {
   title: string;

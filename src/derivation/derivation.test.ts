@@ -146,8 +146,8 @@ describe("derive", () => {
         "- Answer given: C",
         "- Correct answer: B",
         "- Result: wrong",
-        "- Answering time: 2s",
-        "- First choice: C after 1s",
+        "- Answering time: 2.000 s",
+        "- First choice: C after 1.000 s",
         "- Answer changes: none",
         "- Confidence: none",
         "- Flags: none",
@@ -158,7 +158,7 @@ describe("derive", () => {
 
   it("shows a blank answer in the Digest", () => {
     const { digest } = derive(input([navigate, submit]));
-    expect(digest).toContain("- Answer given: (blank)\n- Correct answer: A\n- Result: wrong\n- Answering time: 1s\n- First choice: none\n");
+    expect(digest).toContain("- Answer given: (blank)\n- Correct answer: A\n- Result: wrong\n- Answering time: 1.000 s\n- First choice: none\n");
   });
 });
 
@@ -296,8 +296,8 @@ describe("derive: reviewing time", () => {
     const { digest } = derive(
       sitting([{ activeMs: 75_000, events: [[0, open(question)], [30_000, submit], [30_000, onScreen(second)], [75_000, onScreen()]] }]),
     );
-    expect(digest).toContain("## Question 2\n\nWhere is most DNA kept?\n\n- A. Nucleus\n- B. Cytoplasm\n\n- Answer given: (blank)\n- Correct answer: A\n- Result: wrong\n- Answering time: 0s\n- Reviewing time: 45s\n");
-    expect(digest).not.toContain("- Answering time: 30s\n- Reviewing time");
+    expect(digest).toContain("## Question 2\n\nWhere is most DNA kept?\n\n- A. Nucleus\n- B. Cytoplasm\n\n- Answer given: (blank)\n- Correct answer: A\n- Result: wrong\n- Answering time: 0.000 s\n- Reviewing time: 45.000 s\n");
+    expect(digest).not.toContain("- Answering time: 30.000 s\n- Reviewing time");
   });
 });
 
@@ -359,9 +359,26 @@ describe("derive: Digest timing and trajectory", () => {
       105_000,
     );
     expect(result.digest).toContain(
-      ["- Answering time: 1m 20s (30s idle excluded)", "- First choice: B after 1m 0s", "- Answer changes: A at 1m 10s (after 10s), C at 1m 15s (after 5s)", ""].join("\n"),
+      ["- Answering time: 1:20.000 (30.000 s idle excluded)", "- First choice: B after 1:00.000", "- Answer changes: A at 1:10.000 (after 10.000 s), C at 1:15.000 (after 5.000 s)", ""].join("\n"),
     );
-    expect(result.digest).toContain(["- Answering time: 25s", "- First choice: none", "- Answer changes: none", ""].join("\n"));
+    expect(result.digest).toContain(["- Answering time: 25.000 s", "- First choice: none", "- Answer changes: none", ""].join("\n"));
+  });
+
+  it("shows every time to the millisecond, as m:ss.SSS from one minute", () => {
+    // Q1: A at 7.247 s, C at 8.647 s, B at 65.320 s; Q2 from 66.000 s to 67.500 s.
+    const result = deriveConserving(
+      sitting([
+        {
+          activeMs: 67_500,
+          events: [[0, open(question)], [7_247, choose(question, "opt_a")], [8_647, choose(question, "opt_c")], [65_320, choose(question, "opt_b")], [66_000, open(second)], [67_500, submit]],
+        },
+      ]),
+      67_500,
+    );
+    expect(result.digest).toContain(
+      ["- Answering time: 1:06.000", "- First choice: A after 7.247 s", "- Answer changes: C at 8.647 s (after 1.400 s), B at 1:05.320 (after 56.673 s)", ""].join("\n"),
+    );
+    expect(result.digest).toContain(["- Answering time: 1.500 s", "- First choice: none"].join("\n"));
   });
 });
 
@@ -377,7 +394,7 @@ describe("derive: provenance", () => {
         { rules: strict },
       ),
     );
-    expect(result.algorithmVersion).toBe(4);
+    expect(result.algorithmVersion).toBe(5);
     expect(result.parameters).toEqual({ idleThresholdMs: 30_000, flickThresholdMs: 1_000, shuffleQuestions: true, shuffleOptions: true, collectConfidence: true });
     expect(result.chunks).toEqual([
       { id: `${SESSION}_0`, hash: "hash0" },
@@ -422,9 +439,15 @@ describe("Digest with Overrides", () => {
     const result = derive(sat());
     const digest = digestWithOverrides(sat(), result, new Map([[question.id, { answeringActiveMs: 120_000, correct: true }]]));
     expect(digest).toContain(
-      ["- Result: correct (overridden by the user; derived: wrong)", "- Answering time: 2m 0s (overridden by the user; derived: 40s)", "- First choice: C after 30s"].join("\n"),
+      ["- Result: correct (overridden by the user; derived: wrong)", "- Answering time: 2:00.000 (overridden by the user; derived: 40.000 s)", "- First choice: C after 30.000 s"].join("\n"),
     );
-    expect(digest).toContain(["- Result: wrong", "- Answering time: 0s", "- First choice: none"].join("\n"));
+    expect(digest).toContain(["- Result: wrong", "- Answering time: 0.000 s", "- First choice: none"].join("\n"));
+  });
+
+  it("shows an overridden time of 7.25 seconds as 7.250 s", () => {
+    const result = derive(sat());
+    const digest = digestWithOverrides(sat(), result, new Map([[question.id, { answeringActiveMs: 7_250 }]]));
+    expect(digest).toContain("- Answering time: 7.250 s (overridden by the user; derived: 40.000 s)");
   });
 });
 
@@ -537,7 +560,7 @@ describe("derive: Questions of an unrecognised type", () => {
         '- Type: "ordering", not supported: shown read-only, not graded',
         "- Correct answer: prophase, metaphase, anaphase, telophase",
         "- Result: not graded",
-        "- Answering time: 1s",
+        "- Answering time: 1.000 s",
         "- Confidence: none",
         "- Flags: none",
         "",
