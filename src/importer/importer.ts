@@ -232,14 +232,18 @@ export async function commitImport(
   };
   await storage.add("batches", batch);
 
-  // Skipped Questions join the Set as the Question they duplicate, unless it is deprecated (excluded from new Sets).
-  // Conflicts, and similar Questions the user chose to skip, are left out.
+  // Skipped Questions join the Set as the Question they duplicate, unless it is deprecated (excluded from new Sets);
+  // a similar Question the user chose to skip joins as the Question it matched, which is never deprecated. Conflicts are left out.
   const idByLabel = new Map<string, string>();
   const questionIds: string[] = [];
   for (const [i, q] of pack.questions.entries()) {
     const shown = preview.questions[i]!;
     const choice = shown.status === "similar" ? options.similarChoices![shown.label]! : undefined;
-    if (shown.status === "conflict" || choice === "skip") continue;
+    if (shown.status === "conflict") continue;
+    if (choice === "skip") {
+      if (!questionIds.includes(shown.existingId!)) questionIds.push(shown.existingId!);
+      continue;
+    }
     if (shown.status === "skipped") {
       const id = shown.existingId ?? idByLabel.get(shown.sameAs!)!;
       const deprecated = shown.existingId !== undefined && (await storage.get<Question>("questions", id))?.deprecated;

@@ -447,14 +447,16 @@ describe("Importer: similar Questions", () => {
     expect(await everything(storage)).toEqual(before);
   });
 
-  it("\"Skip\" writes no Question and leaves it out of the Set", async () => {
+  it("\"Skip\" writes no Question; the existing Question joins the Set in its place, as for an exact duplicate", async () => {
     const storage = createMemoryStorage();
-    await importPack(storage, atpPack);
+    const [existing] = await questionsInSet(storage, (await importPack(storage, atpPack)).setId);
     const before = await storage.query<Question>("questions");
-    const { setId } = await importChoosing(storage, withQuestions(plantCell), "skip");
-    expect(await storage.query("questions")).toEqual(before);
+    const lysosome = question("digest", "Which organelle digests worn-out parts of the cell?", organelles, { answer: ["opt_3"] });
+    const { setId } = await importChoosing(storage, withQuestions(plantCell, lysosome), "skip");
+    expect(await storage.query("questions")).toHaveLength(before.length + 1);
+    expect(await storage.get("questions", existing!.id)).toEqual(existing);
     expect(await storage.query("questionRevisions")).toEqual([]);
-    expect(await questionsInSet(storage, setId)).toEqual([]);
+    expect((await questionsInSet(storage, setId)).map((q) => q.id)).toEqual([existing!.id, expect.not.stringMatching(existing!.id)]);
   });
 
   it("\"Create as new\" adds a separate Question and leaves the existing one as it was", async () => {

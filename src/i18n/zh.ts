@@ -36,7 +36,7 @@ export const zh = {
   "import.optionCorrect": "（正确）",
   "import.optionBecomesCorrect": "（原为错误，现为正确）",
   "import.optionBecomesWrong": "（原为正确，现为错误）",
-  "import.choiceSkip": "跳过（不导入）",
+  "import.choiceSkip": "跳过（改用已有题目加入练习单）",
   "import.choiceUpdate": "更新已有题目（生成新版本，保留旧版本及其作答）",
   "import.choiceNew": "作为新题目创建",
   "import.chooseAll": "请先为每道相似题目选择处理方式。",

@@ -38,7 +38,7 @@ export const en = {
   "import.optionCorrect": " (correct)",
   "import.optionBecomesCorrect": " (was incorrect, now correct)",
   "import.optionBecomesWrong": " (was correct, now incorrect)",
-  "import.choiceSkip": "Skip (import nothing)",
+  "import.choiceSkip": "Skip (put the existing Question in the Set instead)",
   "import.choiceUpdate": "Update the existing Question (a new revision; earlier revisions and their Attempts are kept)",
   "import.choiceNew": "Create as a new Question",
   "import.chooseAll": "Choose what to do with every similar Question first.",
