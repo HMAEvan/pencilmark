@@ -191,5 +191,11 @@ The `meta/schema` document in the database: the schema version, the Flag type ta
 _Status_: provisional, not yet agreed
 
 **Flag type** (标记类型):
-One kind of Flag as the Schema document lists it: id, English name, colour, and level (`question` for Flags; Item flags will use `item`). A retired Flag type is marked deprecated, never removed. In code: `FlagType`, `FLAG_TYPE`, `FLAG_TYPES`.
+One kind of Flag as the Schema document lists it: id, English name, colour, and level (`question` for Flags, `item` for Item flags). A retired Flag type is marked deprecated, never removed. In code: `FlagType`, `FLAG_TYPE`, `ITEM_FLAG_TYPE`, `FLAG_TYPES`.
+_Status_: provisional, not yet agreed
+
+Working name introduced while building issue #12, not yet agreed with /domain-modeling.
+
+**Appeal** (申诉):
+The user's "I think the answer is wrong" on a Question, with a required reason. Adds the bad-question Flag and keeps the reason, with its Phase and time. In code: `appeal` event, `Appeal`, `AppealForm`.
 _Status_: provisional, not yet agreed

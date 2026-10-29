@@ -101,3 +101,17 @@ button.small { padding: 4px 10px; font-size: 0.9rem; }
 .note-read { white-space: pre-wrap; color: var(--muted); font-size: 0.9rem; margin: 12px 0 0; }
 .timers, .times { display: flex; flex-wrap: wrap; gap: 4px 16px; align-items: flex-start; margin: 8px 0; }
 .answering-time { display: inline-flex; flex-direction: column; }
+.option { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; touch-action: manipulation; }
+.option.eliminated > span:not(.letter):not(.item-flag-marks), .option.eliminated_unsure > span:not(.letter):not(.item-flag-marks) { text-decoration: line-through; }
+.option.eliminated > span:not(.letter):not(.item-flag-marks) { opacity: 0.55; }
+.option.eliminated_unsure > span:not(.letter):not(.item-flag-marks) { text-decoration-style: dashed; }
+.item-flag-marks { margin-left: auto; display: inline-flex; gap: 4px; }
+.item-flag-mark { font-size: 0.85rem; font-weight: 600; color: var(--muted); }
+.item-flag-mark.sure_right { color: var(--ok); }
+.item-flag-mark.unknown_term { color: var(--accent); }
+.item-flag-menu { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding: 8px; border: 1px solid var(--accent); border-radius: 8px; }
+.hints { display: flex; flex-direction: column; gap: 6px; align-items: flex-start; margin-top: 12px; }
+.hint { border-left: 3px solid var(--border); padding-left: 8px; }
+.hint.used { border-left-color: var(--accent); }
+.hint .stem { margin: 4px 0 0; }
+.appeal { margin-top: 12px; }

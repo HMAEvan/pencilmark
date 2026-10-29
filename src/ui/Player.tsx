@@ -1,5 +1,6 @@
+import { Fragment } from "preact";
 import { useEffect, useState } from "preact/hooks";
-import type { Confidence, Flag, Question, QuestionSet, Session } from "../domain/types";
+import type { Confidence, Flag, ItemFlag, Question, QuestionSet, Session } from "../domain/types";
 import { blocksToText, letterAt } from "../domain/display";
 import { t } from "../i18n/i18n";
 import { openRecorder, type Recorder } from "../recorder/recorder";
@@ -7,7 +8,7 @@ import { currentAttempts, loadOverrides, loadQuestions, setOverride, submitSessi
 import { DEFAULT_PREFERENCES, type Display, type Rules } from "../domain/settings";
 import { answeringTimesSoFar } from "../derivation/derivation";
 import { AnsweringTime, TimeOverrideField } from "./AnsweringTime";
-import { ConfidenceButtons, FlagButtons, NoteField } from "./Marks";
+import { AppealForm, ConfidenceButtons, FlagButtons, HintPanel, ItemFlagMarks, ItemFlagMenu, NoteField, useLongPress } from "./Marks";
 import { storage } from "./appStorage";
 import { navigate } from "./App";
 import { displayOf, formatDuration } from "./format";
@@ -17,8 +18,35 @@ import { useRecorder } from "./useRecorder";
 
 type Loaded = { session: Session; set: QuestionSet; questions: Map<string, Question>; overrides: Map<string, Override>; recorder: Recorder };
 
-/** What the user has done to each Question so far, keyed by Question id. */
-type Marked = { answers: Record<string, string[]>; confidence: Record<string, Confidence | null>; flags: Record<string, Flag[]>; notes: Record<string, string> };
+/** What the user has done to each Question so far, keyed by Question id. Item flags are keyed by Option id within the Question. */
+type Marked = {
+  answers: Record<string, string[]>;
+  confidence: Record<string, Confidence | null>;
+  flags: Record<string, Flag[]>;
+  itemFlags: Record<string, Record<string, ItemFlag[]>>;
+  /** How many Hints are open: they open in level order, so this is also the next level. */
+  hintsOpened: Record<string, number>;
+  appeals: Record<string, string[]>;
+  notes: Record<string, string>;
+};
+
+const NOTHING_MARKED: Marked = { answers: {}, confidence: {}, flags: {}, itemFlags: {}, hintsOpened: {}, appeals: {}, notes: {} };
+
+/** A judgement on an Option: an Option is eliminated, eliminated but unsure, or sure right, never two of these at once. */
+const JUDGEMENTS: ItemFlag[] = ["eliminated", "eliminated_unsure", "sure_right"];
+
+/** An Option: a tap selects it, a long press opens its Item flag menu. */
+function OptionButton({ letter, text, selected, itemFlags, onSelect, onMenu }: { letter: string; text: string; selected: boolean; itemFlags: ItemFlag[]; onSelect: () => void; onMenu: () => void }) {
+  const press = useLongPress(onMenu, onSelect);
+  const judgement = JUDGEMENTS.find((f) => itemFlags.includes(f));
+  return (
+    <button class={`option${selected ? " selected" : ""}${judgement ? ` ${judgement}` : ""}`} aria-pressed={selected} {...press}>
+      <span class="letter">{letter}</span>
+      <span>{text}</span>
+      <ItemFlagMarks flags={itemFlags} />
+    </button>
+  );
+}
 
 async function load(sessionId: string): Promise<(Loaded & { marked: Marked }) | undefined> {
   const session = await storage.get<Session>("sessions", sessionId);
@@ -32,6 +60,9 @@ async function load(sessionId: string): Promise<(Loaded & { marked: Marked }) | 
     answers: Object.fromEntries(attempts.map((a) => [a.questionId, a.answer])),
     confidence: Object.fromEntries(attempts.map((a) => [a.questionId, a.confidence])),
     flags: Object.fromEntries(attempts.map((a) => [a.questionId, a.flags.map((f) => f.flag)])),
+    itemFlags: Object.fromEntries(attempts.map((a) => [a.questionId, Object.fromEntries(Object.entries(a.itemFlags).map(([optionId, marks]) => [optionId, marks.map((m) => m.itemFlag)]))])),
+    hintsOpened: Object.fromEntries(attempts.map((a) => [a.questionId, a.hintsUsed.length])),
+    appeals: Object.fromEntries(attempts.map((a) => [a.questionId, a.appeals.map((x) => x.reason)])),
     notes: Object.fromEntries(attempts.map((a) => [a.questionId, a.notes.answering ?? ""])),
   };
   return { session, set, questions, overrides: await loadOverrides(storage, session.id), marked, recorder };
@@ -61,8 +92,10 @@ function Timers({ recorder, rules, display, questionId, override }: { recorder: 
 
 export function Player({ sessionId }: { sessionId: string }) {
   const [loaded, setLoaded] = useState<Loaded | null>();
-  const [marked, setMarked] = useState<Marked>({ answers: {}, confidence: {}, flags: {}, notes: {} });
+  const [marked, setMarked] = useState<Marked>(NOTHING_MARKED);
   const [index, setIndex] = useState(0);
+  /** The Option whose Item flag menu is open. */
+  const [menuFor, setMenuFor] = useState<string | undefined>();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -89,13 +122,14 @@ export function Player({ sessionId }: { sessionId: string }) {
   const question = questions.get(questionId)!;
   const optionOrder = session.optionOrders[questionId] ?? question.options.map((o) => o.id);
   const type = questionTypeOf(question);
-  const { answers, confidence, flags, notes } = marked;
+  const { answers, confidence, flags, itemFlags, hintsOpened, appeals, notes } = marked;
   const answer = answers[questionId] ?? [];
   // Sessions from before settings snapshots were kept all ran with the defaults.
   const rules = session.settings?.rules ?? DEFAULT_PREFERENCES.rules;
 
   const goTo = (next: number) => {
     setIndex(next);
+    setMenuFor(undefined);
     recorder.append({ type: "navigate", questionId: session.questionOrder[next]! });
   };
   // Tapping a selected Option again deselects it.
@@ -118,6 +152,28 @@ export function Player({ sessionId }: { sessionId: string }) {
       return { ...m, flags: { ...m.flags, [questionId]: on ? [...current, flag] : current } };
     });
     recorder.append({ type: on ? "flag" : "unflag", questionId, flag });
+  };
+  // Choosing one judgement takes back any other the Option had; each change is its own event.
+  const toggleItemFlag = (optionId: string, flag: ItemFlag, on: boolean) => {
+    const current = itemFlags[questionId]?.[optionId] ?? [];
+    const removed = on && JUDGEMENTS.includes(flag) ? current.filter((f) => f !== flag && JUDGEMENTS.includes(f)) : on ? [] : [flag];
+    for (const f of removed) recorder.append({ type: "itemUnflag", questionId, optionId, itemFlag: f });
+    if (on) recorder.append({ type: "itemFlag", questionId, optionId, itemFlag: flag });
+    const next = [...current.filter((f) => f !== flag && !removed.includes(f)), ...(on ? [flag] : [])];
+    setMarked((m) => ({ ...m, itemFlags: { ...m.itemFlags, [questionId]: { ...m.itemFlags[questionId], [optionId]: next } } }));
+  };
+  const openHint = (level: number) => {
+    setMarked((m) => ({ ...m, hintsOpened: { ...m.hintsOpened, [questionId]: level + 1 } }));
+    recorder.append({ type: "openHint", questionId, level });
+  };
+  // Derivation adds the bad-question Flag for an appeal, so the Flag is shown at once too.
+  const appeal = (reason: string) => {
+    setMarked((m) => ({
+      ...m,
+      flags: { ...m.flags, [questionId]: [...(m.flags[questionId] ?? []).filter((f) => f !== "bad_question"), "bad_question"] },
+      appeals: { ...m.appeals, [questionId]: [...(m.appeals[questionId] ?? []), reason] },
+    }));
+    recorder.append({ type: "appeal", questionId, reason });
   };
   const saveNote = (text: string) => {
     setMarked((m) => ({ ...m, notes: { ...m.notes, [questionId]: text } }));
@@ -169,18 +225,35 @@ export function Player({ sessionId }: { sessionId: string }) {
         {/* A type shown read-only offers nothing to answer. */}
         {isGraded(question) && (
           <div class="options">
+            <p class="muted">{t("itemFlags.instruction")}</p>
             {optionOrder.map((optionId, i) => {
               const option = question.options.find((o) => o.id === optionId)!;
-              const selected = answer.includes(optionId);
+              const optionFlags = itemFlags[questionId]?.[optionId] ?? [];
               return (
-                <button key={optionId} class={`option${selected ? " selected" : ""}`} aria-pressed={selected} onClick={() => toggle(optionId)}>
-                  <span class="letter">{letterAt(i)}</span>
-                  <span>{blocksToText(option.content, optionOrder)}</span>
-                </button>
+                <Fragment key={optionId}>
+                  <OptionButton
+                    letter={letterAt(i)}
+                    text={blocksToText(option.content, optionOrder)}
+                    selected={answer.includes(optionId)}
+                    itemFlags={optionFlags}
+                    onSelect={() => toggle(optionId)}
+                    onMenu={() => setMenuFor(optionId)}
+                  />
+                  {menuFor === optionId && (
+                    <ItemFlagMenu letter={letterAt(i)} flags={optionFlags} onToggle={(flag, on) => toggleItemFlag(optionId, flag, on)} onClose={() => setMenuFor(undefined)} />
+                  )}
+                </Fragment>
               );
             })}
           </div>
         )}
+        <HintPanel
+          key={questionId}
+          hints={question.hints ?? []}
+          opened={Array.from({ length: hintsOpened[questionId] ?? 0 }, (_, level) => ({ level, phase: "answering" as const }))}
+          optionOrder={optionOrder}
+          onOpen={openHint}
+        />
         {isGraded(question) && rules.collectConfidence && <ConfidenceButtons value={confidence[questionId] ?? null} onChange={setConfidence} />}
       </div>
       <div class="actions">
@@ -203,6 +276,7 @@ export function Player({ sessionId }: { sessionId: string }) {
         {drawerOpen && (
           <div class="drawer-body">
             <FlagButtons flags={flags[questionId] ?? []} onToggle={toggleFlag} />
+            <AppealForm key={questionId} appeals={appeals[questionId] ?? []} onSubmit={appeal} />
             <NoteField key={questionId} note={notes[questionId] ?? ""} onSave={saveNote} />
             <details class="override">
               <summary>{t("player.overrideTime")}</summary>

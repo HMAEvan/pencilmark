@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { answeringTimesSoFar, derive, digestWithOverrides, finalValues, type DerivationInput } from "./derivation";
-import type { Confidence, Flag, Question } from "../domain/types";
+import type { Confidence, Flag, ItemFlag, Question } from "../domain/types";
 import type { RawEvent, RawEventBody, RawLogChunk } from "../recorder/recorder";
 import { DEFAULT_PREFERENCES } from "../domain/settings";
 
@@ -149,6 +149,7 @@ describe("derive", () => {
         "- Answering time: 2.000 s",
         "- First choice: C after 1.000 s",
         "- Answer changes: none",
+        "- Item flags: none",
         "- Confidence: none",
         "- Flags: none",
         "",
@@ -394,7 +395,7 @@ describe("derive: provenance", () => {
         { rules: strict },
       ),
     );
-    expect(result.algorithmVersion).toBe(5);
+    expect(result.algorithmVersion).toBe(6);
     expect(result.parameters).toEqual({ idleThresholdMs: 30_000, flickThresholdMs: 1_000, shuffleQuestions: true, shuffleOptions: true, collectConfidence: true });
     expect(result.chunks).toEqual([
       { id: `${SESSION}_0`, hash: "hash0" },
@@ -705,9 +706,9 @@ describe("derive: Digest marks", () => {
   it("shows Confidence and Flags with their Phase for every Question, and each Phase's Note where there is one", () => {
     const { digest } = derive(marked(true));
     expect(digest).toContain(
-      ["- Answer changes: none", "- Confidence: probably", "- Flags: concept confusion (answering), bad question (reviewing)", "- Note (answering): Mixed up ATP and GTP", "- Note (reviewing): It was the cristae", ""].join("\n"),
+      ["- Answer changes: none", "- Item flags: none", "- Confidence: probably", "- Flags: concept confusion (answering), bad question (reviewing)", "- Note (answering): Mixed up ATP and GTP", "- Note (reviewing): It was the cristae", ""].join("\n"),
     );
-    expect(digest).toContain(["- Answer changes: none", "- Confidence: none", "- Flags: none", ""].join("\n"));
+    expect(digest).toContain(["- Answer changes: none", "- Item flags: none", "- Confidence: none", "- Flags: none", ""].join("\n"));
   });
 
   it("says Confidence was not collected when collection was off", () => {
@@ -745,5 +746,141 @@ describe("derive: removed Flags", () => {
     const result = derive(sat());
     const digest = digestWithOverrides(sat(), result, new Map([[question.id, { correct: true }]]));
     expect(digest).toContain("- Flags: careless (answering); removed: concept confusion (answering)\n");
+  });
+});
+
+describe("derive: Item flags", () => {
+  const itemFlag = (q: Question, optionId: string, flag: ItemFlag) => ({ type: "itemFlag", questionId: q.id, optionId, itemFlag: flag }) as const;
+  const itemUnflag = (q: Question, optionId: string, flag: ItemFlag) => ({ type: "itemUnflag", questionId: q.id, optionId, itemFlag: flag }) as const;
+  // Q1 shown as A opt_c, B opt_a, C opt_b. While answering: opt_b eliminated, opt_c eliminated then taken back, opt_a sure right.
+  // On the review page: opt_c gets unknown term.
+  const sat = () =>
+    sitting(
+      [
+        {
+          startedAt: 1_000_000,
+          activeMs: 10_000,
+          events: [
+            [0, open(question)],
+            [1_000, itemFlag(question, "opt_b", "eliminated")],
+            [2_000, itemFlag(question, "opt_c", "eliminated")],
+            [3_000, itemUnflag(question, "opt_c", "eliminated")],
+            [4_000, itemFlag(question, "opt_a", "sure_right")],
+            [10_000, submit],
+          ],
+        },
+        { startedAt: 2_000_000, activeMs: 2_000, events: [[2_000, itemFlag(question, "opt_c", "unknown_term")]] },
+      ],
+      { optionOrders: { [question.id]: ["opt_c", "opt_a", "opt_b"], [second.id]: ["opt_a", "opt_b"] } },
+    );
+
+  it("keeps the final Item flags keyed by Option id, each with its Phase and the wall-clock time it was added", () => {
+    const result = derive(sat());
+    expect(attemptOf(result, question).itemFlags).toEqual({
+      opt_b: [{ itemFlag: "eliminated", phase: "answering", at: 1_001_000 }],
+      opt_a: [{ itemFlag: "sure_right", phase: "answering", at: 1_004_000 }],
+      opt_c: [{ itemFlag: "unknown_term", phase: "reviewing", at: 2_002_000 }],
+    });
+    expect(attemptOf(result, second).itemFlags).toEqual({});
+  });
+
+  it("lists Item flags in the Digest by displayed letter, with their Phase", () => {
+    const { digest } = derive(sat());
+    expect(digest).toContain("- Item flags: A unknown term (reviewing), B sure right (answering), C eliminated (answering)\n");
+    expect(digest).toContain("- Item flags: none\n");
+  });
+});
+
+describe("derive: Hints", () => {
+  const hinted: Question = {
+    ...question,
+    hints: [[{ type: "text", text: "Think about energy." }], [{ type: "text", text: "Which organelle has cristae?" }], [{ type: "text", text: "Not {{opt:opt_b}}." }]],
+  };
+  const openHint = (q: Question, level: number) => ({ type: "openHint", questionId: q.id, level }) as const;
+  const sat = (chunks: ChunkSpec[]) => sitting(chunks, { questions: [hinted, second] });
+
+  it("records each Hint opened in level order with its Phase, wall-clock time and the answering time spent on the Question so far", () => {
+    const result = derive(
+      sat([
+        { startedAt: 1_000_000, activeMs: 20_000, events: [[0, open(question)], [5_000, openHint(question, 0)], [12_000, openHint(question, 1)], [20_000, submit]] },
+        { startedAt: 2_000_000, activeMs: 3_000, events: [[3_000, openHint(question, 2)]] },
+      ]),
+    );
+    expect(attemptOf(result, question).hintsUsed).toEqual([
+      { level: 0, phase: "answering", at: 1_005_000, answeringMs: 5_000 },
+      { level: 1, phase: "answering", at: 1_012_000, answeringMs: 12_000 },
+      { level: 2, phase: "reviewing", at: 2_003_000, answeringMs: null },
+    ]);
+    expect(attemptOf(result, second).hintsUsed).toEqual([]);
+  });
+
+  it("ignores a Hint opened out of level order, opened again, or beyond the Hints the Question has", () => {
+    const result = derive(
+      sat([
+        {
+          activeMs: 10_000,
+          events: [[0, open(question)], [1_000, openHint(question, 1)], [2_000, openHint(question, 0)], [3_000, openHint(question, 0)], [4_000, openHint(question, 2)], [10_000, submit]],
+        },
+        { activeMs: 3_000, events: [[1_000, openHint(question, 1)], [2_000, openHint(question, 2)], [3_000, openHint(question, 3)], [3_000, openHint(second, 0)]] },
+      ]),
+    );
+    expect(attemptOf(result, question).hintsUsed.map((h) => [h.level, h.phase])).toEqual([
+      [0, "answering"],
+      [1, "reviewing"],
+      [2, "reviewing"],
+    ]);
+    expect(attemptOf(result, second).hintsUsed).toEqual([]);
+  });
+
+  it("highlights Hints used while answering in the Digest, with their text, and lists Hints opened after the reveal as reviewing", () => {
+    const { digest } = derive(
+      sat([
+        { activeMs: 20_000, events: [[0, open(question)], [5_000, openHint(question, 0)], [12_000, openHint(question, 1)], [20_000, submit]] },
+        { activeMs: 3_000, events: [[3_000, openHint(question, 2)]] },
+      ]),
+    );
+    expect(digest).toContain(
+      [
+        "- **Hints used while answering: 2 of 3**",
+        "  - Level 0, after 5.000 s: Think about energy.",
+        "  - Level 1, after 12.000 s: Which organelle has cristae?",
+        "- Hints opened while reviewing: level 2",
+        "",
+      ].join("\n"),
+    );
+  });
+
+  it("says no Hint was used when a Question has Hints, and says nothing about Hints when it has none", () => {
+    const { digest } = derive(sat([{ activeMs: 10_000, events: [[0, open(question)], [10_000, submit]] }]));
+    expect(digest).toContain("- Hints used while answering: none of 3\n");
+    expect(digest.match(/Hints/g)).toHaveLength(1);
+  });
+});
+
+describe("derive: appeals", () => {
+  const appeal = (q: Question, reason: string) => ({ type: "appeal", questionId: q.id, reason }) as const;
+
+  it("adds the bad-question Flag and keeps the reason, with its Phase and time", () => {
+    const result = derive(
+      sitting([
+        { startedAt: 1_000_000, activeMs: 10_000, events: [[0, open(question)], [3_000, appeal(question, "Ribosomes make no ATP, but neither does Golgi")], [10_000, submit]] },
+        { startedAt: 2_000_000, activeMs: 2_000, events: [[2_000, appeal(second, "Both answers are right")]] },
+      ]),
+    );
+    expect(attemptOf(result, question).flags).toEqual([{ flag: "bad_question", phase: "answering", at: 1_003_000 }]);
+    expect(attemptOf(result, question).appeals).toEqual([{ reason: "Ribosomes make no ATP, but neither does Golgi", phase: "answering", at: 1_003_000 }]);
+    expect(attemptOf(result, second).flags).toEqual([{ flag: "bad_question", phase: "reviewing", at: 2_002_000 }]);
+    expect(attemptOf(result, second).appeals).toEqual([{ reason: "Both answers are right", phase: "reviewing", at: 2_002_000 }]);
+  });
+
+  it("ignores an appeal without a reason", () => {
+    const result = derive(sitting([{ activeMs: 10_000, events: [[0, open(question)], [3_000, appeal(question, "  \n ")], [10_000, submit]] }]));
+    expect(attemptOf(result, question).flags).toEqual([]);
+    expect(attemptOf(result, question).appeals).toEqual([]);
+  });
+
+  it("gives the reason in the Digest beside the bad-question Flag", () => {
+    const { digest } = derive(sitting([{ activeMs: 10_000, events: [[0, open(question)], [3_000, appeal(question, "The stem is ambiguous")], [10_000, submit]] }]));
+    expect(digest).toContain("- Flags: bad question (answering)\n- Appeal (answering): the learner thinks the answer is wrong: The stem is ambiguous\n");
   });
 });

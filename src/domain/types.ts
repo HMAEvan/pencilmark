@@ -28,6 +28,8 @@ export type Question = Provenance & {
   optionOrder: "shuffle" | "fixed";
   answer: string[];
   explanation: ContentBlock[];
+  /** Graded Hints, lightest first: level 0 is the first. Absent on Questions imported before Hints. */
+  hints?: ContentBlock[][];
   batchId: string;
   /** Topics the Question sits under, possibly across Tracks, and the Tracks those Topics belong to. */
   topicIds: string[];
@@ -109,3 +111,8 @@ export type Confidence = "sure" | "probably" | "guessed";
 export type Flag = "concept" | "careless" | "focus" | "memory" | "bad_question";
 
 export const FLAGS: Flag[] = ["concept", "careless", "focus", "memory", "bad_question"];
+
+/** Eliminated, eliminated but unsure, sure right, unknown term. */
+export type ItemFlag = "eliminated" | "eliminated_unsure" | "sure_right" | "unknown_term";
+
+export const ITEM_FLAGS: ItemFlag[] = ["eliminated", "eliminated_unsure", "sure_right", "unknown_term"];

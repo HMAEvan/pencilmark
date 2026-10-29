@@ -4,7 +4,7 @@ import { blocksToText, letterAt, letterOf } from "../domain/display";
 import { t } from "../i18n/i18n";
 import { openRecorder, type RawEventBody, type Recorder } from "../recorder/recorder";
 import { loadDerivedSession, recordReviewMark, setOverride, type Attempt, type Derivation, type Override } from "../session/sessions";
-import { FlagButtons, NoteField } from "./Marks";
+import { AppealForm, FlagButtons, HintPanel, ItemFlagMarks, NoteField } from "./Marks";
 import { digestWithOverrides, finalValues, type FinalValues, type OverrideValues } from "../derivation/derivation";
 import { excludedIdleMs } from "../derivation/timing";
 import { buildAnswerPack } from "../exports/answerPack";
@@ -268,7 +268,7 @@ export function Review({ sessionId }: { sessionId: string }) {
                     <div key={optionId} class={`option${isAnswer ? " answer" : ""}${isChosen && !isAnswer ? " chosen-wrong" : ""}`}>
                       <span class="letter">{letterAt(i)}</span>
                       <div>
-                        <span>{blocksToText(option.content, order)}</span>
+                        <span>{blocksToText(option.content, order)}</span> <ItemFlagMarks flags={(attempt.itemFlags[optionId] ?? []).map((m) => m.itemFlag)} />
                         {option.rationale.length > 0 && (
                           <details class="rationale" onToggle={(e) => toggleRationale(attempt.questionId, optionId, e.currentTarget.open)}>
                             <summary>{t("review.rationale")}</summary>
@@ -283,6 +283,15 @@ export function Review({ sessionId }: { sessionId: string }) {
             )}
             {graded && <p>{t("review.answerGiven", { answer: answerText(attempt.answer, order) })}</p>}
             <p>{t("review.correctAnswer", { answer: graded ? answerText(question.answer, order) : question.answer.join(t("review.answerSeparator")) })}</p>
+            {/* A Hint opened here is reading, like the Explanation: Derivation gives it the Phase reviewing. */}
+            <HintPanel
+              hints={question.hints ?? []}
+              opened={attempt.hintsUsed}
+              optionOrder={order}
+              showPhase
+              disabled={marking}
+              onOpen={(level) => void mark({ type: "openHint", questionId: attempt.questionId, level })}
+            />
             {question.explanation.length > 0 && (
               <div class="explanation">
                 <h4>{t("review.explanation")}</h4>
@@ -297,6 +306,7 @@ export function Review({ sessionId }: { sessionId: string }) {
               disabled={marking}
               onToggle={(flag: Flag, on) => void mark({ type: on ? "flag" : "unflag", questionId: attempt.questionId, flag })}
             />
+            <AppealForm appeals={attempt.appeals.map((a) => a.reason)} disabled={marking} onSubmit={(reason) => void mark({ type: "appeal", questionId: attempt.questionId, reason })} />
             {attempt.notes.answering && <p class="note-read">{t("review.answeringNote", { note: attempt.notes.answering })}</p>}
             {/* Recorded after the reveal, so it is the reviewing Note; the answering Note is never changed here. */}
             <NoteField

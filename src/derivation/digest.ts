@@ -1,6 +1,6 @@
 import { PHASES, type Flag, type Question } from "../domain/types";
 import { blocksToText, letterAt, letterOf } from "../domain/display";
-import { FLAG_TYPE } from "../domain/schemaDocument";
+import { FLAG_TYPE, ITEM_FLAG_TYPE } from "../domain/schemaDocument";
 import type { DerivedAttempt } from "./derivation";
 import type { FlagMark, RemovedFlags } from "./marks";
 import { finalValues, type FinalValues, type OverrideValues } from "./overrides";
@@ -24,13 +24,39 @@ function duration(ms: number): string {
 
 const flagList = (flags: FlagMark[]) => flags.map((f) => `${FLAG_TYPE[f.flag].name} (${f.phase})`).join(", ");
 
-/** Removed Flags are listed too: taking a Flag back is evidence of hesitation. */
-function markLines({ confidence, flags, notes }: DerivedAttempt, removed: FlagMark[], collectConfidence: boolean): string[] {
+/** Removed Flags are listed too: taking a Flag back is evidence of hesitation. An appeal's reason follows the Flags. */
+function markLines({ confidence, flags, appeals, notes }: DerivedAttempt, removed: FlagMark[], collectConfidence: boolean): string[] {
   const lines = [
     `- Confidence: ${collectConfidence ? (confidence ?? "none") : "not collected"}`,
     `- Flags: ${flags.length ? flagList(flags) : "none"}${removed.length ? `; removed: ${flagList(removed)}` : ""}`,
+    ...appeals.map((a) => `- Appeal (${a.phase}): the learner thinks the answer is wrong: ${a.reason}`),
   ];
   for (const phase of PHASES) if (notes[phase]) lines.push(`- Note (${phase}): ${notes[phase]}`);
+  return lines;
+}
+
+/** The final Item flags by displayed letter, as pencil marks on the Options. */
+function itemFlagLine({ itemFlags, optionOrder }: DerivedAttempt): string {
+  const marks = optionOrder.flatMap((id) => (itemFlags[id] ?? []).map((m) => `${letterOf(id, optionOrder)} ${ITEM_FLAG_TYPE[m.itemFlag].name} (${m.phase})`));
+  return `- Item flags: ${marks.length ? marks.join(", ") : "none"}`;
+}
+
+/**
+ * Hints used while answering are help the learner needed, so they stand out, with what each said. Hints opened after
+ * the reveal are reading, like the Explanation. A Question without Hints says nothing about them.
+ */
+function hintLines({ hintsUsed, optionOrder }: DerivedAttempt, question: Question): string[] {
+  const hints = question.hints ?? [];
+  if (!hints.length) return [];
+  const answering = hintsUsed.filter((h) => h.phase === "answering");
+  const reviewing = hintsUsed.filter((h) => h.phase !== "answering");
+  const lines = answering.length
+    ? [
+        `- **Hints used while answering: ${answering.length} of ${hints.length}**`,
+        ...answering.map((h) => `  - Level ${h.level}, after ${duration(h.answeringMs ?? 0)}: ${blocksToText(hints[h.level]!, optionOrder)}`),
+      ]
+    : [`- Hints used while answering: none of ${hints.length}`];
+  if (reviewing.length) lines.push(`- Hints opened while reviewing: level ${reviewing.map((h) => h.level).join(", ")}`);
   return lines;
 }
 
@@ -84,6 +110,7 @@ export function writeDigest(
         "- Result: not graded",
         answeringTime(attempt, final),
         ...reviewingTime(attempt),
+        ...hintLines(attempt, question),
         ...markLines(attempt, removedFlags[attempt.questionId] ?? [], collectConfidence),
         "",
       );
@@ -101,6 +128,8 @@ export function writeDigest(
       `- Answer given: ${letters(attempt.answer, order)}`,
       `- Correct answer: ${letters(question.answer, order)}`,
       ...outcomeLines(attempt, final, multiple),
+      itemFlagLine(attempt),
+      ...hintLines(attempt, question),
       ...markLines(attempt, removedFlags[attempt.questionId] ?? [], collectConfidence),
       "",
     );

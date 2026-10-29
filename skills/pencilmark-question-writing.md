@@ -41,6 +41,7 @@ PencilMark is a revision tool. The learner pastes your reply into its import box
 - `options` (required): at least two Options.
 - `answer` (required): the `id`s of the correct Options. Exactly one for `single_answer`.
 - `explanation`: the explanation of the Question as a whole, shown after the answer is revealed.
+- `hints`: graded Hints, a list of content-block lists, lightest first. The learner opens them one at a time while answering, so each should give a little more than the one before, and none should give the answer away outright. Two or three are usually enough.
 - `optionOrder`: `"shuffle"` (default) or `"fixed"`. The tool shuffles Options unless told otherwise.
 - `topics`: Topic paths the Question sits under; several are allowed.
 - `tags`: free strings. `"true_false"` has a special meaning (below).
@@ -55,7 +56,7 @@ PencilMark is a revision tool. The learner pastes your reply into its import box
 
 No other fields are allowed; the importer rejects unknown ones.
 
-**Content blocks.** Every human-readable field (`stem`, `content`, `rationale`, `misconception`, `explanation`) is a list of blocks: `[{ "type": "text", "text": "..." }]`. The text is Markdown; write maths as LaTeX between `$` signs. Use several blocks only for separate paragraphs.
+**Content blocks.** Every human-readable field (`stem`, `content`, `rationale`, `misconception`, `explanation`, each Hint) is a list of blocks: `[{ "type": "text", "text": "..." }]`. The text is Markdown; write maths as LaTeX between `$` signs. Use several blocks only for separate paragraphs.
 
 **Topic paths.** A path is the Track and then Topics from broad to narrow, joined by `" / "`: `"BIOL101 / Genetics / Lecture 5"`. The first segment is the Track (one course in one year, or one self-study domain). Topics nest to any depth.
 
@@ -67,7 +68,7 @@ No other fields are allowed; the importer rejects unknown ones.
 
 ## Referring to Options
 
-Option letters change when Options are shuffled, so text never names an Option by its letter. Wherever a stem, Rationale or Explanation refers to an Option, write `{{opt:<optionId>}}`; the tool replaces it with the letter that Option is shown under. For example: `"{{opt:opt_b}} confuses speed with distance."`
+Option letters change when Options are shuffled, so text never names an Option by its letter. Wherever a stem, Hint, Rationale or Explanation refers to an Option, write `{{opt:<optionId>}}`; the tool replaces it with the letter that Option is shown under. For example: `"{{opt:opt_b}} confuses speed with distance."`
 
 An Option whose meaning depends on the others ("All of the above", "None of the above") gets `"pin": "last"` so shuffling cannot move it.
 
@@ -117,6 +118,10 @@ A complete pack with one Question of each type. Its Topic paths are illustrative
       ],
       "answer": ["opt_6"],
       "explanation": [{ "type": "text", "text": "Newton's second law: net force equals mass times acceleration, so $2 \\times 3 = 6$ N." }],
+      "hints": [
+        [{ "type": "text", "text": "Which of Newton's laws links force and acceleration?" }],
+        [{ "type": "text", "text": "Net force is mass times acceleration." }]
+      ],
       "topics": ["Physics 101 / Forces / Newton's laws"]
     },
     {
@@ -176,6 +181,7 @@ In JSON strings a LaTeX backslash is written twice (`\\times`).
 - Every true/false Question is `single_answer` with two Options, `"optionOrder": "fixed"` and the tag `"true_false"`.
 - No text names an Option by its letter; each reference is `{{opt:<optionId>}}`.
 - "All/None of the above" Options carry `"pin": "last"`.
+- Hints, where given, go from lightest to strongest and none states the answer.
 - Every Option has a Rationale; every wrong Option that catches a known mistake has a Misconception.
 - Every Topic path uses `" / "` between segments, and reuses the learner's existing paths where they fit.
 - The pack is valid JSON: double quotes, no trailing commas, no comments.

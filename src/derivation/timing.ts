@@ -55,6 +55,8 @@ export type RawLogWalk = {
   /** Each Question's answer when the answers were revealed. */
   answers: Map<string, string[]>;
   trajectories: Map<string, Trajectory>;
+  /** For each Hint opened while answering, by event `seq`: the active answering time spent on its Question so far. */
+  hintAnsweringMs: Map<number, number>;
   totals: SessionTotals;
   chunkGaps: ChunkGap[];
 };
@@ -116,10 +118,12 @@ export function walkRawLog(rawLog: RecordedChunk[], rules: Rules, select: Select
 
   const answers = new Map<string, string[]>();
   const trajectories = new Map<string, Trajectory>();
+  const hintAnsweringMs = new Map<number, number>();
   const lastChoiceMs = new Map<string, number>();
+  const answeringMsSoFar = (questionId: string) => (questions.get(questionId)?.answeringActiveMs ?? 0) + (visit?.questionId === questionId ? visit.activeMs : 0);
   const answerChanged = (questionId: string, answer: string[]) => {
     answers.set(questionId, answer);
-    const atMs = (questions.get(questionId)?.answeringActiveMs ?? 0) + (visit?.questionId === questionId ? visit.activeMs : 0);
+    const atMs = answeringMsSoFar(questionId);
     let trajectory = trajectories.get(questionId);
     if (!trajectory) trajectories.set(questionId, (trajectory = emptyTrajectory()));
     if (trajectory.firstChoice === null) {
@@ -167,6 +171,8 @@ export function walkRawLog(rawLog: RecordedChunk[], rules: Rules, select: Select
           if (next !== answer) answerChanged(event.questionId, next);
         } else if (event.type === "deselect") {
           answerChanged(event.questionId, (answers.get(event.questionId) ?? []).filter((id) => id !== event.optionId));
+        } else if (event.type === "openHint") {
+          hintAnsweringMs.set(event.seq, answeringMsSoFar(event.questionId));
         } else if (event.type === "submit") {
           closeVisit();
           phase = "reviewing";
@@ -178,7 +184,7 @@ export function walkRawLog(rawLog: RecordedChunk[], rules: Rules, select: Select
     elapse(Math.max(chunk.activeMs, prevAt));
   }
   closeVisit();
-  return { questions, answers, trajectories, totals, chunkGaps: chunkGaps(rawLog) };
+  return { questions, answers, trajectories, hintAnsweringMs, totals, chunkGaps: chunkGaps(rawLog) };
 }
 
 function chunkGaps(rawLog: RecordedChunk[]): ChunkGap[] {

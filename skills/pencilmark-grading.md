@@ -5,7 +5,7 @@ description: Grades a PencilMark Digest and teaches from it. Use when given a Pe
 
 # Grading from a PencilMark Digest
 
-PencilMark is a revision tool. While the learner sat a Set of Questions, it recorded how each one was answered: time spent, the first choice and every answer change, how confident they felt, the Flags they set and the Notes they wrote. The **Digest** is that record as Markdown, starting `# Digest:`. It usually follows this text.
+PencilMark is a revision tool. While the learner sat a Set of Questions, it recorded how each one was answered: time spent, the first choice and every answer change, the Options they eliminated or were sure of, the Hints they needed, how confident they felt, the Flags they set and the Notes they wrote. The **Digest** is that record as Markdown, starting `# Digest:`. It usually follows this text.
 
 The answers are already marked. Your job is the **Feedback**: teaching that goes where the learner's reasoning wavered, not a re-run of the answer key.
 
@@ -28,8 +28,11 @@ Each Question is a `## Question n` section: the stem, the Options under their di
 - **Reviewing time**: time spent on the Question after the reveal, reading the explanation. Absent means it was not looked at again.
 - **First choice**: the first answer chosen and how long it took.
 - **Answer changes**: each change, with the complete answer after it, when it happened, and how long the previous answer stood.
+- **Item flags**: the learner's pencil marks on single Options, by letter, each with its Phase: `eliminated`, `eliminated but unsure`, `sure right`, `unknown term`. An Option eliminated but correct, or marked sure right but wrong, pinpoints the misconception; `unknown term` means a word in that Option was not understood, so teach the term.
+- **Hints used while answering** (in bold when any were used): how many of the Question's Hints the learner opened before the answer was revealed, lightest first, each with the time spent on the Question when it was opened and what it said. A correct answer reached with Hints is not yet known unaided. Absent when the Question has no Hints. **Hints opened while reviewing** were read after the reveal, like an explanation, and are not help.
 - **Confidence**: `sure`, `probably` or `guessed`; `none` if left empty, `not collected` if the tool did not ask.
 - **Flags**: the learner's own marks, each with the Phase it was set in (`answering` before the reveal, `reviewing` after it): concept confusion, careless, focus, memory, bad question. "Removed" Flags were set and then taken back, which is itself hesitation.
+- **Appeal**: the learner pressed "I think the answer is wrong" and gave this reason; it always comes with a `bad question` Flag.
 - **Note**: the learner's own words, per Phase. Read them closely: they often say exactly what was confusing.
 
 The Digest carries no Explanations or Rationales, so judge every answer on the subject itself.
@@ -48,7 +51,7 @@ What counts as hesitation depends on the type. A multiple-answer Question is mar
 
 ## Priority tiers
 
-**Tier 0: flagged as a bad question.** A `bad question` Flag means the learner suspects the Question, not themselves. Check it first, as a question: is the stem unambiguous, is the marked correct answer actually correct, is exactly the right set of Options correct? If the Question is faulty, say so plainly, give the correct reading, and do not count the result against the learner. If it is sound, say why, and then teach it in the tier it would otherwise fall into.
+**Tier 0: flagged as a bad question.** A `bad question` Flag means the learner suspects the Question, not themselves. An Appeal line gives the learner's reason: address it directly. Check it first, as a question: is the stem unambiguous, is the marked correct answer actually correct, is exactly the right set of Options correct? If the Question is faulty, say so plainly, give the correct reading, and do not count the result against the learner. If it is sound, say why, and then teach it in the tier it would otherwise fall into.
 
 **Tier 1: confident but wrong.** Result `wrong` with Confidence `sure` (and, a step lower, `probably`). The learner holds a misconception they do not know about, which is the most valuable thing to correct. Name the likely misconception behind the answer they gave, explain why it fails, and give a way to tell the two apart next time.
 
@@ -58,6 +61,8 @@ What counts as hesitation depends on the type. A multiple-answer Question is mar
 - A first choice that took much longer than on the other Questions, or a long answering time overall.
 - Confidence `guessed` on a correct answer: right, but not known.
 - A Flag removed, or a `concept confusion` Flag.
+- Hints used while answering, or an Option marked `eliminated but unsure` or `unknown term`.
+- The correct Option eliminated, or a wrong Option marked `sure right` (if the result is wrong and Confidence is high, this belongs in tier 1).
 
 Explain the idea that would have made the choice obvious, and for a change away from the right answer, what made the wrong one tempting.
 

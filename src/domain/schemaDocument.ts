@@ -1,15 +1,15 @@
-import { FLAGS, type Flag } from "./types";
+import { FLAGS, ITEM_FLAGS, type Flag, type ItemFlag } from "./types";
 import type { Storage } from "../storage/storage";
 import { DEFAULT_PREFERENCES, SCHEMA_VERSION } from "./settings";
 
 // The `meta/schema` document: what an AI reading the database needs to know (issue #1, Data model; schema/README.md).
 
 export type FlagType = {
-  id: Flag;
+  id: Flag | ItemFlag;
   /** English, for AI readers; the interface shows its own translation. */
   name: string;
   colour: string;
-  /** "question" for a Flag; Item flags arrive with issue #12. */
+  /** "question" for a Flag, "item" for an Item flag. */
   level: "question" | "item";
   /** A retired type stays in the table with this set; it is never deleted. */
   deprecated?: true;
@@ -24,7 +24,15 @@ export const FLAG_TYPE: Record<Flag, Omit<FlagType, "id">> = {
   bad_question: { name: "bad question", colour: "#c62828", level: "question" },
 };
 
-export const FLAG_TYPES: FlagType[] = FLAGS.map((id) => ({ id, ...FLAG_TYPE[id] }));
+/** Keyed by Item flag, so every Item flag has exactly one entry. */
+export const ITEM_FLAG_TYPE: Record<ItemFlag, Omit<FlagType, "id">> = {
+  eliminated: { name: "eliminated", colour: "#616161", level: "item" },
+  eliminated_unsure: { name: "eliminated but unsure", colour: "#9e9d24", level: "item" },
+  sure_right: { name: "sure right", colour: "#2e7d32", level: "item" },
+  unknown_term: { name: "unknown term", colour: "#6a1b9a", level: "item" },
+};
+
+export const FLAG_TYPES: FlagType[] = [...FLAGS.map((id) => ({ id, ...FLAG_TYPE[id] })), ...ITEM_FLAGS.map((id) => ({ id, ...ITEM_FLAG_TYPE[id] }))];
 
 export type SchemaDocument = {
   id: "schema";

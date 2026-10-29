@@ -1,5 +1,5 @@
 import type { Storage } from "../storage/storage";
-import type { Confidence, Flag } from "../domain/types";
+import type { Confidence, Flag, ItemFlag } from "../domain/types";
 
 // ADR-0001: one append-only, time-ordered stream per Session, chunked only by saving.
 
@@ -11,6 +11,12 @@ export type RawEventBody =
   | { type: "confidence"; questionId: string; confidence: Confidence | null }
   | { type: "flag"; questionId: string; flag: Flag }
   | { type: "unflag"; questionId: string; flag: Flag }
+  | { type: "itemFlag"; questionId: string; optionId: string; itemFlag: ItemFlag }
+  | { type: "itemUnflag"; questionId: string; optionId: string; itemFlag: ItemFlag }
+  /** Hints open one level at a time, lightest (0) first. */
+  | { type: "openHint"; questionId: string; level: number }
+  /** "I think the answer is wrong": adds the bad-question Flag, with the user's reason. */
+  | { type: "appeal"; questionId: string; reason: string }
   /** The whole Note as saved; an empty `text` removes it. */
   | { type: "note"; questionId: string; text: string }
   | { type: "hide" }

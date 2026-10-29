@@ -565,3 +565,21 @@ describe("Importer: current Topic paths", () => {
     expect((await preview(storage, reuse)).newTopicPaths).toEqual([]);
   });
 });
+
+describe("Importer: Hints", () => {
+  it("keeps a Question's Hints in level order, lightest first, and gives a Question without Hints none", async () => {
+    const storage = createMemoryStorage();
+    const hints = [[{ type: "text", text: "Think about energy." }], [{ type: "text", text: "Not {{opt:opt_b}}." }]];
+    const pack = { ...threePack, questions: [{ ...threePack.questions[0]!, hints }, threePack.questions[1]!] };
+    const { setId } = await importPack(storage, pack);
+    const set = (await storage.get<QuestionSet>("sets", setId))!;
+    const [withHints, without] = await loadQuestions(storage, set);
+    expect(withHints!.hints).toEqual(hints);
+    expect(without!.hints).toEqual([]);
+  });
+
+  it("refuses a Hint that is not a list of content blocks", () => {
+    const parsed = parseQuestionPack(JSON.stringify({ ...threePack, questions: [{ ...threePack.questions[0]!, hints: ["Think about energy."] }] }));
+    expect(parsed.ok).toBe(false);
+  });
+});

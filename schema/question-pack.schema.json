@@ -61,6 +61,7 @@
         "optionOrder": { "enum": ["shuffle", "fixed"] },
         "answer": { "type": "array", "minItems": 1, "items": { "type": "string" }, "description": "The ids of the correct Options: exactly one for single_answer." },
         "explanation": { "$ref": "#/definitions/blocks" },
+        "hints": { "type": "array", "items": { "$ref": "#/definitions/blocks" }, "description": "Graded Hints, lightest first; each is a list of content blocks." },
         "topics": { "type": "array", "items": { "$ref": "#/definitions/topicPath" } },
         "tags": { "type": "array", "items": { "type": "string" } }
       }

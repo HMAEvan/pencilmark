@@ -6,6 +6,7 @@ import type { OverrideValues } from "./overrides";
 import { emptyTiming, emptyTrajectory, walkRawLog, type ChunkGap, type QuestionTiming, type SessionTotals, type Trajectory } from "./timing";
 import type { Rules } from "../domain/settings";
 import { emptyMarks, walkMarks, type QuestionMarks, type RemovedFlags } from "./marks";
+import { walkHints, type HintUse } from "./hints";
 
 export { finalAnsweringActiveMs, finalValues, type FinalValues, type OverriddenValue, type OverrideValues } from "./overrides";
 
@@ -16,8 +17,9 @@ export { finalAnsweringActiveMs, finalValues, type FinalValues, type OverriddenV
  * 2: timing and trajectories. 3: unreleased; issues #5, #7 and #8 each used it on their own branch.
  * 4: multiple-answer Questions and partial scores; Confidence, Flags and Notes; reviewing time.
  * 5: the Digest shows every time to the millisecond.
+ * 6: Item flags, Hints used and appeals.
  */
-export const ALGORITHM_VERSION = 5;
+export const ALGORITHM_VERSION = 6;
 
 export type DerivationInput = {
   title: string;
@@ -44,6 +46,8 @@ export type DerivedAttempt = QuestionMarks & {
   optionOrder: string[];
   timing: QuestionTiming;
   trajectory: Trajectory;
+  /** In the order opened, which is level order. */
+  hintsUsed: HintUse[];
 };
 
 export type DerivationResult = {
@@ -67,6 +71,7 @@ export function derive(input: DerivationInput): DerivationResult {
     const question = byId.get(questionId);
     return question ? questionTypeOf(question).select(answer, optionId) : answer;
   });
+  const hints = walkHints(input.rawLog, (questionId) => byId.get(questionId)?.hints?.length ?? 0, walk.hintAnsweringMs);
 
   const attempts = input.questionOrder.map((questionId, index): DerivedAttempt => {
     const question = byId.get(questionId);
@@ -82,6 +87,7 @@ export function derive(input: DerivationInput): DerivationResult {
       optionOrder: input.optionOrders[questionId] ?? question.options.map((o) => o.id),
       timing: walk.questions.get(questionId) ?? emptyTiming(),
       trajectory: walk.trajectories.get(questionId) ?? emptyTrajectory(),
+      hintsUsed: hints.get(questionId) ?? [],
       ...(marks.get(questionId) ?? emptyMarks()),
     };
   });

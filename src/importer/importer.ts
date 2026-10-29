@@ -24,6 +24,8 @@ export type PackQuestion = {
   optionOrder?: "shuffle" | "fixed";
   answer: string[];
   explanation?: ContentBlock[];
+  /** Graded Hints, lightest first. */
+  hints?: ContentBlock[][];
   /** Topic paths such as "BIOL101 / Genetics / Lecture 5"; the first segment names the Track. */
   topics?: string[];
   tags?: string[];
@@ -299,6 +301,7 @@ function questionFromPack(
     optionOrder: q.optionOrder ?? (isTrueFalse(q) ? "fixed" : "shuffle"),
     answer: q.answer,
     explanation: q.explanation ?? [],
+    hints: q.hints ?? [],
     batchId,
     topicIds: unique((q.topics ?? []).flatMap((path) => resolved.get(path)?.topicId ?? [])),
     trackIds: unique((q.topics ?? []).map((path) => resolved.get(path)!.trackId)),
