@@ -144,6 +144,16 @@ _Avoid_: Results file
 A file carrying everything needed to restore the tool exactly as it was.
 _Avoid_: Export, dump
 
+## Where data lives
+
+**Local mode** (本地模式):
+A copy of PencilMark opened outside claude.ai (GitHub Pages, a saved file), keeping its data in that browser's IndexedDB. In code: `StorageMode` `"local"`.
+_Avoid_: Offline mode, browser mode
+
+**Artifact mode** (Artifact 模式):
+A copy of PencilMark published as a claude.ai Artifact, keeping its data in the Artifact's database under the viewer's private path. When the database is unavailable inside claude.ai, the copy says so and falls back to that browser's IndexedDB (`"artifactUnavailable"`).
+_Avoid_: Cloud mode, online mode
+
 ## Provisional
 
 Working names introduced while building issue #5, not yet agreed with /domain-modeling.
@@ -178,14 +188,4 @@ _Status_: provisional, not yet agreed
 
 **Flag type** (标记类型):
 One kind of Flag as the Schema document lists it: id, English name, colour, and level (`question` for Flags; Item flags will use `item`). A retired Flag type is marked deprecated, never removed. In code: `FlagType`, `FLAG_TYPE`, `FLAG_TYPES`.
-_Status_: provisional, not yet agreed
-
-Working names introduced while building issue #22, not yet agreed with /domain-modeling.
-
-**Local mode** (本地模式):
-A copy of PencilMark opened outside claude.ai (GitHub Pages, a saved file), keeping its data in that browser's IndexedDB. In code: `StorageMode` `"local"`.
-_Status_: provisional, not yet agreed
-
-**Artifact mode** (Artifact 模式):
-A copy of PencilMark published as a claude.ai Artifact, keeping its data in the Artifact's database under the viewer's private path. When the database is unavailable inside claude.ai, the copy says so and falls back to that browser's IndexedDB (`"artifactUnavailable"`).
 _Status_: provisional, not yet agreed
