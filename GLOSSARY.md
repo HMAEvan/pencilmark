@@ -112,6 +112,14 @@ _Avoid_: Event history, trace
 A user's correction to a derived value (a time, a grading result). Recorded beside the derived value; never changes the Raw log.
 _Avoid_: Edit, fix
 
+**Derived time** (记录用时):
+A Question's answering time as Derivation computes it from the Raw log, shown in grey beside an Overridden time. Not the raw time (`answeringRawMs`), which still counts idle time.
+_Avoid_: Raw time, original time, 原始用时
+
+**Overridden time** (修正用时):
+A Question's answering time as the user corrected it with an Override, shown in the normal colour. A time overridden while answering fixes the time up to that moment; answering time derived afterwards is added on top (`answeringActiveMsAtOverride`).
+_Avoid_: Actual time, real time, 实际用时
+
 ## Grading
 
 **Digest** (批改摘要):
@@ -170,14 +178,4 @@ _Status_: provisional, not yet agreed
 
 **Flag type** (标记类型):
 One kind of Flag as the Schema document lists it: id, English name, colour, and level (`question` for Flags; Item flags will use `item`). A retired Flag type is marked deprecated, never removed. In code: `FlagType`, `FLAG_TYPE`, `FLAG_TYPES`.
-_Status_: provisional, not yet agreed
-
-Working names introduced while building issue #24, not yet agreed with /domain-modeling. The user chose the interface labels 记录用时 and 修正用时 (replacing 原始用时, which echoed the Raw log, and 实际用时); the English terms are still working names.
-
-**Derived time** (记录用时):
-A Question's answering time as Derivation computes it from the Raw log, shown in grey beside an overridden time. Not the raw time (`answeringRawMs`), which still counts idle time.
-_Status_: provisional, not yet agreed
-
-**Overridden time** (修正用时):
-A Question's answering time as the user corrected it with an Override, shown in the normal colour. A time overridden while answering fixes the time up to that moment; answering time derived afterwards is added on top (`answeringActiveMsAtOverride`).
 _Status_: provisional, not yet agreed
