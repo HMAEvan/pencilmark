@@ -213,3 +213,17 @@ _Status_: provisional, not yet agreed
 **Flag type** (标记类型):
 One kind of Flag as the Schema document lists it: id, English name, colour, and level (`question` for Flags, `item` for Item flags). A retired Flag type is marked deprecated, never removed. In code: `FlagType`, `FLAG_TYPE`, `ITEM_FLAG_TYPE`, `FLAG_TYPES`.
 _Status_: provisional, not yet agreed
+
+Working name introduced while scoping the demo experience, not yet agreed with /domain-modeling.
+
+**Showcase** (演示样例):
+A ready-made example bundled with the tool: a Question pack, a scripted Session sat on it, the Digest that Session produces, and an AI's Feedback on that Digest. Opening it replays the script in memory and shows the review page; nothing is written to the user's data.
+_Status_: provisional, not yet agreed
+
+**Showcase script** (演示脚本):
+The part of a Showcase that stands in for a learner: the actions of one Session, each with its time from the start, written against the Question pack's labels. Replaying it through the Recorder produces the Showcase's Raw log.
+_Status_: provisional, not yet agreed
+
+**Answering timeline** (作答时间线):
+Everything done on one Question during the answering Phase, in time order: its Visits, each selection and deselection, Item flags, Hints opened, Confidence and Flags. Extends what code calls the trajectory (the first choice and each answer change).
+_Status_: provisional, not yet agreed
