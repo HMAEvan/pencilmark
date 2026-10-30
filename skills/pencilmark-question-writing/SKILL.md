@@ -1,6 +1,8 @@
 ---
 name: pencilmark-question-writing
 description: Writes revision questions as a PencilMark Question pack (JSON) for import. Use when asked to write, generate or turn study material into PencilMark questions.
+metadata:
+  version: "1.0.0"
 ---
 
 # Writing a PencilMark Question pack
@@ -56,7 +58,7 @@ PencilMark is a revision tool. The learner pastes your reply into its import box
 
 No other fields are allowed; the importer rejects unknown ones.
 
-**Content blocks.** Every human-readable field (`stem`, `content`, `rationale`, `misconception`, `explanation`, each Hint) is a list of blocks: `[{ "type": "text", "text": "..." }]`. The text is Markdown; write maths as LaTeX between `$` signs. Use several blocks only for separate paragraphs.
+**Content blocks.** Every human-readable field (`stem`, `content`, `rationale`, `misconception`, `explanation`, each Hint) is a list of blocks: `[{ "type": "text", "text": "..." }]`. The text is Markdown; write maths as LaTeX between `$` signs. Only `~~double tildes~~` is strikethrough; a single `~` is literal text. Prefer an en dash `–` for number ranges (`5–10`) over a tilde. Write a currency dollar as `\$` so it is not read as maths (inside the JSON string that is `\\$`). Use several blocks only for separate paragraphs.
 
 **Topic paths.** A path is the Track and then Topics from broad to narrow, joined by `" / "`: `"BIOL101 / Genetics / Lecture 5"`. The first segment is the Track (one course in one year, or one self-study domain). Topics nest to any depth.
 

@@ -1,5 +1,5 @@
-import questionWritingSkill from "../../skills/pencilmark-question-writing.md?raw";
-import gradingSkill from "../../skills/pencilmark-grading.md?raw";
+import questionWritingSkill from "../../skills/pencilmark-question-writing/SKILL.md?raw";
+import gradingSkill from "../../skills/pencilmark-grading/SKILL.md?raw";
 
 // The copy texts for the two Skills. They are read by an AI, so what is added here is fixed English, like the Digest.
 

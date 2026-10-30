@@ -9,7 +9,7 @@ import { createMemoryStorage } from "../storage/memoryStorage";
 import { createIndexedDbStorage } from "../storage/indexedDbStorage";
 import type { Storage } from "../storage/storage";
 import type { Question, QuestionSet, Topic, Track } from "../domain/types";
-import questionWritingSkill from "../../skills/pencilmark-question-writing.md?raw";
+import questionWritingSkill from "../../skills/pencilmark-question-writing/SKILL.md?raw";
 
 const onePack = {
   kind: "question_pack",

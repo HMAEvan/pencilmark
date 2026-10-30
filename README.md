@@ -16,10 +16,10 @@ To try it without any material, press **Import sample Set** on an empty home scr
 
 The two prompts are self-contained skills that work in any AI chat, and in Claude as skills:
 
-- [`skills/pencilmark-question-writing.md`](skills/pencilmark-question-writing.md): the Question pack format, with a complete example.
-- [`skills/pencilmark-grading.md`](skills/pencilmark-grading.md): how to read a Digest and teach from it.
+- [`skills/pencilmark-question-writing/SKILL.md`](skills/pencilmark-question-writing/SKILL.md): the Question pack format, with a complete example.
+- [`skills/pencilmark-grading/SKILL.md`](skills/pencilmark-grading/SKILL.md): how to read a Digest and teach from it.
 
-Each file is named after its skill so it can be sent on its own. To install one as a Claude skill, save it as `SKILL.md` in a folder with the skill's name, such as `pencilmark-grading/SKILL.md`.
+Each Skill is a folder holding a `SKILL.md`, the standard Agent Skills layout. To install one in Claude, add its folder (such as `skills/pencilmark-grading/`) as a skill. Each Skill carries a `metadata.version` in its frontmatter; the version goes up whenever the Skill's text changes in a way a reader would notice.
 
 Sample Question packs (fabricated general-science Questions) are in [`samples/`](samples/). The file formats and the database are documented in [`schema/`](schema/README.md). Domain terms are defined in [`GLOSSARY.md`](GLOSSARY.md); design decisions are in [`docs/adr/`](docs/adr/).
 

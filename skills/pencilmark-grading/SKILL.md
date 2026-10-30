@@ -1,6 +1,8 @@
 ---
 name: pencilmark-grading
 description: Grades a PencilMark Digest and teaches from it. Use when given a PencilMark Digest, a report starting "# Digest:", to grade or explain.
+metadata:
+  version: "1.0.0"
 ---
 
 # Grading from a PencilMark Digest
