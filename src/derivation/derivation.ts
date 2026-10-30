@@ -7,6 +7,7 @@ import { emptyTiming, emptyTrajectory, walkRawLog, type ChunkGap, type QuestionT
 import type { Rules } from "../domain/settings";
 import { emptyMarks, walkMarks, type QuestionMarks, type RemovedFlags } from "./marks";
 import { walkHints, type HintUse } from "./hints";
+import type { TimelineStep } from "./timeline";
 
 export { finalAnsweringActiveMs, finalValues, type FinalValues, type OverriddenValue, type OverrideValues } from "./overrides";
 
@@ -18,8 +19,9 @@ export { finalAnsweringActiveMs, finalValues, type FinalValues, type OverriddenV
  * 4: multiple-answer Questions and partial scores; Confidence, Flags and Notes; reviewing time.
  * 5: the Digest shows every time to the millisecond.
  * 6: Item flags, Hints used and appeals.
+ * 7: the Answering timeline, in the Attempt and the Digest; the Misconception line in the Digest.
  */
-export const ALGORITHM_VERSION = 6;
+export const ALGORITHM_VERSION = 7;
 
 export type DerivationInput = {
   title: string;
@@ -46,6 +48,8 @@ export type DerivedAttempt = QuestionMarks & {
   optionOrder: string[];
   timing: QuestionTiming;
   trajectory: Trajectory;
+  /** The Answering timeline: every step taken on the Question while answering, in time order. */
+  timeline: TimelineStep[];
   /** In the order opened, which is level order. */
   hintsUsed: HintUse[];
 };
@@ -67,11 +71,17 @@ export type DerivationResult = {
 export function derive(input: DerivationInput): DerivationResult {
   const { marks, removedFlags } = walkMarks(input.rawLog, input.rules);
   const byId = new Map(input.questions.map((q) => [q.id, q]));
-  const walk = walkRawLog(input.rawLog, input.rules, (questionId, answer, optionId) => {
-    const question = byId.get(questionId);
-    return question ? questionTypeOf(question).select(answer, optionId) : answer;
-  });
-  const hints = walkHints(input.rawLog, (questionId) => byId.get(questionId)?.hints?.length ?? 0, walk.hintAnsweringMs);
+  const hintCount = (questionId: string) => byId.get(questionId)?.hints?.length ?? 0;
+  const walk = walkRawLog(
+    input.rawLog,
+    input.rules,
+    (questionId, answer, optionId) => {
+      const question = byId.get(questionId);
+      return question ? questionTypeOf(question).select(answer, optionId) : answer;
+    },
+    hintCount,
+  );
+  const hints = walkHints(input.rawLog, hintCount, walk.hintAnsweringMs);
 
   const attempts = input.questionOrder.map((questionId, index): DerivedAttempt => {
     const question = byId.get(questionId);
@@ -87,6 +97,7 @@ export function derive(input: DerivationInput): DerivationResult {
       optionOrder: input.optionOrders[questionId] ?? question.options.map((o) => o.id),
       timing: walk.questions.get(questionId) ?? emptyTiming(),
       trajectory: walk.trajectories.get(questionId) ?? emptyTrajectory(),
+      timeline: walk.timelines.get(questionId) ?? [],
       hintsUsed: hints.get(questionId) ?? [],
       ...(marks.get(questionId) ?? emptyMarks()),
     };

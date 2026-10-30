@@ -13,7 +13,8 @@ import { gradingSkillText } from "../exports/skills";
 import { CopyButton } from "./CopyButton";
 import { DownloadButton } from "./DownloadButton";
 import { AnsweringTime, TimeOverrideField } from "./AnsweringTime";
-import { formatDateTime, formatDuration, formatScore, timePrecisionOf } from "./format";
+import { AnsweringTimeline } from "./AnsweringTimeline";
+import { answerText, formatDateTime, formatDuration, formatScore, timePrecisionOf } from "./format";
 import { DEFAULT_PREFERENCES, type TimePrecision } from "../domain/settings";
 import { isGraded, questionTypeOf } from "../questionTypes/questionType";
 import { multipleAnswer } from "../questionTypes/multipleAnswer";
@@ -126,12 +127,6 @@ function OverrideEditor({ attempt, final, graded, idleThresholdMs, precision, on
       )}
     </details>
   );
-}
-
-/** Letters in displayed order, whatever order the Options were selected in. */
-function answerText(answer: string[], optionOrder: string[]): string {
-  if (!answer.length) return t("review.blank");
-  return answer.map((id) => letterOf(id, optionOrder)).sort().join(t("review.letterSeparator"));
 }
 
 function ResultMark({ final, multiple, partial }: { final: FinalValues; multiple: boolean; partial: boolean }) {
@@ -290,6 +285,7 @@ export function Review({ sessionId }: { sessionId: string }) {
             )}
             {graded && <p>{t("review.answerGiven", { answer: answerText(attempt.answer, order) })}</p>}
             <p>{t("review.correctAnswer", { answer: graded ? answerText(question.answer, order) : question.answer.join(t("review.answerSeparator")) })}</p>
+            <AnsweringTimeline timeline={attempt.timeline} optionOrder={order} precision={precision} />
             {/* A Hint opened here is reading, like the Explanation: Derivation gives it the Phase reviewing. */}
             <HintPanel
               hints={question.hints ?? []}

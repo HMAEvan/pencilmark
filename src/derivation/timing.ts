@@ -1,7 +1,8 @@
 import type { RecordedChunk } from "../recorder/recorder";
 import type { Rules } from "../domain/settings";
+import { answeringTimelines, END_OF_LOG, type TimelineStep } from "./timeline";
 
-// Time, answers and trajectories per Question, walked from the Raw log. Monotonic `at` is only compared within its own chunk,
+// Time, answers, trajectories and Answering timelines per Question, walked from the Raw log. Monotonic `at` is only compared within its own chunk,
 // and the gaps between chunks (the page hidden or closed) never count.
 // ADR-0009: with one Question on screen, opening it is interacting with it, so time belongs to the open Question
 // until another is opened. Case screens, where the last sub-Question interacted with gets the time, come later.
@@ -55,6 +56,7 @@ export type RawLogWalk = {
   /** Each Question's answer when the answers were revealed. */
   answers: Map<string, string[]>;
   trajectories: Map<string, Trajectory>;
+  timelines: Map<string, TimelineStep[]>;
   /** For each Hint opened while answering, by event `seq`: the active answering time spent on its Question so far. */
   hintAnsweringMs: Map<number, number>;
   totals: SessionTotals;
@@ -70,7 +72,8 @@ export type SelectOption = (questionId: string, answer: string[], optionId: stri
 
 type Phase = "answering" | "reviewing";
 
-export function walkRawLog(rawLog: RecordedChunk[], rules: Rules, select: SelectOption): RawLogWalk {
+/** `hintCount` gives how many Hints each Question has, so a Hint opened out of order is no step of its Answering timeline. */
+export function walkRawLog(rawLog: RecordedChunk[], rules: Rules, select: SelectOption, hintCount: (questionId: string) => number = () => 0): RawLogWalk {
   const questions = new Map<string, QuestionTiming>();
   const totals: SessionTotals = {
     answeringRawMs: 0,
@@ -93,8 +96,11 @@ export function walkRawLog(rawLog: RecordedChunk[], rules: Rules, select: Select
   };
 
   let phase: Phase = "answering";
-  let visit: { phase: Phase; questionId: string; rawMs: number; activeMs: number; excludedIdle: ExcludedIdle[] } | undefined;
-  const closeVisit = () => {
+  const timeline = answeringTimelines(rules, hintCount);
+  // `openSeq` and `openMs`, the Question's answering time when it was opened, place the Visit in its Answering timeline.
+  let visit: { phase: Phase; questionId: string; rawMs: number; activeMs: number; excludedIdle: ExcludedIdle[]; openSeq: number; openMs: number } | undefined;
+  /** `seq` is the event that ends the Visit, or the end of the Raw log. */
+  const closeVisit = (seq: number) => {
     if (!visit) return;
     if (visit.rawMs < rules.flickThresholdMs) {
       addNavigation(visit.phase, visit.activeMs);
@@ -104,6 +110,7 @@ export function walkRawLog(rawLog: RecordedChunk[], rules: Rules, select: Select
       timing.answeringActiveMs += visit.activeMs;
       timing.visits += 1;
       timing.excludedIdle.push(...visit.excludedIdle);
+      timeline.visit(visit.questionId, { seq: visit.openSeq, atMs: visit.openMs }, { seq, atMs: visit.openMs + visit.activeMs });
     } else {
       const timing = timingOf(visit.questionId);
       timing.reviewingRawMs += visit.rawMs;
@@ -111,9 +118,9 @@ export function walkRawLog(rawLog: RecordedChunk[], rules: Rules, select: Select
     }
     visit = undefined;
   };
-  const openVisit = (questionId: string | undefined) => {
-    closeVisit();
-    if (questionId) visit = { phase, questionId, rawMs: 0, activeMs: 0, excludedIdle: [] };
+  const openVisit = (questionId: string | undefined, seq: number) => {
+    closeVisit(seq);
+    if (questionId) visit = { phase, questionId, rawMs: 0, activeMs: 0, excludedIdle: [], openSeq: seq, openMs: questions.get(questionId)?.answeringActiveMs ?? 0 };
   };
 
   const answers = new Map<string, string[]>();
@@ -164,27 +171,35 @@ export function walkRawLog(rawLog: RecordedChunk[], rules: Rules, select: Select
       elapse(event.at);
       if (phase === "answering") {
         if (event.type === "navigate") {
-          openVisit(event.questionId);
+          openVisit(event.questionId, event.seq);
         } else if (event.type === "select") {
           const answer = answers.get(event.questionId) ?? [];
           const next = select(event.questionId, answer, event.optionId);
-          if (next !== answer) answerChanged(event.questionId, next);
+          if (next !== answer) {
+            answerChanged(event.questionId, next);
+            timeline.add(event.questionId, event.seq, { atMs: answeringMsSoFar(event.questionId), kind: "select", optionId: event.optionId, answer: next });
+          }
         } else if (event.type === "deselect") {
-          answerChanged(event.questionId, (answers.get(event.questionId) ?? []).filter((id) => id !== event.optionId));
-        } else if (event.type === "openHint") {
-          hintAnsweringMs.set(event.seq, answeringMsSoFar(event.questionId));
+          const answer = answers.get(event.questionId) ?? [];
+          const next = answer.filter((id) => id !== event.optionId);
+          answerChanged(event.questionId, next);
+          // Deselecting an Option that was not selected changes nothing the learner did, so it is no step.
+          if (next.length !== answer.length) timeline.add(event.questionId, event.seq, { atMs: answeringMsSoFar(event.questionId), kind: "deselect", optionId: event.optionId, answer: next });
         } else if (event.type === "submit") {
-          closeVisit();
+          closeVisit(event.seq);
           phase = "reviewing";
+        } else if ("questionId" in event && event.questionId) {
+          if (event.type === "openHint") hintAnsweringMs.set(event.seq, answeringMsSoFar(event.questionId));
+          timeline.mark(event, answeringMsSoFar(event.questionId));
         }
       } else if (event.type === "onScreen") {
-        openVisit(event.questionId);
+        openVisit(event.questionId, event.seq);
       }
     }
     elapse(Math.max(chunk.activeMs, prevAt));
   }
-  closeVisit();
-  return { questions, answers, trajectories, hintAnsweringMs, totals, chunkGaps: chunkGaps(rawLog) };
+  closeVisit(END_OF_LOG);
+  return { questions, answers, trajectories, timelines: timeline.timelines(), hintAnsweringMs, totals, chunkGaps: chunkGaps(rawLog) };
 }
 
 function chunkGaps(rawLog: RecordedChunk[]): ChunkGap[] {

@@ -227,3 +227,9 @@ _Status_: provisional, not yet agreed
 **Answering timeline** (作答时间线):
 Everything done on one Question during the answering Phase, in time order: its Visits, each selection and deselection, Item flags, Hints opened, Confidence, Flags, Appeals, Notes and Overrides. Extends what code calls the trajectory (the first choice and each answer change).
 _Status_: provisional, not yet agreed
+
+Working name introduced while building issue #38, not yet agreed with /domain-modeling.
+
+**Timeline step** (时间线步骤):
+One entry of an Answering timeline: a Visit opened or left, a selection or deselection, an Item flag set or taken back, a Hint opened, a Confidence, Flag, Appeal or Note recorded, each at the answering time spent on the Question so far. Actions that changed nothing (taking back a mark never made, a Hint out of order) are not steps. In code: `TimelineStep`.
+_Status_: provisional, not yet agreed

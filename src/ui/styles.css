@@ -100,6 +100,9 @@ button.small { padding: 4px 10px; font-size: 0.9rem; }
 .drawer-body { margin-top: 4px; }
 .note { display: block; margin-top: 12px; color: var(--muted); font-size: 0.9rem; }
 .note textarea { margin-top: 4px; font: inherit; color: var(--fg); }
+.timeline h4 { margin: 12px 0 0; font-size: 0.95rem; }
+.timeline ol { margin: 4px 0 0; padding-left: 0; list-style: none; font-size: 0.9rem; }
+.timeline-time { display: inline-block; min-width: 4.5em; color: var(--muted); font-variant-numeric: tabular-nums; }
 .note-read { white-space: pre-wrap; color: var(--muted); font-size: 0.9rem; margin: 12px 0 0; }
 .timers, .times { display: flex; flex-wrap: wrap; gap: 4px 16px; align-items: flex-start; margin: 8px 0; }
 .answering-time { display: inline-flex; flex-direction: column; }

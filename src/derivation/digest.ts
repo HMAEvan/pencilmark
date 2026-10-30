@@ -5,6 +5,7 @@ import type { DerivedAttempt } from "./derivation";
 import type { FlagMark, RemovedFlags } from "./marks";
 import { finalValues, type FinalValues, type OverrideValues } from "./overrides";
 import { excludedIdleMs } from "./timing";
+import type { TimelineStep } from "./timeline";
 import { isGraded, questionTypeOf } from "../questionTypes/questionType";
 import { multipleAnswer } from "../questionTypes/multipleAnswer";
 
@@ -60,6 +61,52 @@ function hintLines({ hintsUsed, optionOrder }: DerivedAttempt, question: Questio
   return lines;
 }
 
+/** One line per step of the Answering timeline, at the answering time spent on the Question so far. */
+function timelineLines({ timeline, optionOrder }: DerivedAttempt): string[] {
+  if (!timeline.length) return ["- Answering timeline: never opened while answering"];
+  let visits = 0;
+  const describe = (step: TimelineStep): string => {
+    switch (step.kind) {
+      case "open":
+        return `Visit ${++visits} opened`;
+      case "leave":
+        return `Visit ${visits} left`;
+      case "select":
+      case "deselect":
+        return `${step.kind}ed ${letterOf(step.optionId, optionOrder)}; answer now ${letters(step.answer, optionOrder)}`;
+      case "itemFlag":
+        return `Item flag on ${letterOf(step.optionId, optionOrder)}: ${ITEM_FLAG_TYPE[step.itemFlag].name}`;
+      case "itemUnflag":
+        return `Item flag removed from ${letterOf(step.optionId, optionOrder)}: ${ITEM_FLAG_TYPE[step.itemFlag].name}`;
+      case "openHint":
+        return `Hint level ${step.level} opened`;
+      case "confidence":
+        return step.confidence ? `Confidence: ${step.confidence}` : "Confidence cleared";
+      case "flag":
+        return `Flag added: ${FLAG_TYPE[step.flag].name}`;
+      case "unflag":
+        return `Flag removed: ${FLAG_TYPE[step.flag].name}`;
+      case "appeal":
+        return `Appeal: ${step.reason}`;
+      case "note":
+        return step.text ? `Note saved: ${step.text}` : "Note cleared";
+    }
+  };
+  return ["- Answering timeline (time spent on this Question so far):", ...timeline.map((step) => `  - ${duration(step.atMs)}: ${describe(step)}`)];
+}
+
+/** For a wrong answer, what the author thought each wrong Option chosen would catch: a guess to check, not a finding. */
+function misconceptionLines({ answer, optionOrder }: DerivedAttempt, question: Question, final: FinalValues): string[] {
+  if (final.correct !== false) return [];
+  const lines = optionOrder
+    .filter((id) => answer.includes(id) && !question.answer.includes(id))
+    .flatMap((id) => {
+      const misconception = question.options.find((o) => o.id === id)?.misconception;
+      return misconception?.length ? [`  - ${letterOf(id, optionOrder)}: ${blocksToText(misconception, optionOrder)}`] : [];
+    });
+  return lines.length ? ["- Misconception the question writer had in mind (their guess, not a finding):", ...lines] : [];
+}
+
 function answeringTime(attempt: DerivedAttempt, final: FinalValues): string {
   const { timing } = attempt;
   const idleMs = excludedIdleMs(timing);
@@ -112,6 +159,7 @@ export function writeDigest(
         ...reviewingTime(attempt),
         ...hintLines(attempt, question),
         ...markLines(attempt, removedFlags[attempt.questionId] ?? [], collectConfidence),
+        ...timelineLines(attempt),
         "",
       );
       continue;
@@ -128,9 +176,11 @@ export function writeDigest(
       `- Answer given: ${letters(attempt.answer, order)}`,
       `- Correct answer: ${letters(question.answer, order)}`,
       ...outcomeLines(attempt, final, multiple),
+      ...misconceptionLines(attempt, question, final),
       itemFlagLine(attempt),
       ...hintLines(attempt, question),
       ...markLines(attempt, removedFlags[attempt.questionId] ?? [], collectConfidence),
+      ...timelineLines(attempt),
       "",
     );
   }

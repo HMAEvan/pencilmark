@@ -152,6 +152,10 @@ describe("derive", () => {
         "- Item flags: none",
         "- Confidence: none",
         "- Flags: none",
+        "- Answering timeline (time spent on this Question so far):",
+        "  - 0.000 s: Visit 1 opened",
+        "  - 1.000 s: selected C; answer now C",
+        "  - 2.000 s: Visit 1 left",
         "",
       ].join("\n"),
     );
@@ -395,7 +399,7 @@ describe("derive: provenance", () => {
         { rules: strict },
       ),
     );
-    expect(result.algorithmVersion).toBe(6);
+    expect(result.algorithmVersion).toBe(7);
     expect(result.parameters).toEqual({ idleThresholdMs: 30_000, flickThresholdMs: 1_000, shuffleQuestions: true, shuffleOptions: true, collectConfidence: true });
     expect(result.chunks).toEqual([
       { id: `${SESSION}_0`, hash: "hash0" },
@@ -882,5 +886,223 @@ describe("derive: appeals", () => {
   it("gives the reason in the Digest beside the bad-question Flag", () => {
     const { digest } = derive(sitting([{ activeMs: 10_000, events: [[0, open(question)], [3_000, appeal(question, "The stem is ambiguous")], [10_000, submit]] }]));
     expect(digest).toContain("- Flags: bad question (answering)\n- Appeal (answering): the learner thinks the answer is wrong: The stem is ambiguous\n");
+  });
+});
+
+describe("derive: Answering timeline", () => {
+  const hinted: Question = { ...question, hints: [[{ type: "text", text: "Think about energy." }], [{ type: "text", text: "Which organelle has cristae?" }]] };
+  const itemFlag = (q: Question, optionId: string, flag: ItemFlag) => ({ type: "itemFlag", questionId: q.id, optionId, itemFlag: flag }) as const;
+  const itemUnflag = (q: Question, optionId: string, flag: ItemFlag) => ({ type: "itemUnflag", questionId: q.id, optionId, itemFlag: flag }) as const;
+  const openHint = (q: Question, level: number) => ({ type: "openHint", questionId: q.id, level }) as const;
+  const confidence = (q: Question, c: Confidence | null) => ({ type: "confidence", questionId: q.id, confidence: c }) as const;
+  const flag = (q: Question, f: Flag) => ({ type: "flag", questionId: q.id, flag: f }) as const;
+  const unflag = (q: Question, f: Flag) => ({ type: "unflag", questionId: q.id, flag: f }) as const;
+  const deselect = (q: Question, optionId: string) => ({ type: "deselect", questionId: q.id, optionId }) as const;
+  const note = (q: Question, text: string) => ({ type: "note", questionId: q.id, text }) as const;
+  const appeal = (q: Question, reason: string) => ({ type: "appeal", questionId: q.id, reason }) as const;
+
+  // Q1 0–10 s: B eliminated, Hint 0, C chosen. Q2 10–20 s. Q1 flicked past 20–20.3 s. Q2 20.3–25 s.
+  // Q1 again 25–40 s: answer changed to A, Confidence probably, careless Flag. Submitted at 40 s, then a reviewing Flag.
+  const sat = () =>
+    sitting(
+      [
+        {
+          activeMs: 40_000,
+          events: [
+            [0, open(question)],
+            [2_000, itemFlag(question, "opt_b", "eliminated")],
+            [4_000, openHint(question, 0)],
+            [6_000, choose(question, "opt_c")],
+            [10_000, open(second)],
+            [20_000, open(question)],
+            [20_300, open(second)],
+            [25_000, open(question)],
+            [30_000, choose(question, "opt_a")],
+            [32_000, confidence(question, "probably")],
+            [35_000, flag(question, "careless")],
+            [40_000, submit],
+          ],
+        },
+        { activeMs: 2_000, events: [[1_000, flag(question, "memory")]] },
+      ],
+      { questions: [hinted, second] },
+    );
+
+  it("lists every action on a Question while answering, in order, each at the answering time spent on it so far, leaving out a stretch too short to be a Visit", () => {
+    expect(attemptOf(derive(sat()), question).timeline).toEqual([
+      { atMs: 0, kind: "open" },
+      { atMs: 2_000, kind: "itemFlag", optionId: "opt_b", itemFlag: "eliminated" },
+      { atMs: 4_000, kind: "openHint", level: 0 },
+      { atMs: 6_000, kind: "select", optionId: "opt_c", answer: ["opt_c"] },
+      { atMs: 10_000, kind: "leave" },
+      { atMs: 10_000, kind: "open" },
+      { atMs: 15_000, kind: "select", optionId: "opt_a", answer: ["opt_a"] },
+      { atMs: 17_000, kind: "confidence", confidence: "probably" },
+      { atMs: 20_000, kind: "flag", flag: "careless" },
+      { atMs: 25_000, kind: "leave" },
+    ]);
+    expect(attemptOf(derive(sat()), second).timeline).toEqual([
+      { atMs: 0, kind: "open" },
+      { atMs: 10_000, kind: "leave" },
+      { atMs: 10_000, kind: "open" },
+      { atMs: 14_700, kind: "leave" },
+    ]);
+  });
+
+  it("does not count time while the page is hidden", () => {
+    // Chunk 0: Q1 0–15 s, then hidden for an hour. Chunk 1: C chosen 5 s after showing, submitted 8 s after.
+    const result = derive(
+      sitting([
+        { activeMs: 15_000, events: [[0, open(question)], [15_000, { type: "hide" }]] },
+        { activeMs: 8_000, events: [[0, { type: "show", wall: 3_600_000 }], [5_000, choose(question, "opt_c")], [8_000, submit]] },
+      ]),
+    );
+    expect(attemptOf(result, question).timeline).toEqual([
+      { atMs: 0, kind: "open" },
+      { atMs: 20_000, kind: "select", optionId: "opt_c", answer: ["opt_c"] },
+      { atMs: 23_000, kind: "leave" },
+    ]);
+  });
+
+  it("includes deselections, Item flags and Flags taken back, Confidence cleared, Appeals and Notes saved, but not actions that changed nothing", () => {
+    const result = derive(
+      sitting(
+        [
+          {
+            activeMs: 10_000,
+            events: [
+              [0, open(question)],
+              [1_000, choose(question, "opt_a")],
+              [2_000, deselect(question, "opt_a")],
+              [2_500, deselect(question, "opt_b")],
+              [3_000, itemFlag(question, "opt_c", "eliminated")],
+              [3_500, itemUnflag(question, "opt_c", "eliminated")],
+              [3_700, itemUnflag(question, "opt_b", "sure_right")],
+              [4_000, confidence(question, "guessed")],
+              [4_500, confidence(question, null)],
+              [5_000, unflag(question, "focus")],
+              [5_500, appeal(question, "Two answers fit")],
+              [6_000, unflag(question, "bad_question")],
+              [6_500, appeal(question, "  ")],
+              [7_000, note(question, "Not sure about B")],
+              [7_500, note(question, "")],
+              [8_000, openHint(question, 1)],
+              [10_000, submit],
+            ],
+          },
+        ],
+        { questions: [hinted, second] },
+      ),
+    );
+    const { timeline } = attemptOf(result, question);
+    expect(timeline.map((s) => s.kind)).toEqual(["open", "select", "deselect", "itemFlag", "itemUnflag", "confidence", "confidence", "appeal", "unflag", "note", "note", "leave"]);
+    expect(timeline).toContainEqual({ atMs: 2_000, kind: "deselect", optionId: "opt_a", answer: [] });
+    expect(timeline).toContainEqual({ atMs: 4_500, kind: "confidence", confidence: null });
+    expect(timeline).toContainEqual({ atMs: 5_500, kind: "appeal", reason: "Two answers fit" });
+    expect(timeline).toContainEqual({ atMs: 7_500, kind: "note", text: "" });
+  });
+
+  it("leaves Confidence out when it was not collected", () => {
+    const result = derive(
+      sitting([{ activeMs: 10_000, events: [[0, open(question)], [4_000, confidence(question, "sure")], [10_000, submit]] }], { rules: { ...rules, collectConfidence: false } }),
+    );
+    expect(attemptOf(result, question).timeline.map((s) => s.kind)).toEqual(["open", "leave"]);
+  });
+
+  it("writes every step into the Digest in displayed letters, with the time spent on the Question", () => {
+    const { digest } = derive({ ...sat(), optionOrders: { [question.id]: ["opt_c", "opt_a", "opt_b"], [second.id]: ["opt_a", "opt_b"] } });
+    expect(digest).toContain(
+      [
+        "- Answering timeline (time spent on this Question so far):",
+        "  - 0.000 s: Visit 1 opened",
+        "  - 2.000 s: Item flag on C: eliminated",
+        "  - 4.000 s: Hint level 0 opened",
+        "  - 6.000 s: selected A; answer now A",
+        "  - 10.000 s: Visit 1 left",
+        "  - 10.000 s: Visit 2 opened",
+        "  - 15.000 s: selected B; answer now B",
+        "  - 17.000 s: Confidence: probably",
+        "  - 20.000 s: Flag added: careless",
+        "  - 25.000 s: Visit 2 left",
+        "",
+      ].join("\n"),
+    );
+  });
+
+  it("writes taken-back marks, Appeals and Notes into the Digest", () => {
+    const { digest } = derive(
+      sitting([
+        {
+          activeMs: 10_000,
+          events: [
+            [0, open(question)],
+            [1_000, choose(question, "opt_b")],
+            [2_000, deselect(question, "opt_b")],
+            [3_000, itemFlag(question, "opt_c", "unknown_term")],
+            [3_500, itemUnflag(question, "opt_c", "unknown_term")],
+            [4_000, confidence(question, null)],
+            [5_000, appeal(question, "Two answers fit")],
+            [6_000, unflag(question, "bad_question")],
+            [7_000, note(question, "Not sure")],
+            [7_500, note(question, "")],
+            [10_000, submit],
+          ],
+        },
+      ]),
+    );
+    expect(digest).toContain(
+      [
+        "  - 1.000 s: selected B; answer now B",
+        "  - 2.000 s: deselected B; answer now (blank)",
+        "  - 3.000 s: Item flag on C: unknown term",
+        "  - 3.500 s: Item flag removed from C: unknown term",
+        "  - 4.000 s: Confidence cleared",
+        "  - 5.000 s: Appeal: Two answers fit",
+        "  - 6.000 s: Flag removed: bad question",
+        "  - 7.000 s: Note saved: Not sure",
+        "  - 7.500 s: Note cleared",
+      ].join("\n"),
+    );
+  });
+
+  it("says so in the Digest when a Question was never opened while answering", () => {
+    const { digest } = derive(sitting([{ activeMs: 10_000, events: [[0, open(question)], [10_000, submit]] }]));
+    expect(digest).toContain("- Answering timeline: never opened while answering\n");
+  });
+});
+
+describe("derive: Misconception in the Digest", () => {
+  const withMisconceptions: Question = {
+    ...question,
+    type: "multiple_answer",
+    answer: ["opt_a"],
+    options: [
+      { id: "opt_a", content: [{ type: "text", text: "Mitochondrion" }], rationale: [] },
+      { id: "opt_b", content: [{ type: "text", text: "Ribosome" }], rationale: [], misconception: [{ type: "text", text: "Confuses making proteins with making ATP." }] },
+      { id: "opt_c", content: [{ type: "text", text: "Golgi apparatus" }], rationale: [], misconception: [{ type: "text", text: "Thinks packaging needs its own energy source." }] },
+    ],
+  };
+  const sat = (...picked: string[]) =>
+    sitting([{ activeMs: 10_000, events: [[0, open(question)], ...picked.map((id, i): [number, RawEventBody] => [1_000 * (i + 1), choose(question, id)]), [10_000, submit]] }], {
+      questions: [withMisconceptions, second],
+      optionOrders: { [question.id]: ["opt_c", "opt_a", "opt_b"], [second.id]: ["opt_a", "opt_b"] },
+    });
+
+  it("names the Misconception of each wrong Option in a wrong answer, in displayed order, labelled as the question writer's guess", () => {
+    const { digest } = derive(sat("opt_b", "opt_a", "opt_c"));
+    expect(digest).toContain(
+      [
+        "- Misconception the question writer had in mind (their guess, not a finding):",
+        "  - A: Thinks packaging needs its own energy source.",
+        "  - C: Confuses making proteins with making ATP.",
+      ].join("\n"),
+    );
+  });
+
+  it("is left out for a correct answer, a blank one, and a result overridden to correct", () => {
+    expect(derive(sat("opt_a")).digest).not.toContain("Misconception");
+    expect(derive(sat()).digest).not.toContain("Misconception");
+    const result = derive(sat("opt_b"));
+    expect(digestWithOverrides(sat("opt_b"), result, new Map([[question.id, { correct: true }]]))).not.toContain("Misconception");
   });
 });

@@ -1,5 +1,6 @@
 import { DEFAULT_PREFERENCES, type Display, type TimePrecision } from "../domain/settings";
 import type { Session } from "../domain/types";
+import { letterOf } from "../domain/display";
 import { t, type TranslationKey } from "../i18n/i18n";
 
 const MONTHS: TranslationKey[] = [
@@ -67,6 +68,12 @@ export function displayOf(session: Session): Display {
 /** Snapshots from before the time-precision preference existed use the default. */
 export function timePrecisionOf(session: Session): TimePrecision {
   return displayOf(session).timePrecision ?? DEFAULT_PREFERENCES.display.timePrecision;
+}
+
+/** Letters in displayed order, whatever order the Options were selected in. */
+export function answerText(answer: string[], optionOrder: string[]): string {
+  if (!answer.length) return t("review.blank");
+  return answer.map((id) => letterOf(id, optionOrder)).sort().join(t("review.letterSeparator"));
 }
 
 /** A score to at most two decimal places: "2.5", "0.33". */
