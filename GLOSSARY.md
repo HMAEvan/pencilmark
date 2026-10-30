@@ -202,8 +202,8 @@ _Status_: provisional, not yet agreed
 
 Working names introduced while building issue #9, not yet agreed with /domain-modeling.
 
-**Skill** (技能说明):
-A self-contained instruction file pasted into any AI chat (and usable as a Claude skill): the question-writing Skill, the single source of the Question pack format, and the grading Skill, which teaches from a Digest. The copy texts are a Skill followed by the user's Topic paths or a Digest.
+**Skill** (Skill):
+A self-contained instruction file pasted into any AI chat (and usable as a Claude skill): the question-writing Skill, the single source of the Question pack format, and the grading Skill, which teaches from a Digest.
 _Status_: provisional, not yet agreed
 
 **Schema document** (结构说明文档):

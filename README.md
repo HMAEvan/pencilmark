@@ -8,13 +8,13 @@ PencilMark runs entirely in the browser. It is served from GitHub Pages at <http
 
 ## How it works
 
-1. Press **Copy question-writing prompt**, paste it into any AI chat with your study material, and paste the AI's reply (a **Question pack**, JSON) into the import box.
+1. Press **Copy question-writing Skill**, paste it into any AI chat with your study material, and paste the AI's reply (a **Question pack**, JSON) into the import box.
 2. The pack becomes a **Set** on the home screen. Start it to sit a **Session**.
-3. Submit, review your answers, and press **Copy grading materials** to paste the grading instructions and the **Digest** into an AI chat. In a chat that already has the instructions, **Copy Digest only**.
+3. Submit, review your answers, and press **Copy grading Skill** and **Copy Digest** and paste them into an AI chat. In a chat that already has the Skill, send only the Digest.
 
 To try it without any material, press **Import sample Set** on an empty home screen.
 
-The two prompts are self-contained skills that work in any AI chat, and in Claude as skills:
+The two Skills are self-contained that work in any AI chat, and in Claude as skills:
 
 - [`skills/pencilmark-question-writing/SKILL.md`](skills/pencilmark-question-writing/SKILL.md): the Question pack format, with a complete example.
 - [`skills/pencilmark-grading/SKILL.md`](skills/pencilmark-grading/SKILL.md): how to read a Digest and teach from it.

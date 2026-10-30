@@ -1,4 +1,4 @@
-import { useRef, useState } from "preact/hooks";
+import { useEffect, useRef, useState } from "preact/hooks";
 import { t, type TranslationKey } from "../i18n/i18n";
 import {
   commitImport,
@@ -14,7 +14,7 @@ import {
   type PreviewQuestion,
   type SimilarChoice,
 } from "../importer/importer";
-import { questionWritingPrompt } from "../exports/skills";
+import { questionWritingSkillText } from "../exports/skills";
 import samplePack from "../../samples/general-science.json?raw";
 import { storage } from "./appStorage";
 import { CopyButton } from "./CopyButton";
@@ -196,6 +196,11 @@ export function ImportForm({ onImported, offerSample }: { onImported: () => void
     setChoices({});
   };
   const [imported, setImported] = useState<string>();
+  const [hasTopics, setHasTopics] = useState(false);
+  const [appendTopics, setAppendTopics] = useState(true);
+  useEffect(() => {
+    topicPaths(storage).then((paths) => setHasTopics(paths.length > 0));
+  }, [imported]);
   // A ref, not state: two clicks can land before a re-render and would import twice.
   const committing = useRef(false);
 
@@ -261,7 +266,12 @@ export function ImportForm({ onImported, offerSample }: { onImported: () => void
         </label>
       </div>
       <div class="actions">
-        <CopyButton label="import.copyPrompt" text={async () => questionWritingPrompt(await topicPaths(storage))} secondary />
+        <CopyButton label="import.copySkill" text={async () => questionWritingSkillText(appendTopics ? await topicPaths(storage) : undefined)} secondary />
+        {hasTopics && (
+          <label>
+            <input type="checkbox" checked={appendTopics} onChange={(e) => setAppendTopics(e.currentTarget.checked)} /> {t("import.appendTopics")}
+          </label>
+        )}
         {offerSample && (
           <button type="button" class="secondary" disabled={preview !== undefined} onClick={loadSample}>
             {t("import.sample")}

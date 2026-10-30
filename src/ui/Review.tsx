@@ -9,7 +9,7 @@ import { AppealForm, FlagButtons, HintPanel, ItemFlagMarks, NoteField } from "./
 import { digestWithOverrides, finalValues, type FinalValues, type OverrideValues } from "../derivation/derivation";
 import { excludedIdleMs } from "../derivation/timing";
 import { buildAnswerPack } from "../exports/answerPack";
-import { gradingMaterials } from "../exports/skills";
+import { gradingSkillText } from "../exports/skills";
 import { CopyButton } from "./CopyButton";
 import { AnsweringTime, TimeOverrideField } from "./AnsweringTime";
 import { formatDateTime, formatDuration, formatScore, timePrecisionOf } from "./format";
@@ -221,11 +221,10 @@ export function Review({ sessionId }: { sessionId: string }) {
         {ungraded > 0 && <span class="muted">{t("review.ungradedCount", { count: ungraded })}</span>}
       </p>
       <div class="actions">
-        <CopyButton label="review.copyGrading" text={() => gradingMaterials(digest)} />
+        <CopyButton label="review.copyGrading" text={() => gradingSkillText()} />
+        <CopyButton label="review.copyDigest" text={() => digest} />
       </div>
-      <div class="actions">
-        <CopyButton label="review.copyDigest" text={() => digest} secondary />
-      </div>
+      <p class="muted">{t("review.copyGuidance")}</p>
       <div class="actions">
         <button class="secondary" onClick={() => navigate()}>
           {t("review.backHome")}

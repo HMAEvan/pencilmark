@@ -2,12 +2,12 @@
 name: pencilmark-grading
 description: Grades a PencilMark Digest and teaches from it. Use when given a PencilMark Digest, a report starting "# Digest:", to grade or explain.
 metadata:
-  version: "1.0.0"
+  version: "1.1.0"
 ---
 
 # Grading from a PencilMark Digest
 
-PencilMark is a revision tool. While the learner sat a Set of Questions, it recorded how each one was answered: time spent, the first choice and every answer change, the Options they eliminated or were sure of, the Hints they needed, how confident they felt, the Flags they set and the Notes they wrote. The **Digest** is that record as Markdown, starting `# Digest:`. It usually follows this text.
+PencilMark is a revision tool. While the learner sat a Set of Questions, it recorded how each one was answered: time spent, the first choice and every answer change, the Options they eliminated or were sure of, the Hints they needed, how confident they felt, the Flags they set and the Notes they wrote. The **Digest** is that record as Markdown, starting `# Digest:`. It may follow this text, come in the next message, or arrive as an attached file.
 
 The answers are already marked. Your job is the **Feedback**: teaching that goes where the learner's reasoning wavered, not a re-run of the answer key.
 
