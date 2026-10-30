@@ -2,7 +2,7 @@ import { useState } from "preact/hooks";
 import { t, type TranslationKey } from "../i18n/i18n";
 
 /** Copies `text()` to the clipboard; where the browser refuses, shows it selected for copying by hand. */
-export function CopyButton({ label, text, secondary }: { label: TranslationKey; text: () => string | Promise<string>; secondary?: boolean }) {
+export function CopyButton({ label, text, secondary, link }: { label: TranslationKey; text: () => string | Promise<string>; secondary?: boolean; link?: boolean }) {
   const [state, setState] = useState<{ key: TranslationKey; text?: string }>();
   const copy = async () => {
     const value = await text();
@@ -15,7 +15,7 @@ export function CopyButton({ label, text, secondary }: { label: TranslationKey; 
   };
   return (
     <>
-      <button type="button" class={secondary ? "secondary" : undefined} onClick={copy}>
+      <button type="button" class={link ? "link" : secondary ? "secondary" : undefined} onClick={copy}>
         {t(label)}
       </button>
       {state && <span class="muted">{t(state.key)}</span>}
