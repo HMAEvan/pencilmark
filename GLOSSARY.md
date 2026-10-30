@@ -25,7 +25,7 @@ Material shared by several Questions (a clinical vignette, a passage, a figure, 
 _Avoid_: Question group, 题组, stimulus
 
 **Hint** (提示):
-A graded clue written when the Question is authored; level 0 is the lightest.
+A graded clue written when the Question is authored; level 0 is the lightest (shown on screen and in the Digest as level 1).
 _Avoid_: Help, clue
 
 **Rationale** (选项解析):

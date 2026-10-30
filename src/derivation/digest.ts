@@ -54,10 +54,10 @@ function hintLines({ hintsUsed, optionOrder }: DerivedAttempt, question: Questio
   const lines = answering.length
     ? [
         `- **Hints used while answering: ${answering.length} of ${hints.length}**`,
-        ...answering.map((h) => `  - Level ${h.level}, after ${duration(h.answeringMs ?? 0)}: ${blocksToText(hints[h.level]!, optionOrder)}`),
+        ...answering.map((h) => `  - Level ${h.level + 1}, after ${duration(h.answeringMs ?? 0)}: ${blocksToText(hints[h.level]!, optionOrder)}`),
       ]
     : [`- Hints used while answering: none of ${hints.length}`];
-  if (reviewing.length) lines.push(`- Hints opened while reviewing: level ${reviewing.map((h) => h.level).join(", ")}`);
+  if (reviewing.length) lines.push(`- Hints opened while reviewing: level ${reviewing.map((h) => h.level + 1).join(", ")}`);
   return lines;
 }
 
@@ -79,7 +79,7 @@ function timelineLines({ timeline, optionOrder }: DerivedAttempt): string[] {
       case "itemUnflag":
         return `Item flag removed from ${letterOf(step.optionId, optionOrder)}: ${ITEM_FLAG_TYPE[step.itemFlag].name}`;
       case "openHint":
-        return `Hint level ${step.level} opened`;
+        return `Hint level ${step.level + 1} opened`;
       case "confidence":
         return step.confidence ? `Confidence: ${step.confidence}` : "Confidence cleared";
       case "flag":

@@ -846,9 +846,9 @@ describe("derive: Hints", () => {
     expect(digest).toContain(
       [
         "- **Hints used while answering: 2 of 3**",
-        "  - Level 0, after 5.000 s: Think about energy.",
-        "  - Level 1, after 12.000 s: Which organelle has cristae?",
-        "- Hints opened while reviewing: level 2",
+        "  - Level 1, after 5.000 s: Think about energy.",
+        "  - Level 2, after 12.000 s: Which organelle has cristae?",
+        "- Hints opened while reviewing: level 3",
         "",
       ].join("\n"),
     );
@@ -1016,7 +1016,7 @@ describe("derive: Answering timeline", () => {
         "- Answering timeline (time spent on this Question so far):",
         "  - 0.000 s: Visit 1 opened",
         "  - 2.000 s: Item flag on C: eliminated",
-        "  - 4.000 s: Hint level 0 opened",
+        "  - 4.000 s: Hint level 1 opened",
         "  - 6.000 s: selected A; answer now A",
         "  - 10.000 s: Visit 1 left",
         "  - 10.000 s: Visit 2 opened",
