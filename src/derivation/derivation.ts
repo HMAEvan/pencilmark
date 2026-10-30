@@ -20,8 +20,9 @@ export { finalAnsweringActiveMs, finalValues, type FinalValues, type OverriddenV
  * 5: the Digest shows every time to the millisecond.
  * 6: Item flags, Hints used and appeals.
  * 7: the Answering timeline, in the Attempt and the Digest; the Misconception line in the Digest.
+ * 8: the Digest writes a partial score to at most two decimal places.
  */
-export const ALGORITHM_VERSION = 7;
+export const ALGORITHM_VERSION = 8;
 
 export type DerivationInput = {
   title: string;

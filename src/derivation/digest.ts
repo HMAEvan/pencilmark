@@ -123,7 +123,7 @@ const reviewingTime = ({ timing }: DerivedAttempt) => (timing.reviewingActiveMs 
 function outcomeLines(attempt: DerivedAttempt, final: FinalValues, multiple: boolean): string[] {
   const { trajectory, optionOrder } = attempt;
   const result = ({ correct, partialScore }: Pick<FinalValues, "correct" | "partialScore">) =>
-    `${correct ? "correct" : "wrong"}${multiple ? ` (partial score ${partialScore})` : ""}`;
+    `${correct ? "correct" : "wrong"}${multiple ? ` (partial score ${partialScore === null ? partialScore : Math.round(partialScore * 100) / 100})` : ""}`;
   const changes = trajectory.changes.map((c) => `${letters(c.answer, optionOrder)} at ${duration(c.atMs)} (after ${duration(c.dwellMs)})`);
   return [
     `- Result: ${result(final)}${final.overridden.includes("correct") ? ` (overridden by the user; derived: ${result(attempt)})` : ""}`,

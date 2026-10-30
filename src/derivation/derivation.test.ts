@@ -399,7 +399,7 @@ describe("derive: provenance", () => {
         { rules: strict },
       ),
     );
-    expect(result.algorithmVersion).toBe(7);
+    expect(result.algorithmVersion).toBe(8);
     expect(result.parameters).toEqual({ idleThresholdMs: 30_000, flickThresholdMs: 1_000, shuffleQuestions: true, shuffleOptions: true, collectConfidence: true });
     expect(result.chunks).toEqual([
       { id: `${SESSION}_0`, hash: "hash0" },
@@ -562,6 +562,11 @@ describe("derive: multiple-answer Questions", () => {
     expect(half).toContain("- Type: multiple answer (select all that apply)");
     expect(half).toContain("- Result: wrong (partial score 0.5)");
     expect(derive(sitMultiple([go, submit])).digest).toContain("- Result: wrong (partial score 0)");
+  });
+
+  it("writes a partial score in the Digest to at most two decimal places, as the review page shows it", () => {
+    const threeRight = { ...sitMultiple([go, pick("opt_a"), pick("opt_c"), submit]), questions: [{ ...multiple, answer: ["opt_a", "opt_c", "opt_e"] }] };
+    expect(derive(threeRight).digest).toContain("- Result: wrong (partial score 0.67)");
   });
 });
 

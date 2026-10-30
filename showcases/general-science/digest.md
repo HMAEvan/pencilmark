@@ -121,7 +121,7 @@ In which of these situations is the car accelerating? Select all that apply.
 - Type: multiple answer (select all that apply)
 - Answer given: B, D
 - Correct answer: B, D, E
-- Result: wrong (partial score 0.6666666666666666)
+- Result: wrong (partial score 0.67)
 - Answering time: 53.535 s
 - First choice: B after 11.836 s
 - Answer changes: B, D at 14.667 s (after 2.831 s), B, D, E at 18.068 s (after 3.401 s), B, D at 31.400 s (after 13.332 s)
