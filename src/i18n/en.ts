@@ -198,7 +198,6 @@ export const en = {
   "common.loading": "Loading…",
   "common.notFound": "Not found",
   "showcase.banner": "This is an example Session, sat by a script rather than a person. Nothing here is saved: reloading the page replays it from the start, and your own data is not touched.",
-  "showcase.digestHeading": "Digest",
   "showcase.feedbackHeading": "Feedback",
   "showcase.feedbackLabel": "Written by {model} with grading Skill {version}, {date}",
   "showcase.conversationLink": "Open the conversation",

@@ -29,10 +29,6 @@ export function ShowcaseReview({ name }: { name: string }) {
 
   return (
     <ReviewPage shown={shown} banner={<p class="card showcase-banner">{t("showcase.banner")}</p>}>
-      <section class="card">
-        <h2>{t("showcase.digestHeading")}</h2>
-        <pre class="digest">{shown.derivation.digest}</pre>
-      </section>
       {feedback && (
         <section class="card">
           <h2>{t("showcase.feedbackHeading")}</h2>

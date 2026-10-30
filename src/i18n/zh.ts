@@ -196,7 +196,6 @@ export const zh = {
   "common.loading": "加载中…",
   "common.notFound": "找不到该内容",
   "showcase.banner": "这是一轮示例，由脚本而非真人作答。这里的一切都不会保存：刷新页面会从头重放，你自己的数据不受影响。",
-  "showcase.digestHeading": "批改摘要",
   "showcase.feedbackHeading": "讲解",
   "showcase.feedbackLabel": "由 {model} 按批改 Skill {version} 撰写，{date}",
   "showcase.conversationLink": "打开对话",

@@ -12,9 +12,9 @@ A runner completes one full lap of a 400 m track in 80 seconds, finishing where 
 - Answer given: A
 - Correct answer: C
 - Result: wrong
-- Answering time: 22.000 s
-- Reviewing time: 33.000 s
-- First choice: A after 17.000 s
+- Answering time: 25.614 s
+- Reviewing time: 31.635 s
+- First choice: A after 20.550 s
 - Answer changes: none
 - Misconception the question writer had in mind (their guess, not a finding):
   - A: Using distance travelled instead of displacement, treating velocity as the same as speed.
@@ -25,9 +25,9 @@ A runner completes one full lap of a 400 m track in 80 seconds, finishing where 
 - Note (reviewing): I divided distance by time. A full lap ends where it started, so displacement and average velocity are zero.
 - Answering timeline (time spent on this Question so far):
   - 0.000 s: Visit 1 opened
-  - 17.000 s: selected A; answer now A
-  - 20.000 s: Confidence: sure
-  - 22.000 s: Visit 1 left
+  - 20.550 s: selected A; answer now A
+  - 23.716 s: Confidence: sure
+  - 25.614 s: Visit 1 left
 
 ## Question 2
 
@@ -41,23 +41,23 @@ Why is ice less dense than liquid water?
 - Answer given: B
 - Correct answer: B
 - Result: correct
-- Answering time: 49.000 s
-- First choice: A after 24.000 s
-- Answer changes: B at 43.000 s (after 19.000 s)
+- Answering time: 49.858 s
+- First choice: A after 25.003 s
+- Answer changes: B at 43.784 s (after 18.781 s)
 - Item flags: C eliminated (answering), D eliminated (answering)
 - **Hints used while answering: 1 of 3**
-  - Level 1, after 35.000 s: Think about how the molecules are arranged, not what is mixed in with them.
+  - Level 1, after 37.243 s: Think about how the molecules are arranged, not what is mixed in with them.
 - Confidence: probably
 - Flags: none
 - Answering timeline (time spent on this Question so far):
   - 0.000 s: Visit 1 opened
-  - 8.000 s: Item flag on C: eliminated
-  - 12.000 s: Item flag on D: eliminated
-  - 24.000 s: selected A; answer now A
-  - 35.000 s: Hint level 1 opened
-  - 43.000 s: selected B; answer now B
-  - 46.000 s: Confidence: probably
-  - 49.000 s: Visit 1 left
+  - 8.969 s: Item flag on C: eliminated
+  - 13.761 s: Item flag on D: eliminated
+  - 25.003 s: selected A; answer now A
+  - 37.243 s: Hint level 1 opened
+  - 43.784 s: selected B; answer now B
+  - 46.335 s: Confidence: probably
+  - 49.858 s: Visit 1 left
 
 ## Question 3
 
@@ -71,8 +71,8 @@ What is the main reason a vaccine protects you months or years after you receive
 - Answer given: B
 - Correct answer: B
 - Result: correct
-- Answering time: 16.000 s
-- First choice: B after 12.000 s
+- Answering time: 18.256 s
+- First choice: B after 13.374 s
 - Answer changes: none
 - Item flags: none
 - Hints used while answering: none of 2
@@ -80,9 +80,9 @@ What is the main reason a vaccine protects you months or years after you receive
 - Flags: none
 - Answering timeline (time spent on this Question so far):
   - 0.000 s: Visit 1 opened
-  - 12.000 s: selected B; answer now B
-  - 14.000 s: Confidence: sure
-  - 16.000 s: Visit 1 left
+  - 13.374 s: selected B; answer now B
+  - 16.314 s: Confidence: sure
+  - 18.256 s: Visit 1 left
 
 ## Question 4
 
@@ -94,8 +94,8 @@ Liquid water is at its densest at 0 °C, just before it freezes.
 - Answer given: B
 - Correct answer: B
 - Result: correct
-- Answering time: 15.000 s
-- First choice: B after 9.000 s
+- Answering time: 14.520 s
+- First choice: B after 7.766 s
 - Answer changes: none
 - Item flags: none
 - Hints used while answering: none of 1
@@ -103,10 +103,10 @@ Liquid water is at its densest at 0 °C, just before it freezes.
 - Flags: memory (answering)
 - Answering timeline (time spent on this Question so far):
   - 0.000 s: Visit 1 opened
-  - 9.000 s: selected B; answer now B
-  - 11.000 s: Confidence: guessed
-  - 13.000 s: Flag added: memory
-  - 15.000 s: Visit 1 left
+  - 7.766 s: selected B; answer now B
+  - 10.215 s: Confidence: guessed
+  - 12.542 s: Flag added: memory
+  - 14.520 s: Visit 1 left
 
 ## Question 5
 
@@ -122,9 +122,9 @@ In which of these situations is the car accelerating? Select all that apply.
 - Answer given: B, D
 - Correct answer: B, D, E
 - Result: wrong (partial score 0.6666666666666666)
-- Answering time: 52.000 s
-- First choice: B after 12.000 s
-- Answer changes: B, D at 15.000 s (after 3.000 s)
+- Answering time: 53.535 s
+- First choice: B after 11.836 s
+- Answer changes: B, D at 14.667 s (after 2.831 s), B, D, E at 18.068 s (after 3.401 s), B, D at 31.400 s (after 13.332 s)
 - Item flags: E eliminated but unsure (answering)
 - Hints used while answering: none of 2
 - Confidence: probably
@@ -132,14 +132,16 @@ In which of these situations is the car accelerating? Select all that apply.
 - Note (answering): Does turning at a steady speed count as accelerating? Come back to this.
 - Answering timeline (time spent on this Question so far):
   - 0.000 s: Visit 1 opened
-  - 12.000 s: selected B; answer now B
-  - 15.000 s: selected D; answer now B, D
-  - 23.000 s: Item flag on E: eliminated but unsure
-  - 37.000 s: Note saved: Does turning at a steady speed count as accelerating? Come back to this.
-  - 40.000 s: Visit 1 left
-  - 40.000 s: Visit 2 opened
-  - 49.000 s: Confidence: probably
-  - 52.000 s: Visit 2 left
+  - 11.836 s: selected B; answer now B
+  - 14.667 s: selected D; answer now B, D
+  - 18.068 s: selected E; answer now B, D, E
+  - 28.591 s: Item flag on E: eliminated but unsure
+  - 31.400 s: deselected E; answer now B, D
+  - 38.683 s: Note saved: Does turning at a steady speed count as accelerating? Come back to this.
+  - 41.761 s: Visit 1 left
+  - 41.761 s: Visit 2 opened
+  - 49.550 s: Confidence: probably
+  - 53.535 s: Visit 2 left
 
 ## Question 6
 
@@ -155,22 +157,22 @@ Which of these can a vaccine use to present an antigen to the immune system? Sel
 - Answer given: A, C, E
 - Correct answer: A, C, E
 - Result: correct (partial score 1)
-- Answering time: 39.000 s
-- First choice: E after 12.000 s
-- Answer changes: A, E at 15.000 s (after 3.000 s), A, C, E at 34.000 s (after 19.000 s)
+- Answering time: 38.615 s
+- First choice: E after 11.501 s
+- Answer changes: A, E at 14.553 s (after 3.052 s), A, C, E at 33.367 s (after 18.814 s)
 - Item flags: none
 - **Hints used while answering: 1 of 2**
-  - Level 1, after 26.000 s: Each correct option provides the antigen without the ability to cause serious disease.
+  - Level 1, after 24.538 s: Each correct option provides the antigen without the ability to cause serious disease.
 - Confidence: probably
 - Flags: none
 - Answering timeline (time spent on this Question so far):
   - 0.000 s: Visit 1 opened
-  - 12.000 s: selected E; answer now E
-  - 15.000 s: selected A; answer now A, E
-  - 26.000 s: Hint level 1 opened
-  - 34.000 s: selected C; answer now A, C, E
-  - 37.000 s: Confidence: probably
-  - 39.000 s: Visit 1 left
+  - 11.501 s: selected E; answer now E
+  - 14.553 s: selected A; answer now A, E
+  - 24.538 s: Hint level 1 opened
+  - 33.367 s: selected C; answer now A, C, E
+  - 36.485 s: Confidence: probably
+  - 38.615 s: Visit 1 left
 
 ## Question 7
 
@@ -182,9 +184,9 @@ A sore arm or mild fever after a vaccination is generally a sign of the immune s
 - Answer given: A
 - Correct answer: A
 - Result: correct
-- Answering time: 14.000 s
-- Reviewing time: 22.000 s
-- First choice: A after 6.000 s
+- Answering time: 16.589 s
+- Reviewing time: 19.872 s
+- First choice: A after 7.657 s
 - Answer changes: none
 - Item flags: none
 - Hints used while answering: none of 1
@@ -194,10 +196,10 @@ A sore arm or mild fever after a vaccination is generally a sign of the immune s
 - Note (answering): The weakened virus in the last question is live, so is a fever really never the virus? Anyway, True fits better.
 - Answering timeline (time spent on this Question so far):
   - 0.000 s: Visit 1 opened
-  - 6.000 s: selected A; answer now A
-  - 8.000 s: Confidence: sure
-  - 11.000 s: Note saved: The weakened virus in the last question is live, so is a fever really never the virus? Anyway, True fits better.
-  - 14.000 s: Visit 1 left
+  - 7.657 s: selected A; answer now A
+  - 9.339 s: Confidence: sure
+  - 12.577 s: Note saved: The weakened virus in the last question is live, so is a fever really never the virus? Anyway, True fits better.
+  - 16.589 s: Visit 1 left
 
 ## Question 8
 
@@ -213,22 +215,22 @@ Which of these are consequences of ice being less dense than liquid water? Selec
 - Answer given: A, C, E
 - Correct answer: A, C, E
 - Result: correct (partial score 1)
-- Answering time: 35.000 s
-- First choice: C after 9.000 s
-- Answer changes: A, C at 12.000 s (after 3.000 s), A, B, C at 18.000 s (after 6.000 s), A, C at 26.000 s (after 8.000 s), A, C, E at 30.000 s (after 4.000 s)
+- Answering time: 36.843 s
+- First choice: C after 9.311 s
+- Answer changes: A, C at 12.138 s (after 2.827 s), A, B, C at 18.016 s (after 5.878 s), A, C at 27.300 s (after 9.284 s), A, C, E at 30.636 s (after 3.336 s)
 - Item flags: none
 - Hints used while answering: none of 2
 - Confidence: sure
 - Flags: none
 - Answering timeline (time spent on this Question so far):
   - 0.000 s: Visit 1 opened
-  - 9.000 s: selected C; answer now C
-  - 12.000 s: selected A; answer now A, C
-  - 18.000 s: selected B; answer now A, B, C
-  - 26.000 s: deselected B; answer now A, C
-  - 30.000 s: selected E; answer now A, C, E
-  - 33.000 s: Confidence: sure
-  - 35.000 s: Visit 1 left
+  - 9.311 s: selected C; answer now C
+  - 12.138 s: selected A; answer now A, C
+  - 18.016 s: selected B; answer now A, B, C
+  - 27.300 s: deselected B; answer now A, C
+  - 30.636 s: selected E; answer now A, C, E
+  - 34.335 s: Confidence: sure
+  - 36.843 s: Visit 1 left
 
 ## Question 9
 
@@ -242,9 +244,9 @@ Why does the flu vaccine need updating most years?
 - Answer given: C
 - Correct answer: B
 - Result: wrong
-- Answering time: 27.000 s
-- First choice: B after 10.000 s
-- Answer changes: C at 22.000 s (after 12.000 s)
+- Answering time: 30.751 s
+- First choice: B after 11.304 s
+- Answer changes: C at 24.957 s (after 13.653 s)
 - Misconception the question writer had in mind (their guess, not a finding):
   - C: Confusing antigenic change with drug resistance.
 - Item flags: none
@@ -253,10 +255,10 @@ Why does the flu vaccine need updating most years?
 - Flags: none
 - Answering timeline (time spent on this Question so far):
   - 0.000 s: Visit 1 opened
-  - 10.000 s: selected B; answer now B
-  - 22.000 s: selected C; answer now C
-  - 25.000 s: Confidence: probably
-  - 27.000 s: Visit 1 left
+  - 11.304 s: selected B; answer now B
+  - 24.957 s: selected C; answer now C
+  - 28.541 s: Confidence: probably
+  - 30.751 s: Visit 1 left
 
 ## Question 10
 
@@ -268,9 +270,9 @@ Two objects moving at the same speed must have the same velocity.
 - Answer given: A
 - Correct answer: B
 - Result: wrong
-- Answering time: 5.000 s
-- Reviewing time: 20.000 s
-- First choice: A after 3.000 s
+- Answering time: 5.028 s
+- Reviewing time: 19.592 s
+- First choice: A after 2.851 s
 - Answer changes: none
 - Misconception the question writer had in mind (their guess, not a finding):
   - A: Treating speed and velocity as interchangeable words.
@@ -281,5 +283,5 @@ Two objects moving at the same speed must have the same velocity.
 - Note (reviewing): I meant to pick False. I clicked True by mistake.
 - Answering timeline (time spent on this Question so far):
   - 0.000 s: Visit 1 opened
-  - 3.000 s: selected A; answer now A
-  - 5.000 s: Visit 1 left
+  - 2.851 s: selected A; answer now A
+  - 5.028 s: Visit 1 left
