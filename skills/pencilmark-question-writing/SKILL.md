@@ -7,7 +7,7 @@ metadata:
 
 # Writing a PencilMark Question pack
 
-PencilMark is a revision tool. The learner pastes your reply into its import box, and it becomes a Set of Questions to sit. Afterwards the tool reports how each Question was answered (hesitation, answer changes, Confidence) so that an AI can teach from it. Your job is to write the Questions as one **Question pack**: a single JSON document in the format below.
+PencilMark is a revision tool. The learner imports your Question pack (a file you attach, or your reply pasted into its import box), and it becomes a Set of Questions to sit. Afterwards the tool reports how each Question was answered (hesitation, answer changes, Confidence) so that an AI can teach from it. Your job is to write the Questions as one **Question pack**: a single JSON document in the format below.
 
 ## Steps
 
