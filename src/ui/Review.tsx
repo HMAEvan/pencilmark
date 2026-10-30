@@ -222,10 +222,10 @@ export function Review({ sessionId }: { sessionId: string }) {
         {ungraded > 0 && <span class="muted">{t("review.ungradedCount", { count: ungraded })}</span>}
       </p>
       <div class="actions">
-        <CopyButton label="review.copyGrading" text={() => gradingSkillText()} />
-        <DownloadButton label="review.downloadGrading" fileName={() => "pencilmark-grading.md"} text={() => gradingSkillText()} secondary />
-        <CopyButton label="review.copyDigest" text={() => digest} />
-        <DownloadButton label="review.downloadDigest" fileName={() => `${set.title.replace(/[\\/:*?"<>|\s]+/g, "-")}-${new Date().toISOString().slice(0, 10)}.md`} text={() => digest} secondary />
+        <DownloadButton label="review.downloadGrading" fileName={() => "pencilmark-grading.md"} text={() => gradingSkillText()} />
+        <CopyButton label="common.copyText" text={() => gradingSkillText()} link />
+        <DownloadButton label="review.downloadDigest" fileName={() => `${set.title.replace(/[\\/:*?"<>|\s]+/g, "-")}-${new Date().toISOString().slice(0, 10)}.md`} text={() => digest} />
+        <CopyButton label="common.copyText" text={() => digest} link />
       </div>
       <p class="muted">{t("review.copyGuidance")}</p>
       <div class="actions">

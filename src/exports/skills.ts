@@ -3,11 +3,14 @@ import gradingSkill from "../../skills/pencilmark-grading/SKILL.md?raw";
 
 // The copy texts for the two Skills. They are read by an AI, so what is added here is fixed English, like the Digest.
 
-/** The question-writing Skill, followed by the learner's Tracks and Topic paths when given. */
-export function questionWritingSkillText(topicPaths?: string[]): string {
-  if (!topicPaths?.length) return questionWritingSkill;
-  const paths = ["These are my current Tracks and Topics. Use these paths exactly where a Question fits them:", "", ...topicPaths.map((path) => `- ${path}`)];
-  return [questionWritingSkill.trimEnd(), "", "---", "", "## My current Tracks and Topics", "", ...paths, ""].join("\n");
+/** The question-writing Skill alone; the learner's Tracks and Topics are copied separately. */
+export function questionWritingSkillText(): string {
+  return questionWritingSkill;
+}
+
+/** The learner's current Tracks and Topic paths, to paste after the Skill or later in the chat. */
+export function topicsListText(topicPaths: string[]): string {
+  return ["These are my current Tracks and Topics. Use these paths exactly where a Question fits them:", "", ...topicPaths.map((path) => `- ${path}`), ""].join("\n");
 }
 
 /** The grading Skill alone; the Digest is copied separately. */
