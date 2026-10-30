@@ -2,7 +2,7 @@
 name: pencilmark-grading
 description: Grades a PencilMark Digest and teaches from it. Use when given a PencilMark Digest, a report starting "# Digest:", to grade or explain.
 metadata:
-  version: "1.1.0"
+  version: "1.1.1"
 ---
 
 # Grading from a PencilMark Digest
@@ -18,7 +18,7 @@ The answers are already marked. Your job is the **Feedback**: teaching that goes
 3. **Write the Feedback** in this chat, in the shape under "Feedback". Teach the tiers in order; within a tier, the bigger misunderstanding first.
 4. **Ask the learner** which point they want to go deeper on, and continue the conversation from there.
 
-If no Digest is in the conversation, ask the learner to paste one from the PencilMark review page ("Copy Digest only").
+If no Digest is in the conversation, ask the learner to attach or paste one from the PencilMark review page ("Download Digest", or its "copy text" link).
 
 ## Reading the Digest
 
