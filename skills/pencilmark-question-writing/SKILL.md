@@ -2,7 +2,7 @@
 name: pencilmark-question-writing
 description: Writes revision questions as a PencilMark Question pack (JSON) for import. Use when asked to write, generate or turn study material into PencilMark questions.
 metadata:
-  version: "1.1.0"
+  version: "1.2.0"
 ---
 
 # Writing a PencilMark Question pack
@@ -13,7 +13,7 @@ PencilMark is a revision tool. The learner pastes your reply into its import box
 
 1. **Read the material** the learner gave you (notes, slides, a topic name) and note what they want: how many Questions, which types, which Topic.
 2. **Choose Topic paths.** If a list of the learner's current Tracks and Topics is given (it may follow this text, come in the next message, or arrive as an attached file), file each Question under the existing path that fits, spelled exactly as listed. Create a new path only where nothing fits; the tool asks the learner before creating it.
-3. **Write the Questions**, each one testing one idea, with every wrong Option a plausible mistake rather than filler.
+3. **Write the Questions**, each one testing one idea, with every wrong Option a plausible mistake rather than filler. Where the material involves formulas or calculations, include Questions that use them.
 4. **Check the pack** against the checklist at the end. Done means every point on it holds for every Question.
 5. **Reply with the pack** in one ```json code block. A sentence before or after it is fine; the importer finds the block.
 
@@ -43,7 +43,7 @@ PencilMark is a revision tool. The learner pastes your reply into its import box
 - `options` (required): at least two Options.
 - `answer` (required): the `id`s of the correct Options. Exactly one for `single_answer`.
 - `explanation`: the explanation of the Question as a whole, shown after the answer is revealed.
-- `hints`: graded Hints, a list of content-block lists, lightest first. The learner opens them one at a time while answering, so each should give a little more than the one before, and none should give the answer away outright. Two or three are usually enough.
+- `hints`: graded Hints, a list of content-block lists, lightest first. The learner opens them one at a time while answering, so each should give a little more than the one before, and none should give the answer away outright. The tool records which Hints were opened, so give every Question two or three (one is enough for true/false), unless the learner asks for none.
 - `optionOrder`: `"shuffle"` (default) or `"fixed"`. The tool shuffles Options unless told otherwise.
 - `topics`: Topic paths the Question sits under; several are allowed.
 - `tags`: free strings. `"true_false"` has a special meaning (below).
@@ -53,7 +53,7 @@ PencilMark is a revision tool. The learner pastes your reply into its import box
 - `id` (required): unique within its Question, such as `"opt_a"` or `"opt_mito"`. A meaningful id makes placeholders easier to read.
 - `content` (required): the Option's text, as content blocks.
 - `rationale`: why this particular Option is right or wrong. Write one for every Option.
-- `misconception`: for a wrong Option, the typical misunderstanding it is designed to catch.
+- `misconception`: for a wrong Option, the typical misunderstanding it is designed to catch. Write one for every wrong Option except "All/None of the above". The Feedback offers it as a possible reason for a wrong answer, to check against how the learner answered.
 - `pin`: `"first"` or `"last"` keeps the Option in that place when the others are shuffled.
 
 No other fields are allowed; the importer rejects unknown ones.
@@ -148,6 +148,10 @@ A complete pack with one Question of each type. Its Topic paths are illustrative
       ],
       "answer": ["opt_joule", "opt_kwh"],
       "explanation": [{ "type": "text", "text": "Energy is measured in joules or kilowatt-hours; {{opt:opt_watt}} measures power and {{opt:opt_newton}} measures force." }],
+      "hints": [
+        [{ "type": "text", "text": "Check each unit: is it an amount of energy, a rate, or something else entirely?" }],
+        [{ "type": "text", "text": "Energy is power multiplied by time." }]
+      ],
       "topics": ["Physics 101 / Energy"]
     },
     {
@@ -166,6 +170,7 @@ A complete pack with one Question of each type. Its Topic paths are illustrative
       "optionOrder": "fixed",
       "answer": ["opt_true"],
       "explanation": [{ "type": "text", "text": "Newton's first law: with no net force, velocity stays constant." }],
+      "hints": [[{ "type": "text", "text": "What does constant velocity say about acceleration?" }]],
       "topics": ["Physics 101 / Forces / Newton's laws"],
       "tags": ["true_false"]
     }
@@ -183,7 +188,7 @@ In JSON strings a LaTeX backslash is written twice (`\\times`).
 - Every true/false Question is `single_answer` with two Options, `"optionOrder": "fixed"` and the tag `"true_false"`.
 - No text names an Option by its letter; each reference is `{{opt:<optionId>}}`.
 - "All/None of the above" Options carry `"pin": "last"`.
-- Hints, where given, go from lightest to strongest and none states the answer.
-- Every Option has a Rationale; every wrong Option that catches a known mistake has a Misconception.
+- Every Question has Hints (two or three; one for true/false), unless the learner asked for none; they go from lightest to strongest and none states the answer.
+- Every Option has a Rationale; every wrong Option has a Misconception, except "All/None of the above".
 - Every Topic path uses `" / "` between segments, and reuses the learner's existing paths where they fit.
 - The pack is valid JSON: double quotes, no trailing commas, no comments.
