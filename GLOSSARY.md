@@ -128,6 +128,14 @@ _Avoid_: Complaint, dispute, report
 The untouched, time-ordered record of everything the user did during a Session. Never edited; everything else about the Session is derived from it.
 _Avoid_: Event history, trace
 
+**Answering timeline** (作答时间线):
+Everything done on one Question during the answering Phase, in time order: its Visits, each selection and deselection, Item flags, Hints opened, Confidence, Flags, Appeals, Notes and Overrides (Overrides once they are Raw log events, #35). Shown on the review page and in the Digest. Extends what code calls the trajectory (the first choice and each answer change).
+_Avoid_: Trajectory (only the first choice and answer changes), trace
+
+**Timeline step** (时间线步骤):
+One entry of an Answering timeline: a Visit opened or left, a selection or deselection, an Item flag set or taken back, a Hint opened, a Confidence, Flag, Appeal or Note recorded, each at the answering time spent on the Question so far. Actions that changed nothing (taking back a mark never made, a Hint out of order) are not steps. In code: `TimelineStep`.
+_Avoid_: Event (a Raw log event that changed nothing makes no step)
+
 **Override** (手动修正):
 A user's correction to a derived value (a time, a grading result). Recorded beside the derived value; never changes the Raw log.
 _Avoid_: Edit, fix
@@ -222,16 +230,6 @@ _Status_: provisional, not yet agreed
 
 **Showcase script** (演示脚本):
 The part of a Showcase that stands in for a learner: the actions of one Session, each with its time from the start, written against the Question pack's labels. Replaying it through the Recorder produces the Showcase's Raw log.
-_Status_: provisional, not yet agreed
-
-**Answering timeline** (作答时间线):
-Everything done on one Question during the answering Phase, in time order: its Visits, each selection and deselection, Item flags, Hints opened, Confidence, Flags, Appeals, Notes and Overrides. Extends what code calls the trajectory (the first choice and each answer change).
-_Status_: provisional, not yet agreed
-
-Working name introduced while building issue #38, not yet agreed with /domain-modeling.
-
-**Timeline step** (时间线步骤):
-One entry of an Answering timeline: a Visit opened or left, a selection or deselection, an Item flag set or taken back, a Hint opened, a Confidence, Flag, Appeal or Note recorded, each at the answering time spent on the Question so far. Actions that changed nothing (taking back a mark never made, a Hint out of order) are not steps. In code: `TimelineStep`.
 _Status_: provisional, not yet agreed
 
 Working name introduced while building issue #40, not yet agreed with /domain-modeling.
