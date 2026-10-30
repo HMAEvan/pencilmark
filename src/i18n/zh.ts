@@ -22,7 +22,7 @@ export const zh = {
   "import.packLevel": "题目包",
   "import.copyErrors": "复制错误信息（发回给 AI 修改）",
   "import.copySkill": "复制出题 Skill",
-  "import.appendTopics": "附上我的 Track 和 Topic",
+  "import.appendTopics": "附上我的学习线和主题",
   "import.sample": "导入示例练习单",
   "import.previewHeading": "导入预览（尚未写入）",
   "import.previewCounts": "「{title}」：新题 {new} 道，重复跳过 {skipped} 道，相似 {similar} 道，冲突 {conflict} 道",
