@@ -18,6 +18,7 @@ import { questionWritingSkillText } from "../exports/skills";
 import samplePack from "../../samples/general-science.json?raw";
 import { storage } from "./appStorage";
 import { CopyButton } from "./CopyButton";
+import { DownloadButton } from "./DownloadButton";
 import { Dialog } from "./Dialog";
 import { RichText } from "./RichText";
 import { keepFormulasWhole } from "../render/formulaDiff";
@@ -267,6 +268,7 @@ export function ImportForm({ onImported, offerSample }: { onImported: () => void
       </div>
       <div class="actions">
         <CopyButton label="import.copySkill" text={async () => questionWritingSkillText(appendTopics ? await topicPaths(storage) : undefined)} secondary />
+        <DownloadButton label="import.downloadSkill" fileName={() => "pencilmark-question-writing.md"} text={async () => questionWritingSkillText(appendTopics ? await topicPaths(storage) : undefined)} secondary />
         {hasTopics && (
           <label>
             <input type="checkbox" checked={appendTopics} onChange={(e) => setAppendTopics(e.currentTarget.checked)} /> {t("import.appendTopics")}

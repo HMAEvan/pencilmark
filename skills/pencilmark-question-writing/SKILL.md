@@ -2,7 +2,7 @@
 name: pencilmark-question-writing
 description: Writes revision questions as a PencilMark Question pack (JSON) for import. Use when asked to write, generate or turn study material into PencilMark questions.
 metadata:
-  version: "1.2.0"
+  version: "1.3.0"
 ---
 
 # Writing a PencilMark Question pack
@@ -15,7 +15,7 @@ PencilMark is a revision tool. The learner pastes your reply into its import box
 2. **Choose Topic paths.** If a list of the learner's current Tracks and Topics is given (it may follow this text, come in the next message, or arrive as an attached file), file each Question under the existing path that fits, spelled exactly as listed. Create a new path only where nothing fits; the tool asks the learner before creating it.
 3. **Write the Questions**, each one testing one idea, with every wrong Option a plausible mistake rather than filler. Where the material involves formulas or calculations, include Questions that use them.
 4. **Check the pack** against the checklist at the end. Done means every point on it holds for every Question.
-5. **Reply with the pack** in one ```json code block. A sentence before or after it is fine; the importer finds the block.
+5. **Reply with the pack.** If you can create files, attach the pack as a `.json` file named after the batch title, with at most one sentence in the chat, and say in one line that the learner imports the file with "Choose file" (`.json` is accepted). Only if you cannot create files, reply with the pack in one ```json code block; a sentence before or after it is fine, the importer finds the block.
 
 ## The pack
 
