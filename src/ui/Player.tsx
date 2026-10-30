@@ -2,6 +2,7 @@ import { Fragment } from "preact";
 import { useEffect, useState } from "preact/hooks";
 import type { Confidence, Flag, ItemFlag, Question, QuestionSet, Session } from "../domain/types";
 import { blocksToText, letterAt } from "../domain/display";
+import { RichText } from "./RichText";
 import { t } from "../i18n/i18n";
 import { openRecorder, type Recorder } from "../recorder/recorder";
 import { abandonSession, currentAttempts, loadOverrides, loadQuestions, setOverride, submitSession, type Override } from "../session/sessions";
@@ -43,7 +44,7 @@ function OptionButton({ letter, text, selected, itemFlags, onSelect, onMenu }: {
   return (
     <button class={`option${selected ? " selected" : ""}${judgement ? ` ${judgement}` : ""}`} aria-pressed={selected} {...press}>
       <span class="letter">{letter}</span>
-      <span>{text}</span>
+      <span><RichText source={text} inline /></span>
       <ItemFlagMarks flags={itemFlags} />
     </button>
   );
@@ -238,7 +239,7 @@ export function Player({ sessionId }: { sessionId: string }) {
       <div class="card">
         {type === multipleAnswer && <p class="muted">{t("player.multipleAnswerInstruction")}</p>}
         {!isGraded(question) && <p class="muted">{t("player.unsupportedType")}</p>}
-        <p class="stem">{blocksToText(question.stem, optionOrder)}</p>
+        <RichText source={blocksToText(question.stem, optionOrder)} />
         {/* A type shown read-only offers nothing to answer. */}
         {isGraded(question) && (
           <div class="options">

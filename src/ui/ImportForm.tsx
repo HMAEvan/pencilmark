@@ -19,6 +19,8 @@ import samplePack from "../../samples/general-science.json?raw";
 import { storage } from "./appStorage";
 import { CopyButton } from "./CopyButton";
 import { Dialog } from "./Dialog";
+import { RichText } from "./RichText";
+import { keepFormulasWhole } from "../render/formulaDiff";
 
 function locatedLine(error: PackError): string {
   const question = error.question ?? t("import.packLevel");
@@ -47,8 +49,20 @@ function Errors({ errors }: { errors: PackError[] }) {
 function Diff({ parts }: { parts: DiffPart[] }) {
   return (
     <span class="diff">
-      {parts.map((part, i) =>
-        part.kind === "removed" ? <del key={i}>{part.text}</del> : part.kind === "added" ? <ins key={i}>{part.text}</ins> : <span key={i} class="same">{part.text}</span>,
+      {keepFormulasWhole(parts).map((part, i) =>
+        part.kind === "removed" ? (
+          <del key={i}>
+            <RichText source={part.text} inline />
+          </del>
+        ) : part.kind === "added" ? (
+          <ins key={i}>
+            <RichText source={part.text} inline />
+          </ins>
+        ) : (
+          <span key={i} class="same">
+            <RichText source={part.text} inline />
+          </span>
+        ),
       )}
     </span>
   );
