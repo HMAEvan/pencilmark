@@ -225,5 +225,5 @@ The part of a Showcase that stands in for a learner: the actions of one Session,
 _Status_: provisional, not yet agreed
 
 **Answering timeline** (作答时间线):
-Everything done on one Question during the answering Phase, in time order: its Visits, each selection and deselection, Item flags, Hints opened, Confidence and Flags. Extends what code calls the trajectory (the first choice and each answer change).
+Everything done on one Question during the answering Phase, in time order: its Visits, each selection and deselection, Item flags, Hints opened, Confidence, Flags, Appeals, Notes and Overrides. Extends what code calls the trajectory (the first choice and each answer change).
 _Status_: provisional, not yet agreed
