@@ -13,6 +13,8 @@ export const en = {
   "home.confirmAbandon": "The current Session will be marked as abandoned (its record is kept) and a new one will start. Are you sure?",
   "home.confirmAbandonYes": "Abandon and restart",
   "home.latestSession": "Latest Session: {status}",
+  "home.intro": "PencilMark records how each Question was answered (hesitation, answer changes, eliminations, Hints, Confidence), not just whether it was right.",
+  "home.seeExample": "See the example",
   "import.heading": "Import a Question pack",
   "import.placeholder": "Paste the AI-generated Question pack (JSON) here",
   "import.submit": "Check and preview",

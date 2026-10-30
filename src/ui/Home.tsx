@@ -49,6 +49,9 @@ export function Home() {
   return (
     <main>
       <h1>{t("app.title")}</h1>
+      <p class="home-intro">
+        {t("home.intro")} <a href="#/showcase/general-science">{t("home.seeExample")}</a>
+      </p>
       <ImportForm onImported={refresh} offerSample={!anySets} />
       <h2>{t("home.setsHeading")}</h2>
       {!rows && <p>{t("common.loading")}</p>}

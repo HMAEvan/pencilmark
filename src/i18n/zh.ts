@@ -11,6 +11,8 @@ export const zh = {
   "home.confirmAbandon": "当前这一轮将标记为已放弃（记录会保留），并重新开始一轮。确定吗？",
   "home.confirmAbandonYes": "放弃并重新开始",
   "home.latestSession": "最近一轮：{status}",
+  "home.intro": "PencilMark 会记录每道题是怎么作答的（犹豫、改答案、排除、提示、信心度），而不只是答对与否。",
+  "home.seeExample": "查看示例",
   "import.heading": "导入题目包",
   "import.placeholder": "在此粘贴 AI 生成的题目包（JSON）",
   "import.submit": "检查并预览",
