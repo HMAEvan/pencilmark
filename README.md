@@ -21,7 +21,7 @@ The two Skills are self-contained that work in any AI chat, and in Claude as ski
 
 Each Skill is a folder holding a `SKILL.md`, the standard Agent Skills layout. To install one in Claude, add its folder (such as `skills/pencilmark-grading/`) as a skill. Each Skill carries a `metadata.version` in its frontmatter; the version goes up whenever the Skill's text changes in a way a reader would notice.
 
-Sample Question packs (fabricated general-science Questions) are in [`samples/`](samples/). The file formats and the database are documented in [`schema/`](schema/README.md). Domain terms are defined in [`GLOSSARY.md`](GLOSSARY.md); design decisions are in [`docs/adr/`](docs/adr/).
+Sample Question packs are in [`samples/`](samples/); [`general-science.json`](samples/general-science.json) was written by Claude Opus 5.5 with the question-writing Skill in [a shared claude.ai chat](https://claude.ai/share/d6569f86-0775-4180-8cd5-bcf644eca653). The file formats and the database are documented in [`schema/`](schema/README.md). Domain terms are defined in [`GLOSSARY.md`](GLOSSARY.md); design decisions are in [`docs/adr/`](docs/adr/).
 
 ## Security design
 

@@ -2,146 +2,361 @@
   "kind": "question_pack",
   "schemaVersion": 1,
   "batch": {
-    "title": "General science sampler",
-    "material": "Fabricated sample Questions on general science, written for trying PencilMark",
+    "title": "Science mix: ice, motion and vaccines",
+    "model": "Claude Opus 5.5",
+    "material": "Chat explanations: why ice floats; speed, velocity and acceleration; how vaccines work",
     "topic": "General Science"
   },
   "questions": [
     {
       "label": "q1",
       "type": "single_answer",
-      "stem": [{ "type": "text", "text": "Which gas makes up the largest share of Earth's atmosphere by volume?" }],
+      "stem": [{ "type": "text", "text": "Why is ice less dense than liquid water?" }],
       "options": [
-        { "id": "opt_n2", "content": [{ "type": "text", "text": "Nitrogen" }], "rationale": [{ "type": "text", "text": "Correct: nitrogen is about 78% of dry air." }] },
         {
-          "id": "opt_o2",
-          "content": [{ "type": "text", "text": "Oxygen" }],
-          "rationale": [{ "type": "text", "text": "Oxygen is about 21%, the second largest share." }],
-          "misconception": [{ "type": "text", "text": "Assuming the gas we breathe for respiration must be the most abundant one." }]
+          "id": "opt_lattice",
+          "content": [{ "type": "text", "text": "Hydrogen bonds lock the molecules into an open hexagonal lattice, holding them farther apart on average." }],
+          "rationale": [{ "type": "text", "text": "Correct: the fixed geometry of hydrogen bonds in ice leaves empty space inside each hexagonal cage." }]
         },
         {
-          "id": "opt_co2",
-          "content": [{ "type": "text", "text": "Carbon dioxide" }],
-          "rationale": [{ "type": "text", "text": "Carbon dioxide is well under 1% of the atmosphere." }],
-          "misconception": [{ "type": "text", "text": "Overestimating CO₂ because of how often it is discussed in climate news." }]
+          "id": "opt_bubbles",
+          "content": [{ "type": "text", "text": "Air bubbles trapped during freezing make ice lighter." }],
+          "rationale": [{ "type": "text", "text": "Even perfectly clear, bubble-free ice floats; the low density comes from the crystal structure itself." }],
+          "misconception": [{ "type": "text", "text": "Attributing floating to trapped air rather than molecular arrangement." }]
         },
-        { "id": "opt_ar", "content": [{ "type": "text", "text": "Argon" }], "rationale": [{ "type": "text", "text": "Argon is about 0.9%, the third largest share." }] }
+        {
+          "id": "opt_faster",
+          "content": [{ "type": "text", "text": "Molecules in ice move faster than in liquid water, so they spread out more." }],
+          "rationale": [{ "type": "text", "text": "Molecules in ice move less, not more; they vibrate in fixed positions." }],
+          "misconception": [{ "type": "text", "text": "Assuming lower density must mean more molecular motion, as with gases." }]
+        },
+        {
+          "id": "opt_lighter",
+          "content": [{ "type": "text", "text": "Each water molecule becomes lighter when it freezes." }],
+          "rationale": [{ "type": "text", "text": "Freezing does not change the mass of a molecule; only the spacing between molecules changes." }],
+          "misconception": [{ "type": "text", "text": "Confusing density (mass per volume) with the mass of individual molecules." }]
+        }
       ],
-      "answer": ["opt_n2"],
-      "explanation": [{ "type": "text", "text": "Dry air is roughly 78% nitrogen, 21% oxygen and 0.9% argon, with carbon dioxide and other gases making up the rest." }],
+      "answer": ["opt_lattice"],
+      "explanation": [{ "type": "text", "text": "Each water molecule can form hydrogen bonds with up to four neighbours. In ice these bonds settle into a rigid hexagonal pattern with lots of open space, making ice about 9% less dense than liquid water (roughly 0.92 versus 1.00 g/cm³)." }],
       "hints": [
-        [{ "type": "text", "text": "Oxygen is the gas we breathe, but it is not the most common one." }],
-        [{ "type": "text", "text": "The answer makes up about four fifths of the air." }]
+        [{ "type": "text", "text": "Think about how the molecules are arranged, not what is mixed in with them." }],
+        [{ "type": "text", "text": "Which kind of bond between water molecules becomes fixed when water freezes?" }],
+        [{ "type": "text", "text": "Lower density means the same mass takes up more space, so the molecules must be spaced farther apart." }]
       ],
-      "topics": ["General Science / Earth Science"]
+      "topics": ["General Science / Chemistry / Water and ice"]
     },
     {
       "label": "q2",
       "type": "single_answer",
-      "stem": [{ "type": "text", "text": "A ball is dropped from rest. Ignoring air resistance, roughly how fast is it falling after 2 seconds?" }],
+      "stem": [{ "type": "text", "text": "Liquid water is at its densest at 0 °C, just before it freezes." }],
       "options": [
-        { "id": "opt_10", "content": [{ "type": "text", "text": "About 10 m/s" }], "rationale": [{ "type": "text", "text": "That is the speed after 1 second." }], "misconception": [{ "type": "text", "text": "Treating g as a speed rather than a rate of change of speed." }] },
-        { "id": "opt_20", "content": [{ "type": "text", "text": "About 20 m/s" }], "rationale": [{ "type": "text", "text": "Correct: v = g × t ≈ 9.8 m/s² × 2 s ≈ 20 m/s." }] },
-        { "id": "opt_40", "content": [{ "type": "text", "text": "About 40 m/s" }], "rationale": [{ "type": "text", "text": "This squares the time, which applies to distance, not speed." }], "misconception": [{ "type": "text", "text": "Mixing up v = gt with d = ½gt²." }] },
-        { "id": "opt_0", "content": [{ "type": "text", "text": "It falls at a constant speed, so it depends only on its mass" }], "rationale": [{ "type": "text", "text": "Without air resistance, every object accelerates at the same rate, whatever its mass." }], "misconception": [{ "type": "text", "text": "The everyday intuition that heavier objects fall faster." }] }
+        {
+          "id": "opt_true",
+          "content": [{ "type": "text", "text": "True" }],
+          "rationale": [{ "type": "text", "text": "Water is densest at about 4 °C, not 0 °C." }],
+          "misconception": [{ "type": "text", "text": "Assuming water behaves like most liquids, getting steadily denser all the way down to its freezing point." }]
+        },
+        {
+          "id": "opt_false",
+          "content": [{ "type": "text", "text": "False" }],
+          "rationale": [{ "type": "text", "text": "Correct: water is densest at about 4 °C. Below that, ice-like clusters start forming and take up more room." }]
+        }
       ],
-      "answer": ["opt_20"],
-      "explanation": [{ "type": "text", "text": "In free fall the speed grows by about 9.8 m/s every second, so after 2 seconds it is about 20 m/s. {{opt:opt_40}} confuses speed with the distance formula." }],
+      "optionOrder": "fixed",
+      "answer": ["opt_false"],
+      "explanation": [{ "type": "text", "text": "Liquid water reaches its maximum density at about 4 °C. Cooling further, from 4 °C to 0 °C, it begins forming open, ice-like clusters and expands slightly even before freezing." }],
       "hints": [
-        [{ "type": "text", "text": "Gravity adds about 10 m/s of speed every second." }],
-        [{ "type": "text", "text": "Speed after a time is acceleration times time: $10 \\times 2$." }]
+        [{ "type": "text", "text": "Water's density peaks a few degrees above its freezing point." }]
       ],
-      "topics": ["General Science / Physics / Motion"]
+      "topics": ["General Science / Chemistry / Water and ice"],
+      "tags": ["true_false"]
     },
     {
       "label": "q3",
       "type": "multiple_answer",
-      "stem": [{ "type": "text", "text": "Which of these are found in a typical plant cell but not in a typical animal cell? Select all that apply." }],
+      "stem": [{ "type": "text", "text": "Which of these are consequences of ice being less dense than liquid water? Select all that apply." }],
       "options": [
-        { "id": "opt_wall", "content": [{ "type": "text", "text": "Cell wall" }], "rationale": [{ "type": "text", "text": "Correct: plant cells have a cellulose cell wall; animal cells do not." }] },
-        { "id": "opt_chloro", "content": [{ "type": "text", "text": "Chloroplasts" }], "rationale": [{ "type": "text", "text": "Correct: chloroplasts carry out photosynthesis in plant cells." }] },
         {
-          "id": "opt_mito",
-          "content": [{ "type": "text", "text": "Mitochondria" }],
-          "rationale": [{ "type": "text", "text": "Both plant and animal cells have mitochondria." }],
-          "misconception": [{ "type": "text", "text": "Believing plants get all their energy from chloroplasts and so need no mitochondria." }]
+          "id": "opt_top_down",
+          "content": [{ "type": "text", "text": "Lakes freeze from the top down." }],
+          "rationale": [{ "type": "text", "text": "Correct: ice forms and floats at the surface instead of sinking." }]
         },
-        { "id": "opt_membrane", "content": [{ "type": "text", "text": "Cell membrane" }], "rationale": [{ "type": "text", "text": "Every cell has a cell membrane, inside the wall in plants." }], "misconception": [{ "type": "text", "text": "Thinking the cell wall replaces the membrane." }] }
+        {
+          "id": "opt_insulate",
+          "content": [{ "type": "text", "text": "Aquatic life can survive winter beneath a layer of surface ice." }],
+          "rationale": [{ "type": "text", "text": "Correct: floating ice insulates the water below, keeping it liquid." }]
+        },
+        {
+          "id": "opt_pipes",
+          "content": [{ "type": "text", "text": "Freezing water can burst pipes and crack rocks." }],
+          "rationale": [{ "type": "text", "text": "Correct: water expands as it freezes, pushing against whatever contains it." }]
+        },
+        {
+          "id": "opt_boil",
+          "content": [{ "type": "text", "text": "Water boils at a lower temperature at high altitude." }],
+          "rationale": [{ "type": "text", "text": "This is caused by lower air pressure, not by the density of ice." }],
+          "misconception": [{ "type": "text", "text": "Lumping together unrelated unusual properties of water." }]
+        },
+        {
+          "id": "opt_sink",
+          "content": [{ "type": "text", "text": "Ice cubes sink to the bottom of a drink." }],
+          "rationale": [{ "type": "text", "text": "Ice cubes float in water-based drinks precisely because ice is less dense." }],
+          "misconception": [{ "type": "text", "text": "Applying the usual rule that solids sink in their own liquid." }]
+        }
       ],
-      "answer": ["opt_wall", "opt_chloro"],
-      "explanation": [{ "type": "text", "text": "Cell walls and chloroplasts (and usually a large central vacuole) set plant cells apart. Mitochondria and the cell membrane are shared by both." }],
-      "topics": ["General Science / Biology / Cells"]
+      "answer": ["opt_top_down", "opt_insulate", "opt_pipes"],
+      "explanation": [{ "type": "text", "text": "Because ice is less dense, it floats and expands as it forms. That makes lakes freeze from the top, lets the ice insulate life below, and lets freezing water burst pipes and split rocks. {{opt:opt_boil}} is a pressure effect, and {{opt:opt_sink}} is the opposite of what happens." }],
+      "hints": [
+        [{ "type": "text", "text": "For each option, ask: does it follow from ice floating, or from water expanding as it freezes?" }],
+        [{ "type": "text", "text": "Boiling point changes with air pressure, which has nothing to do with ice." }]
+      ],
+      "topics": ["General Science / Chemistry / Water and ice"]
     },
     {
       "label": "q4",
-      "type": "multiple_answer",
-      "stem": [{ "type": "text", "text": "Which of these are chemical changes? Select all that apply." }],
+      "type": "single_answer",
+      "stem": [{ "type": "text", "text": "A runner completes one full lap of a 400 m track in 80 seconds, finishing where they started. What is their average velocity over the lap?" }],
       "options": [
-        { "id": "opt_rust", "content": [{ "type": "text", "text": "Iron rusting" }], "rationale": [{ "type": "text", "text": "Correct: iron reacts with oxygen and water to form iron oxide, a new substance." }] },
-        { "id": "opt_melt", "content": [{ "type": "text", "text": "Ice melting" }], "rationale": [{ "type": "text", "text": "Melting changes only the state; it is still water." }], "misconception": [{ "type": "text", "text": "Treating any visible change of appearance as a chemical change." }] },
-        { "id": "opt_burn", "content": [{ "type": "text", "text": "Wood burning" }], "rationale": [{ "type": "text", "text": "Correct: combustion produces carbon dioxide, water and ash." }] },
-        { "id": "opt_dissolve", "content": [{ "type": "text", "text": "Sugar dissolving in water" }], "rationale": [{ "type": "text", "text": "Dissolving is physical: evaporating the water gives the sugar back." }], "misconception": [{ "type": "text", "text": "Thinking that because the sugar disappears, it has become something else." }] },
-        { "id": "opt_bake", "content": [{ "type": "text", "text": "Baking a cake" }], "rationale": [{ "type": "text", "text": "Correct: heat drives reactions in the batter that cannot be undone." }] }
+        {
+          "id": "opt_zero",
+          "content": [{ "type": "text", "text": "0 m/s" }],
+          "rationale": [{ "type": "text", "text": "Correct: displacement is zero because the runner ends at the start, so average velocity is zero." }]
+        },
+        {
+          "id": "opt_5",
+          "content": [{ "type": "text", "text": "5 m/s" }],
+          "rationale": [{ "type": "text", "text": "This is the average speed: total distance (400 m) divided by time (80 s)." }],
+          "misconception": [{ "type": "text", "text": "Using distance travelled instead of displacement, treating velocity as the same as speed." }]
+        },
+        {
+          "id": "opt_0_2",
+          "content": [{ "type": "text", "text": "0.2 m/s" }],
+          "rationale": [{ "type": "text", "text": "This divides time by distance, which gives seconds per metre, not a velocity." }],
+          "misconception": [{ "type": "text", "text": "Dividing the quantities the wrong way round." }]
+        },
+        {
+          "id": "opt_10",
+          "content": [{ "type": "text", "text": "10 m/s" }],
+          "rationale": [{ "type": "text", "text": "There is no valid calculation that gives 10 m/s here; it might come from halving the time." }],
+          "misconception": [{ "type": "text", "text": "Guessing that a lap's halfway point determines the answer." }]
+        }
       ],
-      "answer": ["opt_rust", "opt_burn", "opt_bake"],
-      "explanation": [{ "type": "text", "text": "A chemical change makes new substances and is usually hard to reverse. Melting and dissolving are physical changes: the substance stays the same." }],
-      "topics": ["General Science / Chemistry"]
+      "answer": ["opt_zero"],
+      "explanation": [{ "type": "text", "text": "Average velocity is displacement divided by time. After a full lap the displacement is zero, so the average velocity is 0 m/s, even though the average speed is $400 \\div 80 = 5$ m/s." }],
+      "hints": [
+        [{ "type": "text", "text": "Velocity depends on displacement, not total distance." }],
+        [{ "type": "text", "text": "How far is the finishing point from the starting point?" }]
+      ],
+      "topics": ["General Science / Physics / Motion"]
     },
     {
       "label": "q5",
-      "type": "single_answer",
-      "stem": [{ "type": "text", "text": "Which planet in our solar system is closest to the Sun?" }],
+      "type": "multiple_answer",
+      "stem": [{ "type": "text", "text": "In which of these situations is the car accelerating? Select all that apply." }],
       "options": [
-        { "id": "opt_mercury", "content": [{ "type": "text", "text": "Mercury" }], "rationale": [{ "type": "text", "text": "Correct: Mercury orbits closest to the Sun." }] },
-        { "id": "opt_venus", "content": [{ "type": "text", "text": "Venus" }], "rationale": [{ "type": "text", "text": "Venus is second, though it is the hottest planet." }], "misconception": [{ "type": "text", "text": "Assuming the hottest planet must be the closest." }] },
-        { "id": "opt_earth", "content": [{ "type": "text", "text": "Earth" }], "rationale": [{ "type": "text", "text": "Earth is third." }] },
-        { "id": "opt_none", "content": [{ "type": "text", "text": "None of the above" }], "rationale": [{ "type": "text", "text": "One of the listed planets is the closest." }], "pin": "last" }
+        {
+          "id": "opt_braking",
+          "content": [{ "type": "text", "text": "A car braking as it approaches traffic lights" }],
+          "rationale": [{ "type": "text", "text": "Correct: slowing down is a change in velocity, so it is acceleration." }]
+        },
+        {
+          "id": "opt_roundabout",
+          "content": [{ "type": "text", "text": "A car going around a roundabout at a steady 30 km/h" }],
+          "rationale": [{ "type": "text", "text": "Correct: its direction keeps changing, so its velocity changes even though its speed doesn't." }]
+        },
+        {
+          "id": "opt_speeding_up",
+          "content": [{ "type": "text", "text": "A car pulling away from a junction" }],
+          "rationale": [{ "type": "text", "text": "Correct: speeding up changes velocity." }]
+        },
+        {
+          "id": "opt_straight",
+          "content": [{ "type": "text", "text": "A car driving along a straight road at a constant 50 km/h" }],
+          "rationale": [{ "type": "text", "text": "Neither speed nor direction changes, so velocity is constant and there is no acceleration." }],
+          "misconception": [{ "type": "text", "text": "Thinking that any motion, or high speed, means acceleration." }]
+        },
+        {
+          "id": "opt_parked",
+          "content": [{ "type": "text", "text": "A parked car" }],
+          "rationale": [{ "type": "text", "text": "Its velocity stays at zero, so it is not accelerating." }],
+          "misconception": [{ "type": "text", "text": "Confusing zero velocity with a change in velocity." }]
+        }
       ],
-      "answer": ["opt_mercury"],
-      "explanation": [{ "type": "text", "text": "Mercury is closest; Venus is hotter because its thick carbon dioxide atmosphere traps heat." }],
-      "topics": ["General Science / Earth Science / Astronomy"]
+      "answer": ["opt_braking", "opt_roundabout", "opt_speeding_up"],
+      "explanation": [{ "type": "text", "text": "Acceleration is any change in velocity: speeding up, slowing down, or changing direction. {{opt:opt_roundabout}} is the easy one to miss, since constant speed around a curve still involves centripetal acceleration toward the centre." }],
+      "hints": [
+        [{ "type": "text", "text": "Acceleration is a change in velocity, and velocity includes direction." }],
+        [{ "type": "text", "text": "There are three ways to change velocity: speed up, slow down, or turn." }]
+      ],
+      "topics": ["General Science / Physics / Motion"]
     },
     {
       "label": "q6",
       "type": "single_answer",
-      "stem": [{ "type": "text", "text": "Sound travels faster in air than in water." }],
+      "stem": [{ "type": "text", "text": "Two objects moving at the same speed must have the same velocity." }],
       "options": [
-        { "id": "opt_true", "content": [{ "type": "text", "text": "True" }], "rationale": [{ "type": "text", "text": "Sound is about four times faster in water than in air." }], "misconception": [{ "type": "text", "text": "Thinking a denser medium must slow sound down." }] },
-        { "id": "opt_false", "content": [{ "type": "text", "text": "False" }], "rationale": [{ "type": "text", "text": "Correct: about 343 m/s in air against about 1,480 m/s in water." }] }
+        {
+          "id": "opt_true",
+          "content": [{ "type": "text", "text": "True" }],
+          "rationale": [{ "type": "text", "text": "They could be moving in different directions, giving different velocities." }],
+          "misconception": [{ "type": "text", "text": "Treating speed and velocity as interchangeable words." }]
+        },
+        {
+          "id": "opt_false",
+          "content": [{ "type": "text", "text": "False" }],
+          "rationale": [{ "type": "text", "text": "Correct: velocity includes direction, so 60 km/h north and 60 km/h south are different velocities." }]
+        }
       ],
       "optionOrder": "fixed",
       "answer": ["opt_false"],
-      "explanation": [{ "type": "text", "text": "Sound moves faster through water because water resists compression far more strongly than air does." }],
-      "topics": ["General Science / Physics / Waves"],
+      "explanation": [{ "type": "text", "text": "Speed is a scalar (size only); velocity is a vector (size and direction). Equal speeds in different directions are different velocities." }],
+      "hints": [
+        [{ "type": "text", "text": "What extra piece of information does velocity carry that speed does not?" }]
+      ],
+      "topics": ["General Science / Physics / Motion"],
       "tags": ["true_false"]
     },
     {
       "label": "q7",
       "type": "single_answer",
-      "stem": [{ "type": "text", "text": "Pure water at sea level boils at 100 °C." }],
+      "stem": [{ "type": "text", "text": "What is the main reason a vaccine protects you months or years after you receive it?" }],
       "options": [
-        { "id": "opt_true", "content": [{ "type": "text", "text": "True" }], "rationale": [{ "type": "text", "text": "Correct: at standard sea-level pressure, pure water boils at 100 °C." }] },
-        { "id": "opt_false", "content": [{ "type": "text", "text": "False" }], "rationale": [{ "type": "text", "text": "The boiling point changes with pressure, but at sea level it is 100 °C." }], "misconception": [{ "type": "text", "text": "Remembering that boiling point varies and overgeneralising to sea level." }] }
+        {
+          "id": "opt_memory",
+          "content": [{ "type": "text", "text": "Long-lived memory B and T cells recognise the virus and launch a fast, strong response." }],
+          "rationale": [{ "type": "text", "text": "Correct: memory cells persist after the initial response and react quickly on re-exposure." }]
+        },
+        {
+          "id": "opt_antibodies_forever",
+          "content": [{ "type": "text", "text": "The antibodies made after vaccination stay in the blood at full strength permanently." }],
+          "rationale": [{ "type": "text", "text": "Antibody levels usually fall over time; it is memory cells that allow a rapid new surge of antibodies." }],
+          "misconception": [{ "type": "text", "text": "Thinking long-term immunity is just leftover antibodies rather than immune memory." }]
+        },
+        {
+          "id": "opt_contains_antibodies",
+          "content": [{ "type": "text", "text": "The vaccine itself contains antibodies that keep attacking the virus." }],
+          "rationale": [{ "type": "text", "text": "A vaccine provides antigens so your body makes its own antibodies; it doesn't supply ready-made ones." }],
+          "misconception": [{ "type": "text", "text": "Confusing antigens (what the immune system recognises) with antibodies (what it produces)." }]
+        },
+        {
+          "id": "opt_virus_stays",
+          "content": [{ "type": "text", "text": "A small amount of virus stays in the body, keeping the immune system constantly active." }],
+          "rationale": [{ "type": "text", "text": "Vaccine components are cleared from the body; protection comes from memory, not ongoing stimulation." }],
+          "misconception": [{ "type": "text", "text": "Assuming protection requires the vaccine to remain present." }]
+        }
       ],
-      "optionOrder": "fixed",
-      "answer": ["opt_true"],
-      "explanation": [{ "type": "text", "text": "Boiling point depends on pressure: on a high mountain water boils below 100 °C." }],
-      "topics": ["General Science / Chemistry"],
-      "tags": ["true_false"]
+      "answer": ["opt_memory"],
+      "explanation": [{ "type": "text", "text": "Most cells involved in the first response die off once the threat passes, but some become memory B and T cells that can last for decades. On meeting the real virus, they respond within days instead of the week or two a first infection takes." }],
+      "hints": [
+        [{ "type": "text", "text": "Most immune cells from the first response die off. What happens to the ones that remain?" }],
+        [{ "type": "text", "text": "The key cells are named after what they let the immune system do: remember." }]
+      ],
+      "topics": ["General Science / Biology / Immunology / Vaccines"]
     },
     {
       "label": "q8",
-      "type": "single_answer",
-      "stem": [{ "type": "text", "text": "Humans and other mammals are warm-blooded, keeping a roughly constant body temperature." }],
+      "type": "multiple_answer",
+      "stem": [{ "type": "text", "text": "Which of these can a vaccine use to present an antigen to the immune system? Select all that apply." }],
       "options": [
-        { "id": "opt_true", "content": [{ "type": "text", "text": "True" }], "rationale": [{ "type": "text", "text": "Correct: mammals regulate their body temperature internally." }] },
-        { "id": "opt_false", "content": [{ "type": "text", "text": "False" }], "rationale": [{ "type": "text", "text": "Mammals are endotherms, unlike most reptiles." }] }
+        {
+          "id": "opt_weakened",
+          "content": [{ "type": "text", "text": "A weakened live virus" }],
+          "rationale": [{ "type": "text", "text": "Correct: used in vaccines such as the measles, mumps and rubella vaccine." }]
+        },
+        {
+          "id": "opt_protein",
+          "content": [{ "type": "text", "text": "A purified surface protein from the virus" }],
+          "rationale": [{ "type": "text", "text": "Correct: used in vaccines such as the hepatitis B vaccine." }]
+        },
+        {
+          "id": "opt_mrna",
+          "content": [{ "type": "text", "text": "mRNA instructions that get your own cells to make the antigen temporarily" }],
+          "rationale": [{ "type": "text", "text": "Correct: this is how mRNA vaccines, such as the COVID-19 vaccines, work." }]
+        },
+        {
+          "id": "opt_antibiotic",
+          "content": [{ "type": "text", "text": "An antibiotic" }],
+          "rationale": [{ "type": "text", "text": "Antibiotics kill bacteria and don't work on viruses; they don't train the immune system." }],
+          "misconception": [{ "type": "text", "text": "Treating all infection-fighting medicines as the same thing." }]
+        },
+        {
+          "id": "opt_full_virus",
+          "content": [{ "type": "text", "text": "The fully active virus at normal strength" }],
+          "rationale": [{ "type": "text", "text": "That would risk causing the disease; vaccines use forms that can't cause serious illness." }],
+          "misconception": [{ "type": "text", "text": "Thinking a vaccine is simply a small, deliberate infection with the real virus." }]
+        }
+      ],
+      "answer": ["opt_weakened", "opt_protein", "opt_mrna"],
+      "explanation": [{ "type": "text", "text": "Vaccines deliver antigens in a safe form: weakened or inactivated virus, a purified piece such as a surface protein, or genetic instructions (mRNA or viral vector) for your cells to make the antigen. {{opt:opt_antibiotic}} has nothing to do with training the immune system, and {{opt:opt_full_virus}} would be dangerous." }],
+      "hints": [
+        [{ "type": "text", "text": "Each correct option provides the antigen without the ability to cause serious disease." }],
+        [{ "type": "text", "text": "One wrong option is a different kind of medicine altogether; the other isn't safe." }]
+      ],
+      "topics": ["General Science / Biology / Immunology / Vaccines"]
+    },
+    {
+      "label": "q9",
+      "type": "single_answer",
+      "stem": [{ "type": "text", "text": "A sore arm or mild fever after a vaccination is generally a sign of the immune system responding, not a sign of infection." }],
+      "options": [
+        {
+          "id": "opt_true",
+          "content": [{ "type": "text", "text": "True" }],
+          "rationale": [{ "type": "text", "text": "Correct: these mild effects reflect the immune training at work." }]
+        },
+        {
+          "id": "opt_false",
+          "content": [{ "type": "text", "text": "False" }],
+          "rationale": [{ "type": "text", "text": "Mild side effects are usually the immune response itself, not the disease." }],
+          "misconception": [{ "type": "text", "text": "Believing that feeling unwell after a vaccine means it gave you the illness." }]
+        }
       ],
       "optionOrder": "fixed",
       "answer": ["opt_true"],
-      "explanation": [{ "type": "text", "text": "Mammals and birds are endotherms: they generate heat to hold a steady temperature." }],
-      "topics": ["General Science / Biology"],
+      "explanation": [{ "type": "text", "text": "The immune system reacting to the antigen can cause inflammation at the injection site, tiredness or a low fever. Most vaccines, such as mRNA or protein vaccines, contain no live virus at all, so they cannot cause the infection." }],
+      "hints": [
+        [{ "type": "text", "text": "Fever and inflammation are things the immune system does, not things a virus does." }]
+      ],
+      "topics": ["General Science / Biology / Immunology / Vaccines"],
       "tags": ["true_false"]
+    },
+    {
+      "label": "q10",
+      "type": "single_answer",
+      "stem": [{ "type": "text", "text": "Why does the flu vaccine need updating most years?" }],
+      "options": [
+        {
+          "id": "opt_mutates",
+          "content": [{ "type": "text", "text": "Influenza mutates its surface antigens quickly, so last year's vaccine may not match the strains now circulating." }],
+          "rationale": [{ "type": "text", "text": "Correct: changing antigens mean memory cells trained on older strains may not recognise new ones well." }]
+        },
+        {
+          "id": "opt_forget",
+          "content": [{ "type": "text", "text": "The immune system completely forgets every antigen after about a year." }],
+          "rationale": [{ "type": "text", "text": "Memory cells can last for decades; many vaccines give very long-lasting protection." }],
+          "misconception": [{ "type": "text", "text": "Assuming all immune memory is short-lived." }]
+        },
+        {
+          "id": "opt_build_up",
+          "content": [{ "type": "text", "text": "The virus becomes resistant to the vaccine the way bacteria become resistant to antibiotics." }],
+          "rationale": [{ "type": "text", "text": "Vaccines aren't drugs acting on the virus; the issue is antigens changing so the immune system no longer recognises them." }],
+          "misconception": [{ "type": "text", "text": "Confusing antigenic change with drug resistance." }]
+        },
+        {
+          "id": "opt_none",
+          "content": [{ "type": "text", "text": "None of the above" }],
+          "rationale": [{ "type": "text", "text": "{{opt:opt_mutates}} correctly explains why the vaccine is updated." }],
+          "pin": "last"
+        }
+      ],
+      "answer": ["opt_mutates"],
+      "explanation": [{ "type": "text", "text": "Immune memory is specific to particular antigens. Influenza changes its surface proteins quickly, so the vaccine is reformulated to match the versions expected to circulate each season." }],
+      "hints": [
+        [{ "type": "text", "text": "Immune memory is very specific. What would happen if the target itself changed?" }],
+        [{ "type": "text", "text": "The answer is about the virus changing, not the immune system weakening." }]
+      ],
+      "topics": ["General Science / Biology / Immunology / Vaccines"]
     }
   ]
 }
