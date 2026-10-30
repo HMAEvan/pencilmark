@@ -20,7 +20,7 @@ export function keepFormulasWhole(parts: DiffPart[]): DiffPart[] {
   let group: DiffPart[] = [];
   let groupOld = "";
   let groupNow = "";
-  for (const part of parts) {
+  for (const part of splitAtFormulaEdges(parts, oldSpans, nowSpans)) {
     group.push(part);
     if (part.kind !== "added") {
       oldAt += part.text.length;
@@ -40,4 +40,34 @@ export function keepFormulasWhole(parts: DiffPart[]): DiffPart[] {
     groupOld = groupNow = "";
   }
   return result;
+}
+
+/**
+ * The word difference splits a formula into its symbols, so an unchanged run can reach from plain text into a formula ("energy is $\frac{1}{").
+ * Cut unchanged runs where a formula starts or ends, so only the formula, not the plain text around it, joins a changed stretch.
+ */
+function splitAtFormulaEdges(parts: DiffPart[], oldSpans: { start: number; end: number }[], nowSpans: { start: number; end: number }[]): DiffPart[] {
+  const edges = (spans: { start: number; end: number }[]) => spans.flatMap((s) => [s.start, s.end]);
+  const oldEdges = edges(oldSpans);
+  const nowEdges = edges(nowSpans);
+  const split: DiffPart[] = [];
+  let oldAt = 0;
+  let nowAt = 0;
+  for (const part of parts) {
+    const length = part.text.length;
+    if (part.kind === "same") {
+      const cuts = new Set<number>();
+      for (const edge of oldEdges) if (edge > oldAt && edge < oldAt + length) cuts.add(edge - oldAt);
+      for (const edge of nowEdges) if (edge > nowAt && edge < nowAt + length) cuts.add(edge - nowAt);
+      let from = 0;
+      for (const cut of [...cuts].sort((a, b) => a - b)) {
+        split.push({ kind: "same", text: part.text.slice(from, cut) });
+        from = cut;
+      }
+      split.push({ kind: "same", text: part.text.slice(from) });
+    } else split.push(part);
+    if (part.kind !== "added") oldAt += length;
+    if (part.kind !== "removed") nowAt += length;
+  }
+  return split;
 }
