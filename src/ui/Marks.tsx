@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "preact/hooks";
 import { FLAGS, ITEM_FLAGS, type Confidence, type ContentBlock, type Flag, type ItemFlag, type Phase } from "../domain/types";
 import { blocksToText } from "../domain/display";
+import { RichText } from "./RichText";
 import { t, type TranslationKey } from "../i18n/i18n";
 
 // Marks shared by the Player and the review page. Each change is reported to the caller, which records it in the Raw log.
@@ -173,7 +174,7 @@ export function HintPanel({
         <div key={level} class={`hint${phase === "answering" ? " used" : ""}`}>
           <strong>{t("hints.label", { n: level + 1 })}</strong>
           {showPhase && <span class="muted">{t(phase === "answering" ? "hints.answering" : "hints.reviewing")}</span>}
-          <p class="stem">{blocksToText(hints[level]!, optionOrder)}</p>
+          <RichText source={blocksToText(hints[level]!, optionOrder)} />
         </div>
       ))}
       {next < hints.length && (

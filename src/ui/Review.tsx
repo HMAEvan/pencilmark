@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "preact/hooks";
 import type { Flag, Question, QuestionSet, Session } from "../domain/types";
 import { blocksToText, letterAt, letterOf } from "../domain/display";
+import { RichText } from "./RichText";
 import { t } from "../i18n/i18n";
 import { openRecorder, type RawEventBody, type Recorder } from "../recorder/recorder";
 import { loadDerivedSession, recordReviewMark, setOverride, type Attempt, type Derivation, type Override } from "../session/sessions";
@@ -261,7 +262,7 @@ export function Review({ sessionId }: { sessionId: string }) {
               {attempt.timing.reviewingActiveMs > 0 && <span class="muted">{t("review.reviewingTime", { time: formatDuration(attempt.timing.reviewingActiveMs, precision) })}</span>}
             </p>
             {!graded && <p class="muted">{t("player.unsupportedType")}</p>}
-            <p class="stem">{blocksToText(question.stem, order)}</p>
+            <RichText source={blocksToText(question.stem, order)} />
             {graded && (
               <div class="options">
                 {order.map((optionId, i) => {
@@ -272,11 +273,11 @@ export function Review({ sessionId }: { sessionId: string }) {
                     <div key={optionId} class={`option${isAnswer ? " answer" : ""}${isChosen && !isAnswer ? " chosen-wrong" : ""}`}>
                       <span class="letter">{letterAt(i)}</span>
                       <div>
-                        <span>{blocksToText(option.content, order)}</span> <ItemFlagMarks flags={(attempt.itemFlags[optionId] ?? []).map((m) => m.itemFlag)} />
+                        <span><RichText source={blocksToText(option.content, order)} inline /></span> <ItemFlagMarks flags={(attempt.itemFlags[optionId] ?? []).map((m) => m.itemFlag)} />
                         {option.rationale.length > 0 && (
                           <details class="rationale" onToggle={(e) => toggleRationale(attempt.questionId, optionId, e.currentTarget.open)}>
                             <summary>{t("review.rationale")}</summary>
-                            <p class="stem">{blocksToText(option.rationale, order)}</p>
+                            <RichText source={blocksToText(option.rationale, order)} />
                           </details>
                         )}
                       </div>
@@ -299,7 +300,7 @@ export function Review({ sessionId }: { sessionId: string }) {
             {question.explanation.length > 0 && (
               <div class="explanation">
                 <h4>{t("review.explanation")}</h4>
-                <p class="stem">{blocksToText(question.explanation, order)}</p>
+                <RichText source={blocksToText(question.explanation, order)} />
               </div>
             )}
             {derivation.parameters.collectConfidence && (

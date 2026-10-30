@@ -40,6 +40,7 @@ h3 { font-size: 1rem; margin: 0 0 0.5rem; }
 .ok { color: var(--ok); }
 .bad { color: var(--bad); }
 .stem { white-space: pre-wrap; }
+.diff .rich { display: inline; }
 .actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 12px 0; }
 button {
   font: inherit; padding: 8px 16px; border-radius: 8px; cursor: pointer;
@@ -112,7 +113,7 @@ button.small { padding: 4px 10px; font-size: 0.9rem; }
 .hints { display: flex; flex-direction: column; gap: 6px; align-items: flex-start; margin-top: 12px; }
 .hint { border-left: 3px solid var(--border); padding-left: 8px; }
 .hint.used { border-left-color: var(--accent); }
-.hint .stem { margin: 4px 0 0; }
+.hint .rich { margin: 4px 0 0; }
 .appeal { margin-top: 12px; }
 .dialog-backdrop {
   position: fixed; inset: 0; z-index: 10; display: flex; align-items: center; justify-content: center;
@@ -123,3 +124,12 @@ button.small { padding: 4px 10px; font-size: 0.9rem; }
 .dialog:focus { outline: none; }
 .player-header { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
 .player-header p { margin: 0; }
+
+/* Question content rendered from Markdown with maths. */
+.rich > :first-child { margin-top: 0; }
+.rich > :last-child { margin-bottom: 0; }
+.rich pre { overflow-x: auto; padding: 8px; background: var(--border); border-radius: 6px; }
+.rich code { font-size: 0.9em; }
+.rich .katex-display { overflow-x: auto; overflow-y: hidden; }
+.math-error { color: var(--bad); font-family: ui-monospace, monospace; border-bottom: 1px wavy var(--bad); }
+.option .rich { display: inline; }
