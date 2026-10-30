@@ -223,9 +223,9 @@ export function Review({ sessionId }: { sessionId: string }) {
       </p>
       <div class="actions">
         <DownloadButton label="review.downloadGrading" fileName={() => "pencilmark-grading.md"} text={() => gradingSkillText()} />
-        <CopyButton label="common.copyText" text={() => gradingSkillText()} link />
+        <CopyButton label="common.copyGradingSkill" text={() => gradingSkillText()} link />
         <DownloadButton label="review.downloadDigest" fileName={() => `${set.title.replace(/[\\/:*?"<>|\s]+/g, "-")}-${new Date().toISOString().slice(0, 10)}.md`} text={() => digest} />
-        <CopyButton label="common.copyText" text={() => digest} link />
+        <CopyButton label="common.copyDigest" text={() => digest} link />
       </div>
       <p class="muted">{t("review.copyGuidance")}</p>
       <div class="actions">

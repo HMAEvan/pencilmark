@@ -267,8 +267,8 @@ export function ImportForm({ onImported, offerSample }: { onImported: () => void
       </div>
       <div class="actions">
         <DownloadButton label="import.downloadSkill" fileName={() => "pencilmark-question-writing.md"} text={() => questionWritingSkillText()} />
-        <CopyButton label="common.copyText" text={() => questionWritingSkillText()} link />
-        {hasTopics && <CopyButton label="import.copyTopics" text={async () => topicsListText(await topicPaths(storage))} secondary />}
+        <CopyButton label="common.copyQuestionWritingSkill" text={() => questionWritingSkillText()} link />
+        {hasTopics && <span class="push-right"><CopyButton label="import.copyTopics" text={async () => topicsListText(await topicPaths(storage))} secondary /></span>}
         {offerSample && (
           <button type="button" class="secondary" disabled={preview !== undefined} onClick={loadSample}>
             {t("import.sample")}

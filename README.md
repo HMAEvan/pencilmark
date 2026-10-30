@@ -8,9 +8,9 @@ PencilMark runs entirely in the browser. It is served from GitHub Pages at <http
 
 ## How it works
 
-1. Press **Download question-writing Skill** and attach the file to any AI chat with your study material (or paste its text with the **copy text** link). To let the AI reuse your existing Tracks and Topics, also paste the result of **Copy my Tracks and Topics**. Then paste the AI's reply (a **Question pack**, JSON) into the import box.
+1. Press **Download question-writing Skill** and attach the file to any AI chat with your study material (or paste its text with **Copy question-writing Skill as text**). To let the AI reuse your existing Tracks and Topics, also paste the result of **Copy my Tracks and Topics**. Then paste the AI's reply (a **Question pack**, JSON) into the import box.
 2. The pack becomes a **Set** on the home screen. Start it to sit a **Session**.
-3. Submit, review your answers, and press **Download grading Skill** and **Download Digest** and attach the files to an AI chat. In a chat that already has the Skill, send only the Digest. Beside each download is a **copy text** link to paste the text instead; where the AI can create files, it returns the pack as a `.json` file that you import with **Choose file**.
+3. Submit, review your answers, and press **Download grading Skill** and **Download Digest** and attach the files to an AI chat. In a chat that already has the Skill, send only the Digest. Beside each download is a link to copy the same text instead (**Copy grading Skill as text**, **Copy Digest as text**); where the AI can create files, it returns the pack as a `.json` file that you import with **Choose file**.
 
 To try it without any material, press **Import sample Set** on an empty home screen.
 
