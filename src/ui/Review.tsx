@@ -11,6 +11,7 @@ import { excludedIdleMs } from "../derivation/timing";
 import { buildAnswerPack } from "../exports/answerPack";
 import { gradingSkillText } from "../exports/skills";
 import { CopyButton } from "./CopyButton";
+import { DownloadButton } from "./DownloadButton";
 import { AnsweringTime, TimeOverrideField } from "./AnsweringTime";
 import { formatDateTime, formatDuration, formatScore, timePrecisionOf } from "./format";
 import { DEFAULT_PREFERENCES, type TimePrecision } from "../domain/settings";
@@ -222,7 +223,9 @@ export function Review({ sessionId }: { sessionId: string }) {
       </p>
       <div class="actions">
         <CopyButton label="review.copyGrading" text={() => gradingSkillText()} />
+        <DownloadButton label="review.downloadGrading" fileName={() => "pencilmark-grading.md"} text={() => gradingSkillText()} secondary />
         <CopyButton label="review.copyDigest" text={() => digest} />
+        <DownloadButton label="review.downloadDigest" fileName={() => `${set.title.replace(/[\\/:*?"<>|\s]+/g, "-")}-${new Date().toISOString().slice(0, 10)}.md`} text={() => digest} secondary />
       </div>
       <p class="muted">{t("review.copyGuidance")}</p>
       <div class="actions">
