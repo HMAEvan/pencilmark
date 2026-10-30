@@ -2,6 +2,7 @@ import { useEffect, useState } from "preact/hooks";
 import { Home } from "./Home";
 import { Player } from "./Player";
 import { Review } from "./Review";
+import { ShowcaseReview } from "./ShowcaseReview";
 import { storage, storageMode, type StorageMode } from "./appStorage";
 import { applyLanguage, t } from "../i18n/i18n";
 import { DEFAULT_PREFERENCES, LANGUAGES, loadPreferences, saveDisplayPreferences, type LanguagePreference } from "../domain/settings";
@@ -39,7 +40,7 @@ export function App() {
   return (
     <>
       {mode === "artifactUnavailable" && <p class="card bad storage-warning">{t("storage.artifactUnavailable")}</p>}
-      {page === "session" && id ? <Player key={id} sessionId={id} /> : page === "review" && id ? <Review key={id} sessionId={id} /> : <Home />}
+      {page === "session" && id ? <Player key={id} sessionId={id} /> : page === "review" && id ? <Review key={id} sessionId={id} /> : page === "showcase" && id ? <ShowcaseReview key={id} name={id} /> : <Home />}
       <footer class="muted app-footer">
         {mode && <p>{t(mode === "artifact" ? "storage.artifact" : "storage.local")}</p>}
         <label>

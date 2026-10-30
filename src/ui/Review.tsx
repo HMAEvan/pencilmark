@@ -1,3 +1,4 @@
+import type { ComponentChildren } from "preact";
 import { useEffect, useRef, useState } from "preact/hooks";
 import type { Flag, Question, QuestionSet, Session } from "../domain/types";
 import { blocksToText, letterAt, letterOf } from "../domain/display";
@@ -139,73 +140,37 @@ function ResultMark({ final, multiple, partial }: { final: FinalValues; multiple
   );
 }
 
-export function Review({ sessionId }: { sessionId: string }) {
-  const [loaded, setLoaded] = useState<Loaded | null>();
-  const [marking, setMarking] = useState(false);
-  const [includeRawLog, setIncludeRawLog] = useState(false);
-  const [downloadFailed, setDownloadFailed] = useState(false);
+/** What the review page shows: a submitted Session, its derivation and Overrides. */
+export type Shown = Omit<Loaded, "recorder">;
 
-  // Time on the review page is the reviewing Phase (ADR-0008), recorded into the same Raw log as answering.
-  const recorderRef = useRecorder(async () => {
-    const result = await load(sessionId);
-    setLoaded(result ?? null);
-    if (!result) return;
-    const { recorder } = result;
-    // Recorded even when no Question is known to be on screen yet, so a Question from an earlier visit to the page gets no more time.
-    return { recorder, afterShow: () => recorder.append({ type: "onScreen", ...(onScreen.current && { questionId: onScreen.current }) }) };
-  }, sessionId);
-  const onScreen = useOnScreenRecording(recorderRef, !!loaded);
+/** The review page's controls that record; absent in a Showcase, where the page is read-only. */
+type Recording = {
+  marking: boolean;
+  mark: (event: RawEventBody) => void;
+  saveOverride: (questionId: string, values: OverrideValues) => void;
+  toggleRationale: (questionId: string, optionId: string, open: boolean) => void;
+};
 
-  if (loaded === undefined) return <main>{t("common.loading")}</main>;
-  if (loaded === null) return <main>{t("common.notFound")}</main>;
-
-  const { session, set, derivation, attempts, questions, overrides, recorder } = loaded;
+/**
+ * The review page itself. `banner` follows the heading, `actions` the Digest's actions, and `children` the Questions.
+ * Without `recording` nothing on it records: marks, Notes and Appeals are shown as they are, and there are no Overrides.
+ */
+export function ReviewPage({ shown, recording, banner, actions, children }: { shown: Shown; recording?: Recording; banner?: ComponentChildren; actions?: ComponentChildren; children?: ComponentChildren }) {
+  const { session, set, derivation, attempts, questions, overrides } = shown;
   // A display preference: it changes what is shown, never what is stored. Sessions from before snapshots used the default.
   const precision = timePrecisionOf(session);
   const partial = (session.settings?.display.multipleAnswerScore ?? DEFAULT_PREFERENCES.display.multipleAnswerScore) === "partial";
   // Questions that are not graded count towards neither the score nor the total.
   const finals = attempts.filter((a) => isGraded(questions.get(a.questionId)!)).map((a) => finalValues(a, overrides.get(a.questionId)));
   const ungraded = attempts.length - finals.length;
-  // A mark after reveal has the Phase reviewing (ADR-0008); the Session is derived again so the Attempts and Digest include it.
-  const mark = async (event: RawEventBody) => {
-    setMarking(true);
-    try {
-      await recordReviewMark(storage, session, set, recorder, event);
-      const reloaded = await load(sessionId, recorder);
-      if (reloaded) setLoaded(reloaded);
-    } finally {
-      setMarking(false);
-    }
-  };
-  const saveOverride = async (questionId: string, values: OverrideValues) => {
-    const saved = await setOverride(storage, session.id, questionId, values);
-    setLoaded({ ...loaded, overrides: new Map(overrides).set(questionId, saved) });
-  };
   // The copied Digest uses the Overrides set since the derivation, in place of the derived values.
   const digest = overrides.size ? digestWithOverrides({ title: set.title, questions: [...questions.values()], rules: derivation.parameters }, { attempts, removedFlags: derivation.removedFlags }, overrides) : derivation.digest;
-  const downloadAnswerPack = async () => {
-    setDownloadFailed(false);
-    try {
-      // Exporting saves what there is now: sealing first puts this visit, and the export itself, in the Answer pack (ADR-0001).
-      const recorder = recorderRef.current;
-      if (recorder) {
-        recorder.append({ type: "exportAnswerPack", includeRawLog });
-        await recorder.checkpoint();
-      }
-      const pack = await buildAnswerPack(storage, session.id, { includeRawLog });
-      if (!pack) throw new Error(`Session ${session.id} has no derivation`);
-      downloadJson(`pencilmark-answer-pack-${session.id}.json`, pack);
-    } catch (e) {
-      console.error("Building the Answer pack failed", e);
-      setDownloadFailed(true);
-    }
-  };
-  const toggleRationale = (questionId: string, optionId: string, open: boolean) =>
-    recorderRef.current?.append({ type: open ? "expandRationale" : "collapseRationale", questionId, optionId });
+  const marking = recording?.marking;
 
   return (
     <main>
       <h1>{t("review.heading", { title: set.title })}</h1>
+      {banner}
       <p class="muted">
         {t("review.started", { time: formatDateTime(session.startedAt) })}
         {session.endedAt !== undefined && t("review.submitted", { time: formatDateTime(session.endedAt) })}
@@ -228,15 +193,7 @@ export function Review({ sessionId }: { sessionId: string }) {
           {t("review.backHome")}
         </button>
       </div>
-      <div class="actions">
-        <button class="secondary" onClick={downloadAnswerPack}>
-          {t("review.downloadAnswerPack")}
-        </button>
-        <label>
-          <input type="checkbox" checked={includeRawLog} onChange={(e) => setIncludeRawLog(e.currentTarget.checked)} /> {t("review.includeRawLog")}
-        </label>
-        {downloadFailed && <span class="bad">{t("review.downloadFailed")}</span>}
-      </div>
+      {actions}
       {attempts.map((attempt) => {
         const question = questions.get(attempt.questionId)!;
         const order = attempt.optionOrder;
@@ -272,7 +229,7 @@ export function Review({ sessionId }: { sessionId: string }) {
                       <div>
                         <span><RichText source={blocksToText(option.content, order)} inline /></span> <ItemFlagMarks flags={(attempt.itemFlags[optionId] ?? []).map((m) => m.itemFlag)} />
                         {option.rationale.length > 0 && (
-                          <details class="rationale" onToggle={(e) => toggleRationale(attempt.questionId, optionId, e.currentTarget.open)}>
+                          <details class="rationale" onToggle={(e) => recording?.toggleRationale(attempt.questionId, optionId, e.currentTarget.open)}>
                             <summary>{t("review.rationale")}</summary>
                             <RichText source={blocksToText(option.rationale, order)} />
                           </details>
@@ -293,7 +250,7 @@ export function Review({ sessionId }: { sessionId: string }) {
               optionOrder={order}
               showPhase
               disabled={marking}
-              onOpen={(level) => void mark({ type: "openHint", questionId: attempt.questionId, level })}
+              onOpen={recording && ((level) => recording.mark({ type: "openHint", questionId: attempt.questionId, level }))}
             />
             {question.explanation.length > 0 && (
               <div class="explanation">
@@ -304,24 +261,125 @@ export function Review({ sessionId }: { sessionId: string }) {
             {derivation.parameters.collectConfidence && (
               <p class="muted">{t("review.confidence", { confidence: attempt.confidence ? t(`confidence.${attempt.confidence}`) : t("review.confidenceNone") })}</p>
             )}
-            <FlagButtons
-              flags={attempt.flags.map((f) => f.flag)}
+            {recording ? (
+              <FlagButtons
+                flags={attempt.flags.map((f) => f.flag)}
+                disabled={marking}
+                onToggle={(flag: Flag, on) => recording.mark({ type: on ? "flag" : "unflag", questionId: attempt.questionId, flag })}
+              />
+            ) : (
+              attempt.flags.length > 0 && <p class="muted">{t("review.flagsRead", { flags: attempt.flags.map((f) => t(`flag.${f.flag}`)).join(t("review.answerSeparator")) })}</p>
+            )}
+            <AppealForm
+              appeals={attempt.appeals.map((a) => a.reason)}
               disabled={marking}
-              onToggle={(flag: Flag, on) => void mark({ type: on ? "flag" : "unflag", questionId: attempt.questionId, flag })}
+              onSubmit={recording && ((reason) => recording.mark({ type: "appeal", questionId: attempt.questionId, reason }))}
             />
-            <AppealForm appeals={attempt.appeals.map((a) => a.reason)} disabled={marking} onSubmit={(reason) => void mark({ type: "appeal", questionId: attempt.questionId, reason })} />
             {attempt.notes.answering && <p class="note-read">{t("review.answeringNote", { note: attempt.notes.answering })}</p>}
             {/* Recorded after the reveal, so it is the reviewing Note; the answering Note is never changed here. */}
-            <NoteField
-              label="review.reviewingNote"
-              note={attempt.notes.reviewing ?? ""}
-              disabled={marking}
-              onSave={(text) => void mark({ type: "note", questionId: attempt.questionId, text })}
-            />
-            <OverrideEditor attempt={attempt} final={final} graded={graded} idleThresholdMs={derivation.parameters.idleThresholdMs} precision={precision} onSave={(values) => void saveOverride(attempt.questionId, values)} />
+            {recording ? (
+              <NoteField
+                label="review.reviewingNote"
+                note={attempt.notes.reviewing ?? ""}
+                disabled={marking}
+                onSave={(text) => recording.mark({ type: "note", questionId: attempt.questionId, text })}
+              />
+            ) : (
+              attempt.notes.reviewing && <p class="note-read">{t("review.reviewingNoteRead", { note: attempt.notes.reviewing })}</p>
+            )}
+            {recording && (
+              <OverrideEditor
+                attempt={attempt}
+                final={final}
+                graded={graded}
+                idleThresholdMs={derivation.parameters.idleThresholdMs}
+                precision={precision}
+                onSave={(values) => recording.saveOverride(attempt.questionId, values)}
+              />
+            )}
           </section>
         );
       })}
+      {children}
     </main>
+  );
+}
+
+export function Review({ sessionId }: { sessionId: string }) {
+  const [loaded, setLoaded] = useState<Loaded | null>();
+  const [marking, setMarking] = useState(false);
+  const [includeRawLog, setIncludeRawLog] = useState(false);
+  const [downloadFailed, setDownloadFailed] = useState(false);
+
+  // Time on the review page is the reviewing Phase (ADR-0008), recorded into the same Raw log as answering.
+  const recorderRef = useRecorder(async () => {
+    const result = await load(sessionId);
+    setLoaded(result ?? null);
+    if (!result) return;
+    const { recorder } = result;
+    // Recorded even when no Question is known to be on screen yet, so a Question from an earlier visit to the page gets no more time.
+    return { recorder, afterShow: () => recorder.append({ type: "onScreen", ...(onScreen.current && { questionId: onScreen.current }) }) };
+  }, sessionId);
+  const onScreen = useOnScreenRecording(recorderRef, !!loaded);
+
+  if (loaded === undefined) return <main>{t("common.loading")}</main>;
+  if (loaded === null) return <main>{t("common.notFound")}</main>;
+
+  const { session, set, overrides, recorder } = loaded;
+  // A mark after reveal has the Phase reviewing (ADR-0008); the Session is derived again so the Attempts and Digest include it.
+  const mark = async (event: RawEventBody) => {
+    setMarking(true);
+    try {
+      await recordReviewMark(storage, session, set, recorder, event);
+      const reloaded = await load(sessionId, recorder);
+      if (reloaded) setLoaded(reloaded);
+    } finally {
+      setMarking(false);
+    }
+  };
+  const saveOverride = async (questionId: string, values: OverrideValues) => {
+    const saved = await setOverride(storage, session.id, questionId, values);
+    setLoaded({ ...loaded, overrides: new Map(overrides).set(questionId, saved) });
+  };
+  const downloadAnswerPack = async () => {
+    setDownloadFailed(false);
+    try {
+      // Exporting saves what there is now: sealing first puts this visit, and the export itself, in the Answer pack (ADR-0001).
+      const recorder = recorderRef.current;
+      if (recorder) {
+        recorder.append({ type: "exportAnswerPack", includeRawLog });
+        await recorder.checkpoint();
+      }
+      const pack = await buildAnswerPack(storage, session.id, { includeRawLog });
+      if (!pack) throw new Error(`Session ${session.id} has no derivation`);
+      downloadJson(`pencilmark-answer-pack-${session.id}.json`, pack);
+    } catch (e) {
+      console.error("Building the Answer pack failed", e);
+      setDownloadFailed(true);
+    }
+  };
+  const recording: Recording = {
+    marking,
+    mark: (event) => void mark(event),
+    saveOverride: (questionId, values) => void saveOverride(questionId, values),
+    toggleRationale: (questionId, optionId, open) => recorderRef.current?.append({ type: open ? "expandRationale" : "collapseRationale", questionId, optionId }),
+  };
+
+  return (
+    <ReviewPage
+      shown={loaded}
+      recording={recording}
+      actions={
+        <div class="actions">
+          <button class="secondary" onClick={downloadAnswerPack}>
+            {t("review.downloadAnswerPack")}
+          </button>
+          <label>
+            <input type="checkbox" checked={includeRawLog} onChange={(e) => setIncludeRawLog(e.currentTarget.checked)} /> {t("review.includeRawLog")}
+          </label>
+          {downloadFailed && <span class="bad">{t("review.downloadFailed")}</span>}
+        </div>
+      }
+    />
   );
 }

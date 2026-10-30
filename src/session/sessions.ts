@@ -60,13 +60,19 @@ export async function inProgressSession(storage: Storage, setId: string): Promis
   return (await storage.query<Session>("sessions", { setId, status: "in_progress" }))[0];
 }
 
-/** Continues the Set's in-progress Session, or starts a new Exam-mode Session. */
-export async function startSession(storage: Storage, set: QuestionSet): Promise<Session> {
+/**
+ * Continues the Set's in-progress Session, or starts a new Exam-mode Session.
+ * A Showcase script fixes the start time and the display orders, so replaying it gives the same Digest every time.
+ */
+export async function startSession(
+  storage: Storage,
+  set: QuestionSet,
+  { now = new Date(), orders }: { now?: Date; orders?: Pick<Session, "questionOrder" | "optionOrders"> } = {},
+): Promise<Session> {
   const existing = await inProgressSession(storage, set.id);
   if (existing) return existing;
 
   const questions = await loadQuestions(storage, set);
-  const now = new Date();
   const settings = settingsSnapshot(await loadPreferences(storage));
   const session: Session = {
     id: newId("ss", now),
@@ -74,7 +80,7 @@ export async function startSession(storage: Storage, set: QuestionSet): Promise<
     mode: "exam",
     status: "in_progress",
     startedAt: now.getTime(),
-    ...displayOrders(questions, settings.rules),
+    ...(orders ?? displayOrders(questions, settings.rules)),
     questionRevisions: Object.fromEntries(questions.map((q) => [q.id, q.revision])),
     settings,
     source: "user",
@@ -157,10 +163,9 @@ export async function loadDerivedSession(storage: Storage, sessionId: string): P
   return { session, set, derivation, attempts, questions: await loadQuestions(storage, set, session), overrides: await loadOverrides(storage, sessionId) };
 }
 
-export async function submitSession(storage: Storage, session: Session, set: QuestionSet, recorder: Recorder): Promise<void> {
+export async function submitSession(storage: Storage, session: Session, set: QuestionSet, recorder: Recorder, now = Date.now()): Promise<void> {
   recorder.append({ type: "submit" });
   await recorder.seal();
-  const now = Date.now();
   await deriveSession(storage, { ...session, status: "done", endedAt: now }, set);
 }
 

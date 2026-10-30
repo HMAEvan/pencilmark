@@ -233,3 +233,9 @@ Working name introduced while building issue #38, not yet agreed with /domain-mo
 **Timeline step** (时间线步骤):
 One entry of an Answering timeline: a Visit opened or left, a selection or deselection, an Item flag set or taken back, a Hint opened, a Confidence, Flag, Appeal or Note recorded, each at the answering time spent on the Question so far. Actions that changed nothing (taking back a mark never made, a Hint out of order) are not steps. In code: `TimelineStep`.
 _Status_: provisional, not yet agreed
+
+Working name introduced while building issue #40, not yet agreed with /domain-modeling.
+
+**Feedback label** (讲解标注):
+What a Showcase's Feedback was written by and from: the model, the grading Skill version and the date, with a link to the claude.ai conversation when shared. A label whose grading Skill version is not the current one marks the Feedback as stale. In code: `FeedbackLabel`.
+_Status_: provisional, not yet agreed

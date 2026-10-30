@@ -1,0 +1,82 @@
+{
+  "questionPack": "general-science.json",
+  "startedAt": "2026-10-20T09:00:00.000Z",
+  "questionOrder": ["q4", "q1", "q7", "q2", "q5", "q9", "q3", "q10", "q6", "q8"],
+  "optionOrders": {
+    "q1": ["opt_bubbles", "opt_lattice", "opt_lighter", "opt_faster"],
+    "q3": ["opt_insulate", "opt_boil", "opt_top_down", "opt_sink", "opt_pipes"],
+    "q4": ["opt_5", "opt_0_2", "opt_zero", "opt_10"],
+    "q5": ["opt_straight", "opt_braking", "opt_parked", "opt_speeding_up", "opt_roundabout"],
+    "q7": ["opt_antibodies_forever", "opt_memory", "opt_virus_stays", "opt_contains_antibodies"],
+    "q8": ["opt_mrna", "opt_antibiotic", "opt_weakened", "opt_full_virus", "opt_protein"],
+    "q10": ["opt_forget", "opt_mutates", "opt_build_up", "opt_none"]
+  },
+  "events": [
+    { "ms": 0, "type": "show" },
+    { "ms": 1000, "type": "navigate", "questionId": "q4" },
+    { "ms": 18000, "type": "select", "questionId": "q4", "optionId": "opt_5" },
+    { "ms": 21000, "type": "confidence", "questionId": "q4", "confidence": "sure" },
+
+    { "ms": 23000, "type": "navigate", "questionId": "q1" },
+    { "ms": 31000, "type": "itemFlag", "questionId": "q1", "optionId": "opt_lighter", "itemFlag": "eliminated" },
+    { "ms": 35000, "type": "itemFlag", "questionId": "q1", "optionId": "opt_faster", "itemFlag": "eliminated" },
+    { "ms": 47000, "type": "select", "questionId": "q1", "optionId": "opt_bubbles" },
+    { "ms": 58000, "type": "openHint", "questionId": "q1", "level": 0 },
+    { "ms": 66000, "type": "select", "questionId": "q1", "optionId": "opt_lattice" },
+    { "ms": 69000, "type": "confidence", "questionId": "q1", "confidence": "probably" },
+
+    { "ms": 72000, "type": "navigate", "questionId": "q7" },
+    { "ms": 84000, "type": "select", "questionId": "q7", "optionId": "opt_memory" },
+    { "ms": 86000, "type": "confidence", "questionId": "q7", "confidence": "sure" },
+
+    { "ms": 88000, "type": "navigate", "questionId": "q2" },
+    { "ms": 97000, "type": "select", "questionId": "q2", "optionId": "opt_true" },
+    { "ms": 99000, "type": "confidence", "questionId": "q2", "confidence": "guessed" },
+    { "ms": 101000, "type": "flag", "questionId": "q2", "flag": "memory" },
+
+    { "ms": 103000, "type": "navigate", "questionId": "q5" },
+    { "ms": 115000, "type": "select", "questionId": "q5", "optionId": "opt_braking" },
+    { "ms": 118000, "type": "select", "questionId": "q5", "optionId": "opt_speeding_up" },
+    { "ms": 126000, "type": "itemFlag", "questionId": "q5", "optionId": "opt_roundabout", "itemFlag": "eliminated_unsure" },
+    { "ms": 131000, "type": "confidence", "questionId": "q5", "confidence": "probably" },
+    { "ms": 140000, "type": "note", "questionId": "q5", "text": "Does turning at a steady speed count as accelerating?" },
+
+    { "ms": 145000, "type": "navigate", "questionId": "q9" },
+    { "ms": 151000, "type": "select", "questionId": "q9", "optionId": "opt_true" },
+    { "ms": 153000, "type": "confidence", "questionId": "q9", "confidence": "sure" },
+
+    { "ms": 155000, "type": "navigate", "questionId": "q3" },
+    { "ms": 165000, "type": "select", "questionId": "q3", "optionId": "opt_top_down" },
+    { "ms": 168000, "type": "select", "questionId": "q3", "optionId": "opt_insulate" },
+    { "ms": 175000, "type": "select", "questionId": "q3", "optionId": "opt_pipes" },
+    { "ms": 178000, "type": "confidence", "questionId": "q3", "confidence": "sure" },
+
+    { "ms": 180000, "type": "navigate", "questionId": "q10" },
+    { "ms": 192000, "type": "select", "questionId": "q10", "optionId": "opt_build_up" },
+    { "ms": 205000, "type": "select", "questionId": "q10", "optionId": "opt_mutates" },
+    { "ms": 207000, "type": "confidence", "questionId": "q10", "confidence": "probably" },
+
+    { "ms": 209000, "type": "navigate", "questionId": "q6" },
+    { "ms": 213000, "type": "select", "questionId": "q6", "optionId": "opt_true" },
+
+    { "ms": 215000, "type": "navigate", "questionId": "q8" },
+    { "ms": 226000, "type": "select", "questionId": "q8", "optionId": "opt_protein" },
+    { "ms": 229000, "type": "select", "questionId": "q8", "optionId": "opt_mrna" },
+    { "ms": 240000, "type": "openHint", "questionId": "q8", "level": 0 },
+    { "ms": 248000, "type": "select", "questionId": "q8", "optionId": "opt_weakened" },
+    { "ms": 251000, "type": "confidence", "questionId": "q8", "confidence": "probably" },
+    { "ms": 256000, "type": "submit" },
+
+    { "ms": 262000, "type": "show" },
+    { "ms": 262000, "type": "onScreen", "questionId": "q4" },
+    { "ms": 270000, "type": "expandRationale", "questionId": "q4", "optionId": "opt_5" },
+    { "ms": 285000, "type": "note", "questionId": "q4", "text": "I divided distance by time. A full lap ends where it started, so displacement and average velocity are zero." },
+    { "ms": 287000, "type": "flag", "questionId": "q4", "flag": "concept" },
+    { "ms": 300000, "type": "onScreen", "questionId": "q2" },
+    { "ms": 305000, "type": "openHint", "questionId": "q2", "level": 0 },
+    { "ms": 315000, "type": "note", "questionId": "q2", "text": "Densest at about 4 °C, not 0 °C." },
+    { "ms": 330000, "type": "onScreen", "questionId": "q6" },
+    { "ms": 335000, "type": "flag", "questionId": "q6", "flag": "concept" },
+    { "ms": 345000, "type": "hide" }
+  ]
+}

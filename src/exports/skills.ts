@@ -17,3 +17,8 @@ export function topicsListText(topicPaths: string[]): string {
 export function gradingSkillText(): string {
   return gradingSkill;
 }
+
+/** The grading Skill's `metadata.version`, which a Showcase's Feedback label must match. */
+export function gradingSkillVersion(): string {
+  return /^ {2}version: "([^"]+)"$/m.exec(gradingSkill)?.[1] ?? "";
+}

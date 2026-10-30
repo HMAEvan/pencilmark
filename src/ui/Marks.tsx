@@ -164,9 +164,10 @@ export function HintPanel({
   optionOrder: string[];
   showPhase?: boolean;
   disabled?: boolean;
-  onOpen: (level: number) => void;
+  /** Absent where nothing is recorded, as in a Showcase: only the Hints opened are shown. */
+  onOpen?: (level: number) => void;
 }) {
-  if (!hints.length) return null;
+  if (!hints.length || (!onOpen && !opened.length)) return null;
   const next = opened.length;
   return (
     <div class="hints">
@@ -177,7 +178,7 @@ export function HintPanel({
           <RichText source={blocksToText(hints[level]!, optionOrder)} />
         </div>
       ))}
-      {next < hints.length && (
+      {onOpen && next < hints.length && (
         <button class="small secondary" disabled={disabled} onClick={() => onOpen(next)}>
           {t("hints.open", { n: next + 1 })}
         </button>
@@ -186,14 +187,17 @@ export function HintPanel({
   );
 }
 
-/** "I think the answer is wrong": the reason is required, so the button stays disabled until one is written. */
-export function AppealForm({ appeals, disabled, onSubmit }: { appeals: string[]; disabled?: boolean; onSubmit: (reason: string) => void }) {
+/**
+ * "I think the answer is wrong": the reason is required, so the button stays disabled until one is written.
+ * Without `onSubmit`, as in a Showcase, only the Appeals made are shown.
+ */
+export function AppealForm({ appeals, disabled, onSubmit }: { appeals: string[]; disabled?: boolean; onSubmit?: (reason: string) => void }) {
   const [open, setOpen] = useState(false);
   const [reason, setReason] = useState("");
   const send = () => {
     const trimmed = reason.trim();
     if (!trimmed) return;
-    onSubmit(trimmed);
+    onSubmit?.(trimmed);
     setReason("");
     setOpen(false);
   };
@@ -220,9 +224,11 @@ export function AppealForm({ appeals, disabled, onSubmit }: { appeals: string[];
           </div>
         </>
       ) : (
-        <button class="small secondary" disabled={disabled} onClick={() => setOpen(true)}>
-          {t("appeal.open")}
-        </button>
+        onSubmit && (
+          <button class="small secondary" disabled={disabled} onClick={() => setOpen(true)}>
+            {t("appeal.open")}
+          </button>
+        )
       )}
     </div>
   );
