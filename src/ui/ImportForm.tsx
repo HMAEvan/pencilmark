@@ -135,7 +135,6 @@ function Preview({
   const withStatus = (status: ImportStatus) => preview.questions.filter((q) => q.status === status);
   const count = (status: ImportStatus) => withStatus(status).length;
   const joined = (list: PreviewQuestion[]) => list.map((q) => q.label).join(t("import.listSeparator"));
-  const labels = (status: ImportStatus) => joined(withStatus(status));
   const skippedExisting = withStatus("skipped").filter((q) => q.existingId !== undefined);
   const skippedInPack = withStatus("skipped").filter((q) => q.existingId === undefined);
   const conflictsOver = (kind: ConflictKind) => withStatus("conflict").filter((q) => q.conflict === kind);
