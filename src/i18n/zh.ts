@@ -30,6 +30,8 @@ export const zh = {
   "import.previewCounts": "「{title}」：新题 {new} 道，重复跳过 {skipped} 道，相似 {similar} 道，冲突 {conflict} 道",
   "import.listSeparator": "、",
   "import.skippedList": "与已有题目相同，将跳过：{labels}",
+  "import.skippedInPackList": "与本题目包中前面的题目重复，将跳过：{labels}",
+  "import.conflictHintsList": "与本题目包中前面的题目重复但提示不同，不导入：{labels}",
   "import.conflictList": "与本题目包中前面的题目题干相同但答案不同，不导入：{labels}",
   "import.similarHeading": "以下题目与已有题目相似，请逐题选择处理方式：",
   "import.diffLegend": "绿色：两者相同。红色删除线：仅已有题目有。红色下划线：仅新导入的题目有。",

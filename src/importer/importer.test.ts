@@ -128,6 +128,30 @@ describe.each(adapters)("Importer with the %s Storage adapter", (_name, makeStor
     expect(shown.questions.map((q) => q.status)).toEqual(["new", "conflict"]);
   });
 
+  it("does not import the second of two pack Questions that differ only in Hints; it is a conflict, and the first still imports", async () => {
+    const storage = makeStorage();
+    const hint = (text: string) => [[{ type: "text", text }]];
+    const first = { ...threePack.questions[0]!, hints: hint("Think about energy.") };
+    const second = { ...first, label: "q1b", hints: hint("Think about ATP.") };
+    const shown = await preview(storage, { ...threePack, questions: [first, second] });
+    expect(shown.questions.map((q) => [q.status, q.sameAs, q.conflict])).toEqual([["new", undefined, undefined], ["conflict", first.label, "hints"]]);
+    await commitImport(shown, storage, { confirmedTopicPaths: shown.newTopicPaths });
+    expect(await storage.query("questions")).toHaveLength(1);
+  });
+
+  it("marks a conflict over the answer as such", async () => {
+    const shown = await preview(makeStorage(), { ...threePack, questions: [threePack.questions[0]!, { ...threePack.questions[0]!, label: "q1b", answer: ["opt_1"] }] });
+    expect(shown.questions[1]).toMatchObject({ status: "conflict", conflict: "answer" });
+  });
+
+  it("skips the second of two pack Questions identical including Hints, naming the earlier pack Question and no existing one", async () => {
+    const hints = [[{ type: "text", text: "Think about energy." }]];
+    const first = { ...threePack.questions[0]!, hints };
+    const shown = await preview(makeStorage(), { ...threePack, questions: [first, { ...first, label: "q1b" }] });
+    expect(shown.questions[1]).toMatchObject({ status: "skipped", sameAs: first.label });
+    expect(shown.questions[1]!.existingId).toBeUndefined();
+  });
+
   it("lists unknown Topic paths for confirmation and writes nothing if they are not confirmed", async () => {
     const storage = makeStorage();
     const shown = await preview(storage, threePack);

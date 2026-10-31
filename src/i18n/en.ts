@@ -32,6 +32,8 @@ export const en = {
   "import.previewCounts": "“{title}”: {new} new, {skipped} duplicates skipped, {similar} similar, {conflict} conflicts",
   "import.listSeparator": ", ",
   "import.skippedList": "Same as existing Questions, will be skipped: {labels}",
+  "import.skippedInPackList": "Repeats an earlier Question in this pack, will be skipped: {labels}",
+  "import.conflictHintsList": "Repeats an earlier Question in this pack with different Hints, not imported: {labels}",
   "import.conflictList": "Same stem as an earlier Question in this pack but a different answer, not imported: {labels}",
   "import.similarHeading": "These Questions are similar to existing ones. Choose what to do with each:",
   "import.diffLegend": "Green: the same in both. Red, struck through: only in the existing Question. Red, underlined: only in the incoming one.",

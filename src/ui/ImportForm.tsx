@@ -6,6 +6,7 @@ import {
   parseQuestionPack,
   previewImport,
   topicPaths,
+  type ConflictKind,
   type DiffPart,
   type ImportPreview,
   type ImportStatus,
@@ -133,7 +134,11 @@ function Preview({
 }) {
   const withStatus = (status: ImportStatus) => preview.questions.filter((q) => q.status === status);
   const count = (status: ImportStatus) => withStatus(status).length;
-  const labels = (status: ImportStatus) => withStatus(status).map((q) => q.label).join(t("import.listSeparator"));
+  const joined = (list: PreviewQuestion[]) => list.map((q) => q.label).join(t("import.listSeparator"));
+  const labels = (status: ImportStatus) => joined(withStatus(status));
+  const skippedExisting = withStatus("skipped").filter((q) => q.existingId !== undefined);
+  const skippedInPack = withStatus("skipped").filter((q) => q.existingId === undefined);
+  const conflictsOver = (kind: ConflictKind) => withStatus("conflict").filter((q) => q.conflict === kind);
   const unchosen = withStatus("similar").some((q) => !choices[q.label]);
   return (
     <Dialog label={t("import.previewHeading")} onCancel={onCancel} wide>
@@ -141,8 +146,10 @@ function Preview({
       <p>
         {t("import.previewCounts", { title: preview.pack.batch.title, new: count("new"), skipped: count("skipped"), similar: count("similar"), conflict: count("conflict") })}
       </p>
-      {count("skipped") > 0 && <p class="muted">{t("import.skippedList", { labels: labels("skipped") })}</p>}
-      {count("conflict") > 0 && <p class="muted">{t("import.conflictList", { labels: labels("conflict") })}</p>}
+      {skippedExisting.length > 0 && <p class="muted">{t("import.skippedList", { labels: joined(skippedExisting) })}</p>}
+      {skippedInPack.length > 0 && <p class="muted">{t("import.skippedInPackList", { labels: joined(skippedInPack) })}</p>}
+      {conflictsOver("answer").length > 0 && <p class="muted">{t("import.conflictList", { labels: joined(conflictsOver("answer")) })}</p>}
+      {conflictsOver("hints").length > 0 && <p class="muted">{t("import.conflictHintsList", { labels: joined(conflictsOver("hints")) })}</p>}
       {count("similar") > 0 && (
         <div>
           <p>{t("import.similarHeading")}</p>

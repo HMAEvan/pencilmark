@@ -135,9 +135,10 @@ export type ImportStatus = "new" | "skipped" | "similar" | "conflict";
  * One pack Question in the preview. A skipped Question is identical to `existingId` in the bank or to
  * the earlier pack Question `sameAs`. A similar Question is at or above the similarity threshold to revision
  * `existingRevision` of `existingId`, and waits for a SimilarChoice. A conflict asks the same thing as the
- * earlier pack Question `sameAs` with a different answer, and is not imported.
+ * earlier pack Question `sameAs` with a different answer (`conflict: "answer"`) or different Hints (`"hints"`), and is not imported.
  */
-export type PreviewQuestion = { label: string; status: ImportStatus; existingId?: string; existingRevision?: number; sameAs?: string; comparison?: Comparison };
+export type ConflictKind = "answer" | "hints";
+export type PreviewQuestion = { label: string; status: ImportStatus; existingId?: string; existingRevision?: number; sameAs?: string; conflict?: ConflictKind; comparison?: Comparison };
 
 /** What to do with a similar Question: import nothing, make it the existing Question's next revision, or import it as a separate Question. */
 export type SimilarChoice = "skip" | "update" | "new";
@@ -182,12 +183,13 @@ export async function previewImport(pack: QuestionPack, storage: Storage): Promi
     if (match?.full === keys.full && existing && !existing.deprecated && match.hints !== keys.hints) {
       return { label: q.label, status: "similar", existingId: existing.id, existingRevision: existing.revision, comparison: compareQuestions(existing, q, 0)! };
     }
+    if (match?.full === keys.full && !existing && match.hints !== keys.hints) return { label: q.label, status: "conflict", sameAs: match.sameAs, conflict: "hints" };
     if (match?.full === keys.full) return existing ? { label: q.label, status: "skipped", existingId: existing.id } : { label: q.label, status: "skipped", sameAs: match.sameAs };
-    if (match?.sameAs) return { label: q.label, status: "conflict", sameAs: match.sameAs };
+    if (match?.sameAs) return { label: q.label, status: "conflict", sameAs: match.sameAs, conflict: "answer" };
     // Tier 2, after exact duplicates: an existing Question asking almost, or exactly, the same thing.
     const similar = mostSimilar(q, bank, similarityThreshold);
     if (similar) return { label: q.label, status: "similar", existingId: similar.existing.id, existingRevision: similar.existing.revision, comparison: similar.comparison };
-    known.set(keys.text, { full: keys.full, sameAs: q.label });
+    known.set(keys.text, { full: keys.full, hints: keys.hints, sameAs: q.label });
     return { label: q.label, status: "new" };
   });
   const topics = await topicResolver(storage, { source: "ai", updatedAt: 0 }, new Date());
