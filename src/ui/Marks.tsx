@@ -248,11 +248,6 @@ export function AppealForm({
   useEffect(() => setWritten(statement), [statement]);
   return (
     <div class="appeal">
-      {appeals.map((a, i) => (
-        <p key={i} class="note-read">
-          {t("appeal.recorded", { reason: a })}
-        </p>
-      ))}
       {open && onRecord ? (
         <>
           <label class="note">
@@ -260,8 +255,12 @@ export function AppealForm({
             <TextEntryArea saved={statement} target={{ questionId, field: "challenge", entry: 0 }} placeholder="appeal.reasonPlaceholder" disabled={disabled} onRecord={onRecord} onDraft={setWritten} />
           </label>
           <div class="actions">
-            {/* Pressing the button takes the focus from the field first, which saves the statement. */}
-            <button class="small" disabled={disabled || !written.trim()} onClick={() => setOpen(false)}>
+            {/*
+              Pressing the button takes the focus from the field first, which saves the statement. Saving may disable the
+              page's marks for a moment, and may add an Appeal line, so the button stays enabled and the lines come after
+              it: either would otherwise swallow the click.
+            */}
+            <button class="small" disabled={!written.trim()} onClick={() => setOpen(false)}>
               {t("appeal.submit")}
             </button>
           </div>
@@ -273,6 +272,11 @@ export function AppealForm({
           </button>
         )
       )}
+      {appeals.map((a, i) => (
+        <p key={i} class="note-read">
+          {t("appeal.recorded", { reason: a })}
+        </p>
+      ))}
     </div>
   );
 }
