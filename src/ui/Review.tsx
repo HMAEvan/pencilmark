@@ -3,13 +3,13 @@ import { useEffect, useRef, useState } from "preact/hooks";
 import type { Flag, Question, QuestionSet, Session } from "../domain/types";
 import { blocksToText, letterAt, letterOf } from "../domain/display";
 import { RichText } from "./RichText";
-import { t } from "../i18n/i18n";
+import { t, type TranslationKey } from "../i18n/i18n";
+import { useNavDropdown } from "./useNavDropdown";
 import { openRecorder, type RawEventBody, type Recorder } from "../recorder/recorder";
 import { loadDerivedSession, recordReviewMark, setOverride, type Attempt, type Derivation, type Override } from "../session/sessions";
 import { AppealForm, FlagButtons, HintPanel, ItemFlagMarks, NoteField } from "./Marks";
 import { TextEntriesRead } from "./TextEntries";
 import { digestWithOverrides, finalValues, type FinalValues, type OverrideValues } from "../derivation/derivation";
-import { excludedIdleMs } from "../derivation/timing";
 import { buildAnswerPack } from "../exports/answerPack";
 import { gradingSkillText } from "../exports/skills";
 import { CopyButton } from "./CopyButton";
@@ -93,41 +93,45 @@ function downloadJson(fileName: string, value: unknown) {
   setTimeout(() => URL.revokeObjectURL(url));
 }
 
-/**
- * Setting an Override on a derived time or result, shown under a Question. The derived value and the Raw log are never changed.
- * A Question that is not graded has no result to correct.
- */
-function OverrideEditor({ attempt, final, graded, idleThresholdMs, precision, onSave }: { attempt: Attempt; final: FinalValues; graded: boolean; idleThresholdMs: number; precision: TimePrecision; onSave: (values: OverrideValues) => void }) {
-  const idle = attempt.timing.excludedIdle;
-  // Answering time no longer changes after the reveal, so the derived time recorded here adds nothing on top.
-  const saveTime = (ms: number | undefined) =>
-    onSave(ms === undefined ? { answeringActiveMs: undefined, answeringActiveMsAtOverride: undefined } : { answeringActiveMs: ms, answeringActiveMsAtOverride: attempt.timing.answeringActiveMs });
+/** A card's answering time, with a ✎ to override it and, where idle time was left out, an idle mark that explains it. */
+function TimeLine({ attempt, override, idleThresholdMs, precision, onSave }: { attempt: Attempt; override?: Override; idleThresholdMs: number; precision: TimePrecision; onSave?: (values: OverrideValues) => void }) {
+  const [correcting, setCorrecting] = useState(false);
+  const [idleOpen, setIdleOpen] = useState(false);
   return (
-    <details class="override">
-      <summary>{t(idle.length > 0 ? "review.idleExcluded" : graded ? "review.overrideOpen" : "review.overrideTimeOpen", { time: formatDuration(excludedIdleMs(attempt.timing), precision) })}</summary>
-      {idle.length > 0 && <p class="muted">{t("review.idleExplained", { seconds: idleThresholdMs / 1000 })}</p>}
-      <p class="muted">{t("review.derivedTime", { time: formatDuration(attempt.timing.answeringActiveMs, precision), raw: formatDuration(attempt.timing.answeringRawMs, precision) })}</p>
-      <TimeOverrideField overridden={final.overridden.includes("answeringActiveMs")} onSave={saveTime} />
-      {graded && (
-        <div class="actions">
-          {final.correct !== true && (
-            <button class="secondary" onClick={() => onSave({ correct: true })}>
-              {t("review.markCorrect")}
-            </button>
-          )}
-          {final.correct !== false && (
-            <button class="secondary" onClick={() => onSave({ correct: false })}>
-              {t("review.markWrong")}
-            </button>
-          )}
-          {final.overridden.includes("correct") && (
-            <button class="secondary" onClick={() => onSave({ correct: undefined })}>
-              {t("review.restoreResult")}
-            </button>
-          )}
+    <>
+      <p class="times">
+        <AnsweringTime label="review.answeringTime" derivedMs={attempt.timing.answeringActiveMs} override={override} precision={precision} />
+        {onSave && (
+          <button class="link edit-time" aria-expanded={correcting} aria-label={t("player.overrideTime")} title={t("player.overrideTime")} onClick={() => setCorrecting(!correcting)}>
+            ✎
+          </button>
+        )}
+        {attempt.timing.excludedIdle.length > 0 && (
+          <button class="link idle-mark muted" aria-expanded={idleOpen} aria-label={t("review.idleMarkTitle")} title={t("review.idleMarkTitle")} onClick={() => setIdleOpen(!idleOpen)}>
+            {t("review.idleMark")}
+          </button>
+        )}
+        {attempt.timing.reviewingActiveMs > 0 && <span class="muted">{t("review.reviewingTime", { time: formatDuration(attempt.timing.reviewingActiveMs, precision) })}</span>}
+      </p>
+      {idleOpen && (
+        <div class="card card-popover muted">
+          <p>{t("review.idleExplained", { seconds: idleThresholdMs / 1000 })}</p>
+          <p>{t("review.derivedTime", { time: formatDuration(attempt.timing.answeringActiveMs, precision), raw: formatDuration(attempt.timing.answeringRawMs, precision) })}</p>
         </div>
       )}
-    </details>
+      {correcting && onSave && (
+        <div class="card card-popover" role="group" aria-label={t("player.overrideTime")}>
+          {/* Answering time no longer changes after the reveal, so the derived time recorded here adds nothing on top. */}
+          <TimeOverrideField
+            overridden={override?.answeringActiveMs !== undefined}
+            onSave={(ms) => {
+              onSave(ms === undefined ? { answeringActiveMs: undefined, answeringActiveMsAtOverride: undefined } : { answeringActiveMs: ms, answeringActiveMsAtOverride: attempt.timing.answeringActiveMs });
+              setCorrecting(false);
+            }}
+          />
+        </div>
+      )}
+    </>
   );
 }
 
@@ -140,6 +144,82 @@ function ResultMark({ final, multiple, partial }: { final: FinalValues; multiple
     </>
   );
 }
+
+/** A card's heading: the Question number and result, with a ✎ to override the result where it is graded. */
+function ResultLine({ attempt, final, multiple, partial, onSave }: { attempt: Attempt; final: FinalValues; multiple: boolean; partial: boolean; onSave?: (values: OverrideValues) => void }) {
+  const [correcting, setCorrecting] = useState(false);
+  const save = (values: OverrideValues) => {
+    onSave?.(values);
+    setCorrecting(false);
+  };
+  return (
+    <>
+      <h3>
+        {t("review.questionNumber", { n: attempt.displayedNumber })} <ResultMark final={final} multiple={multiple} partial={partial} />
+        {final.overridden.includes("correct") && <span class="muted"> {t("review.overridden")}</span>}
+        {onSave && (
+          <button class="link edit-time" aria-expanded={correcting} aria-label={t("review.overrideResult")} title={t("review.overrideResult")} onClick={() => setCorrecting(!correcting)}>
+            ✎
+          </button>
+        )}
+      </h3>
+      {correcting && onSave && (
+        <div class="card card-popover actions" role="group" aria-label={t("review.overrideResult")}>
+          {final.correct !== true && (
+            <button class="secondary" onClick={() => save({ correct: true })}>
+              {t("review.markCorrect")}
+            </button>
+          )}
+          {final.correct !== false && (
+            <button class="secondary" onClick={() => save({ correct: false })}>
+              {t("review.markWrong")}
+            </button>
+          )}
+          {final.overridden.includes("correct") && (
+            <button class="secondary" onClick={() => save({ correct: undefined })}>
+              {t("review.restoreResult")}
+            </button>
+          )}
+        </div>
+      )}
+    </>
+  );
+}
+
+/** How a Question's navigation square is coloured: by its final result, Overrides applied. */
+type NavResult = "right" | "wrong" | "partial" | "unanswered" | "ungraded";
+const NAV_LABEL: Record<NavResult, TranslationKey> = {
+  right: "review.navRight",
+  wrong: "review.navWrong",
+  partial: "review.navPartial",
+  unanswered: "review.navUnanswered",
+  ungraded: "review.navUngraded",
+};
+function navResult(attempt: Attempt, final: FinalValues, graded: boolean, multiple: boolean): NavResult {
+  if (!graded) return "ungraded";
+  if (!final.overridden.includes("correct") && attempt.answer.length === 0) return "unanswered";
+  if (multiple && final.partialScore !== null && final.partialScore > 0 && final.partialScore < 1) return "partial";
+  return final.correct ? "right" : "wrong";
+}
+
+/** The grading Skill and the Digest, each to download or copy, with the note on what the Digest covers. */
+function DigestControls({ set, digest }: { set: QuestionSet; digest: string }) {
+  return (
+    <div class="digest-controls">
+      <div class="actions">
+        <DownloadButton label="review.downloadGrading" fileName={() => "pencilmark-grading.md"} text={() => gradingSkillText()} />
+        <CopyButton label="common.copyGradingSkill" text={() => gradingSkillText()} link />
+        <DownloadButton label="review.downloadDigest" fileName={() => `${set.title.replace(/[\\/:*?"<>|\s]+/g, "-")}-${new Date().toISOString().slice(0, 10)}.md`} text={() => digest} />
+        <CopyButton label="common.copyDigest" text={() => digest} link />
+      </div>
+      <p class="muted">{t("review.copyGuidance")}</p>
+      <p class="muted">{t("review.digestNote")}</p>
+    </div>
+  );
+}
+
+/** Where the Showcase page's Feedback starts, for the link that jumps to it. */
+export const FEEDBACK_ID = "feedback";
 
 /** What the review page shows: a submitted Session, its derivation and Overrides. */
 export type Shown = Omit<Loaded, "recorder">;
@@ -155,10 +235,11 @@ type Recording = {
 };
 
 /**
- * The review page itself. `banner` follows the heading, `actions` the Digest's actions, and `children` the Questions.
+ * The review page itself. `banner` follows the heading, `actions` the page's own downloads, and `children` the Questions.
+ * `feedbackLink` adds a link that jumps to the Feedback (`FEEDBACK_ID`) among `children`.
  * Without `recording` nothing on it records: marks, Notes and Appeals are shown as they are, and there are no Overrides.
  */
-export function ReviewPage({ shown, recording, banner, actions, children }: { shown: Shown; recording?: Recording; banner?: ComponentChildren; actions?: ComponentChildren; children?: ComponentChildren }) {
+export function ReviewPage({ shown, recording, banner, actions, feedbackLink, children }: { shown: Shown; recording?: Recording; banner?: ComponentChildren; actions?: ComponentChildren; feedbackLink?: boolean; children?: ComponentChildren }) {
   const { session, set, derivation, attempts, questions, overrides } = shown;
   // A display preference: it changes what is shown, never what is stored. Sessions from before snapshots used the default.
   const precision = timePrecisionOf(session);
@@ -169,34 +250,112 @@ export function ReviewPage({ shown, recording, banner, actions, children }: { sh
   // The copied Digest uses the Overrides set since the derivation, in place of the derived values.
   const digest = overrides.size ? digestWithOverrides({ title: set.title, questions: [...questions.values()], rules: derivation.parameters }, { attempts, removedFlags: derivation.removedFlags }, overrides) : derivation.digest;
   const marking = recording?.marking;
+  const [navOpen, setNavOpen] = useNavDropdown();
+  // The Question occupying the main part of the screen, for the top bar's "Question n".
+  const [currentId, setCurrentId] = useState<string | undefined>();
+  useEffect(() => {
+    let frame = 0;
+    const check = () => {
+      frame = 0;
+      setCurrentId(questionOnScreen());
+    };
+    const schedule = () => {
+      frame ||= requestAnimationFrame(check);
+    };
+    check();
+    addEventListener("scroll", schedule, { passive: true });
+    addEventListener("resize", schedule);
+    return () => {
+      cancelAnimationFrame(frame);
+      removeEventListener("scroll", schedule);
+      removeEventListener("resize", schedule);
+    };
+  }, []);
+  const current = attempts.find((a) => a.questionId === currentId) ?? attempts[0];
+  const jumpTo = (target: Element | null) => {
+    setNavOpen(false);
+    target?.scrollIntoView({ block: "start" });
+  };
+  const links = (
+    <div class="actions">
+      <button class="secondary" onClick={() => navigate()}>
+        {t("review.backHome")}
+      </button>
+      {feedbackLink && (
+        <a
+          href={`#${FEEDBACK_ID}`}
+          onClick={(e) => {
+            e.preventDefault();
+            jumpTo(document.getElementById(FEEDBACK_ID));
+          }}
+        >
+          {t("review.jumpToFeedback")}
+        </a>
+      )}
+    </div>
+  );
 
   return (
-    <main>
-      <h1>{t("review.heading", { title: set.title })}</h1>
-      {banner}
-      <p class="muted">
-        {t("review.started", { time: formatDateTime(session.startedAt) })}
-        {session.endedAt !== undefined && t("review.submitted", { time: formatDateTime(session.endedAt) })}
-      </p>
-      <p>
-        {partial
-          ? t("review.partialTotal", { score: formatScore(finals.reduce((sum, f) => sum + (f.partialScore ?? 0), 0)), total: finals.length })
-          : t("review.score", { correct: finals.filter((f) => f.correct).length, total: finals.length })}
-        {ungraded > 0 && <span class="muted">{t("review.ungradedCount", { count: ungraded })}</span>}
-      </p>
-      <div class="actions">
-        <DownloadButton label="review.downloadGrading" fileName={() => "pencilmark-grading.md"} text={() => gradingSkillText()} />
-        <CopyButton label="common.copyGradingSkill" text={() => gradingSkillText()} link />
-        <DownloadButton label="review.downloadDigest" fileName={() => `${set.title.replace(/[\\/:*?"<>|\s]+/g, "-")}-${new Date().toISOString().slice(0, 10)}.md`} text={() => digest} />
-        <CopyButton label="common.copyDigest" text={() => digest} link />
-      </div>
-      <p class="muted">{t("review.copyGuidance")}</p>
-      <div class="actions">
-        <button class="secondary" onClick={() => navigate()}>
-          {t("review.backHome")}
-        </button>
-      </div>
-      {actions}
+    <main class="player-page">
+      <div class="player">
+        <aside class={`answer-panel${navOpen ? " nav-open" : ""}`}>
+          <p class="review-score">
+            {partial
+              ? t("review.partialTotal", { score: formatScore(finals.reduce((sum, f) => sum + (f.partialScore ?? 0), 0)), total: finals.length })
+              : t("review.score", { correct: finals.filter((f) => f.correct).length, total: finals.length })}
+            {ungraded > 0 && <span class="muted review-ungraded">{t("review.ungradedCount", { count: ungraded })}</span>}
+          </p>
+          {current && (
+            <button class="question-number question-toggle" aria-expanded={navOpen} onClick={() => setNavOpen(!navOpen)}>
+              {t("review.questionNumber", { n: current.displayedNumber })} ▾
+            </button>
+          )}
+          <div class="panel-nav">
+            <nav class="question-nav" aria-label={t("player.navigation")}>
+              {attempts.map((attempt) => {
+                const question = questions.get(attempt.questionId)!;
+                const final = finalValues(attempt, overrides.get(attempt.questionId));
+                const result = navResult(attempt, final, isGraded(question), questionTypeOf(question) === multipleAnswer);
+                const challenged = attempt.flags.some((f) => f.flag === "bad_question");
+                const flagged = attempt.flags.some((f) => f.flag !== "bad_question");
+                const label = t(NAV_LABEL[result], { n: attempt.displayedNumber }) + (flagged ? t("player.navFlagged") : "") + (challenged ? t("player.navChallenged") : "");
+                return (
+                  <button
+                    key={attempt.id}
+                    class={`nav-item result-${result}${attempt === current ? " current" : ""}`}
+                    aria-label={label}
+                    aria-current={attempt === current ? "step" : undefined}
+                    onClick={() => jumpTo(document.querySelector(`[data-question-id="${attempt.questionId}"]`))}
+                  >
+                    {result === "ungraded" ? t("review.navUngradedMark") : attempt.displayedNumber}
+                    {(flagged || challenged) && (
+                      <span class="nav-marks" aria-hidden="true">
+                        {flagged && <span class="mark-flag">⚑</span>}
+                        {challenged && <span class="mark-challenge">⚠</span>}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </nav>
+          </div>
+          <div class="landscape-only">
+            <DigestControls set={set} digest={digest} />
+            {links}
+          </div>
+        </aside>
+        <div class="player-body review-body">
+          <h1>{t("review.heading", { title: set.title })}</h1>
+          {banner}
+          <p class="muted">
+            {t("review.started", { time: formatDateTime(session.startedAt) })}
+            {session.endedAt !== undefined && t("review.submitted", { time: formatDateTime(session.endedAt) })}
+          </p>
+          <div class="portrait-only">
+            <DigestControls set={set} digest={digest} />
+            {links}
+          </div>
+          {actions}
       {attempts.map((attempt) => {
         const question = questions.get(attempt.questionId)!;
         const order = attempt.optionOrder;
@@ -205,19 +364,20 @@ export function ReviewPage({ shown, recording, banner, actions, children }: { sh
         const graded = isGraded(question);
         return (
           <section class="card" key={attempt.id} data-question-id={attempt.questionId}>
-            <h3>
-              {t("review.questionNumber", { n: attempt.displayedNumber })} <ResultMark final={final} multiple={questionTypeOf(question) === multipleAnswer} partial={partial} />
-              {final.overridden.includes("correct") && <span class="muted"> {t("review.overridden")}</span>}
-            </h3>
-            <p class="times">
-              <AnsweringTime label="review.answeringTime" derivedMs={attempt.timing.answeringActiveMs} override={override} precision={precision} />
-              {attempt.timing.excludedIdle.length > 0 && (
-                <span class="idle-mark muted" title={t("review.idleMarkTitle")}>
-                  {t("review.idleMark")}
-                </span>
-              )}
-              {attempt.timing.reviewingActiveMs > 0 && <span class="muted">{t("review.reviewingTime", { time: formatDuration(attempt.timing.reviewingActiveMs, precision) })}</span>}
-            </p>
+            <ResultLine
+              attempt={attempt}
+              final={final}
+              multiple={questionTypeOf(question) === multipleAnswer}
+              partial={partial}
+              onSave={recording && graded ? (values) => recording.saveOverride(attempt.questionId, values) : undefined}
+            />
+            <TimeLine
+              attempt={attempt}
+              override={override}
+              idleThresholdMs={derivation.parameters.idleThresholdMs}
+              precision={precision}
+              onSave={recording && ((values) => recording.saveOverride(attempt.questionId, values))}
+            />
             {!graded && <p class="muted">{t("player.unsupportedType")}</p>}
             <RichText source={blocksToText(question.stem, order)} />
             {graded && (
@@ -293,20 +453,15 @@ export function ReviewPage({ shown, recording, banner, actions, children }: { sh
             ) : (
               <TextEntriesRead entries={attempt.notes.reviewing} label="review.reviewingNoteRead" />
             )}
-            {recording && (
-              <OverrideEditor
-                attempt={attempt}
-                final={final}
-                graded={graded}
-                idleThresholdMs={derivation.parameters.idleThresholdMs}
-                precision={precision}
-                onSave={(values) => recording.saveOverride(attempt.questionId, values)}
-              />
-            )}
           </section>
         );
       })}
       {children}
+          <div class="portrait-only">
+            <DigestControls set={set} digest={digest} />
+          </div>
+        </div>
+      </div>
     </main>
   );
 }

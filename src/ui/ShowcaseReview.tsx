@@ -2,7 +2,7 @@ import { useEffect, useState } from "preact/hooks";
 import { t } from "../i18n/i18n";
 import { replayShowcase, showcaseNamed } from "../showcase/showcase";
 import { loadDerivedSession } from "../session/sessions";
-import { ReviewPage, type Shown } from "./Review";
+import { FEEDBACK_ID, ReviewPage, type Shown } from "./Review";
 import { RichText } from "./RichText";
 
 /**
@@ -28,9 +28,9 @@ export function ShowcaseReview({ name }: { name: string }) {
   const { feedback } = showcase;
 
   return (
-    <ReviewPage shown={shown} banner={<p class="card showcase-banner">{t("showcase.banner")}</p>}>
+    <ReviewPage shown={shown} banner={<p class="card showcase-banner">{t("showcase.banner")}</p>} feedbackLink={!!feedback}>
       {feedback && (
-        <section class="card">
+        <section class="card" id={FEEDBACK_ID}>
           <h2>{t("showcase.feedbackHeading")}</h2>
           <p class="muted">
             {t("showcase.feedbackLabel", { model: feedback.label.model, version: feedback.label.gradingSkillVersion, date: feedback.label.date })}
