@@ -23,16 +23,22 @@ function duration(ms: number): string {
   return whole >= 60_000 ? `${Math.floor(whole / 60_000)}:${seconds.toFixed(3).padStart(6, "0")}` : `${seconds.toFixed(3)} s`;
 }
 
-const flagList = (flags: FlagMark[]) => flags.map((f) => `${FLAG_TYPE[f.flag].name} (${f.phase})`).join(", ");
+/**
+ * The learner's own text (Notes, Challenge statements) in quotation marks, as a JSON string, so where it ends is never in
+ * doubt and a line break or quotation mark inside it cannot pass for the Digest's own lines: the grading Skill reads it as data.
+ */
+const quoted = (text: string) => JSON.stringify(text);
+
+const flagList =(flags: FlagMark[]) => flags.map((f) => `${FLAG_TYPE[f.flag].name} (${f.phase})`).join(", ");
 
 /** Removed Flags are listed too: taking a Flag back is evidence of hesitation. An appeal's reason follows the Flags. */
 function markLines({ confidence, flags, appeals, notes }: DerivedAttempt, removed: FlagMark[], collectConfidence: boolean): string[] {
   const lines = [
     `- Confidence: ${collectConfidence ? (confidence ?? "none") : "not collected"}`,
     `- Flags: ${flags.length ? flagList(flags) : "none"}${removed.length ? `; removed: ${flagList(removed)}` : ""}`,
-    ...appeals.map((a) => `- Appeal (${a.phase}): the learner thinks the answer is wrong: ${a.reason}`),
+    ...appeals.map((a) => `- Appeal (${a.phase}): the learner thinks the answer is wrong: ${quoted(a.reason)}`),
   ];
-  for (const phase of PHASES) if (notes[phase]) lines.push(`- Note (${phase}): ${notes[phase]}`);
+  for (const phase of PHASES) if (notes[phase]) lines.push(`- Note (${phase}): ${quoted(notes[phase])}`);
   return lines;
 }
 
@@ -87,12 +93,22 @@ function timelineLines({ timeline, optionOrder }: DerivedAttempt): string[] {
       case "unflag":
         return `Flag removed: ${FLAG_TYPE[step.flag].name}`;
       case "appeal":
-        return `Appeal: ${step.reason}`;
+        return `Appeal: ${quoted(step.reason)}`;
       case "note":
-        return step.text ? `Note saved: ${step.text}` : "Note cleared";
+        return step.text ? `Note saved: ${quoted(step.text)}` : "Note cleared";
+      case "challengeStatement":
+        return step.text ? `Challenge statement saved: ${quoted(step.text)}` : "Challenge statement cleared";
+      case "writing":
+        return [
+          `writing a ${step.field === "note" ? "Note" : "Challenge statement"}`,
+          ...(step.pastes ? [`${step.pastes} paste${step.pastes === 1 ? "" : "s"}`] : []),
+          ...(step.laterDeleted ? ["later deleted"] : []),
+        ].join(" · ");
     }
   };
-  return ["- Answering timeline (time spent on this Question so far):", ...timeline.map((step) => `  - ${duration(step.atMs)}: ${describe(step)}`)];
+  // A Writing span is a stretch, so its line gives its start and end.
+  const when = (step: TimelineStep) => (step.kind === "writing" ? `${duration(step.atMs)}–${duration(step.endMs)}` : duration(step.atMs));
+  return ["- Answering timeline (time spent on this Question so far):", ...timeline.map((step) => `  - ${when(step)}: ${describe(step)}`)];
 }
 
 /** For a wrong answer, what the author thought each wrong Option chosen would catch: a guess to check, not a finding. */

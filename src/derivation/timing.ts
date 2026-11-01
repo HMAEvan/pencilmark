@@ -102,6 +102,7 @@ export function walkRawLog(rawLog: RecordedChunk[], rules: Rules, select: Select
   /** `seq` is the event that ends the Visit, or the end of the Raw log. */
   const closeVisit = (seq: number) => {
     if (!visit) return;
+    timeline.endWriting();
     if (visit.rawMs < rules.flickThresholdMs) {
       addNavigation(visit.phase, visit.activeMs);
     } else if (visit.phase === "answering") {

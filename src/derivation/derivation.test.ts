@@ -399,8 +399,8 @@ describe("derive: provenance", () => {
         { rules: strict },
       ),
     );
-    expect(result.algorithmVersion).toBe(8);
-    expect(result.parameters).toEqual({ idleThresholdMs: 30_000, flickThresholdMs: 1_000, shuffleQuestions: true, shuffleOptions: true, collectConfidence: true });
+    expect(result.algorithmVersion).toBe(9);
+    expect(result.parameters).toEqual({ idleThresholdMs: 30_000, writingPauseMs: 20_000, flickThresholdMs: 1_000, shuffleQuestions: true, shuffleOptions: true, collectConfidence: true });
     expect(result.chunks).toEqual([
       { id: `${SESSION}_0`, hash: "hash0" },
       { id: `${SESSION}_1`, hash: "hash1" },
@@ -715,7 +715,7 @@ describe("derive: Digest marks", () => {
   it("shows Confidence and Flags with their Phase for every Question, and each Phase's Note where there is one", () => {
     const { digest } = derive(marked(true));
     expect(digest).toContain(
-      ["- Answer changes: none", "- Item flags: none", "- Confidence: probably", "- Flags: concept confusion (answering), bad question (reviewing)", "- Note (answering): Mixed up ATP and GTP", "- Note (reviewing): It was the cristae", ""].join("\n"),
+      ["- Answer changes: none", "- Item flags: none", "- Confidence: probably", "- Flags: concept confusion (answering), bad question (reviewing)", "- Note (answering): \"Mixed up ATP and GTP\"", "- Note (reviewing): \"It was the cristae\"", ""].join("\n"),
     );
     expect(digest).toContain(["- Answer changes: none", "- Item flags: none", "- Confidence: none", "- Flags: none", ""].join("\n"));
   });
@@ -890,7 +890,7 @@ describe("derive: appeals", () => {
 
   it("gives the reason in the Digest beside the bad-question Flag", () => {
     const { digest } = derive(sitting([{ activeMs: 10_000, events: [[0, open(question)], [3_000, appeal(question, "The stem is ambiguous")], [10_000, submit]] }]));
-    expect(digest).toContain("- Flags: bad question (answering)\n- Appeal (answering): the learner thinks the answer is wrong: The stem is ambiguous\n");
+    expect(digest).toContain("- Flags: bad question (answering)\n- Appeal (answering): the learner thinks the answer is wrong: \"The stem is ambiguous\"\n");
   });
 });
 
@@ -1062,9 +1062,9 @@ describe("derive: Answering timeline", () => {
         "  - 3.000 s: Item flag on C: unknown term",
         "  - 3.500 s: Item flag removed from C: unknown term",
         "  - 4.000 s: Confidence cleared",
-        "  - 5.000 s: Appeal: Two answers fit",
+        "  - 5.000 s: Appeal: \"Two answers fit\"",
         "  - 6.000 s: Flag removed: bad question",
-        "  - 7.000 s: Note saved: Not sure",
+        "  - 7.000 s: Note saved: \"Not sure\"",
         "  - 7.500 s: Note cleared",
       ].join("\n"),
     );
@@ -1109,5 +1109,180 @@ describe("derive: Misconception in the Digest", () => {
     expect(derive(sat()).digest).not.toContain("Misconception");
     const result = derive(sat("opt_b"));
     expect(digestWithOverrides(sat("opt_b"), result, new Map([[question.id, { correct: true }]]))).not.toContain("Misconception");
+  });
+});
+
+describe("derive: Writing spans", () => {
+  const NOTE = { field: "note", entry: 0 } as const;
+  const typed = (q: Question, position: number, inserted: string, kind: "typing" | "pasting" = "typing") => ({ type: "textInput", questionId: q.id, ...NOTE, position, removed: "", inserted, kind }) as const;
+  const deleted = (q: Question, position: number, removed: string) => ({ type: "textInput", questionId: q.id, ...NOTE, position, removed, inserted: "", kind: "deleting" }) as const;
+  const saved = (q: Question, text: string, field: "note" | "challenge" = "note") => ({ type: "textSave", questionId: q.id, field, entry: 0, text }) as const;
+  const span = (atMs: number, endMs: number, extra: { pastes?: number; laterDeleted?: boolean } = {}) => ({ atMs, endMs, kind: "writing", field: "note", pastes: 0, laterDeleted: false, ...extra });
+
+  // Q1 0–35 s: a Note written 1–3 s, a pause of 27 s, written again 30–31 s, B chosen at 32 s, written 33–34 s,
+  // Q2 opened at 35 s mid-writing. Q1 again from 36 s: written at 37 s, saved at 38 s. Submitted at 40 s.
+  const sat = () =>
+    sitting([
+      {
+        activeMs: 40_000,
+        events: [
+          [0, open(question)],
+          [1_000, typed(question, 0, "Mito")],
+          [2_000, typed(question, 4, "chondria")],
+          [3_000, typed(question, 12, ".")],
+          [30_000, typed(question, 13, " Or")],
+          [31_000, typed(question, 16, " not")],
+          [32_000, choose(question, "opt_b")],
+          [33_000, typed(question, 20, "?")],
+          [34_000, typed(question, 21, "!")],
+          [35_000, open(second)],
+          [36_000, open(question)],
+          [37_000, typed(question, 22, " Sure.")],
+          [38_000, saved(question, "Mitochondria. Or not?! Sure.")],
+          [40_000, submit],
+        ],
+      },
+    ]);
+
+  it("splits writing at a pause longer than the Writing pause, at any other Timeline step and at the end of a Visit", () => {
+    expect(attemptOf(derive(sat()), question).timeline).toEqual([
+      { atMs: 0, kind: "open" },
+      span(1_000, 3_000),
+      span(30_000, 31_000),
+      { atMs: 32_000, kind: "select", optionId: "opt_b", answer: ["opt_b"] },
+      span(33_000, 34_000),
+      { atMs: 35_000, kind: "leave" },
+      { atMs: 35_000, kind: "open" },
+      span(36_000, 36_000),
+      { atMs: 37_000, kind: "note", text: "Mitochondria. Or not?! Sure." },
+      { atMs: 39_000, kind: "leave" },
+    ]);
+    expect(attemptOf(derive(sat()), question).notes).toEqual({ answering: "Mitochondria. Or not?! Sure." });
+  });
+
+  it("takes the Writing pause from the rules, 20 seconds when a settings snapshot has none", () => {
+    const { writingPauseMs: _omitted, ...older } = rules;
+    expect(attemptOf(derive({ ...sat(), rules: older as typeof rules }), question).timeline).toEqual(attemptOf(derive(sat()), question).timeline);
+    const longPause = attemptOf(derive({ ...sat(), rules: { ...rules, writingPauseMs: 30_000 } }), question).timeline;
+    expect(longPause[1]).toEqual(span(1_000, 31_000));
+  });
+
+  // A paste and some typing at 1–2 s, all deleted at 30 s and something else written, saved at 32 s.
+  const rewritten = () =>
+    sitting([
+      {
+        activeMs: 40_000,
+        events: [
+          [0, open(question)],
+          [1_000, typed(question, 0, "Copied text", "pasting")],
+          [2_000, typed(question, 11, " ok")],
+          [30_000, deleted(question, 0, "Copied text ok")],
+          [31_000, typed(question, 0, "Mine")],
+          [32_000, saved(question, "Mine")],
+          [40_000, submit],
+        ],
+      },
+    ]);
+
+  it("counts the pastes in a span, and marks a span none of whose text survives as later deleted", () => {
+    const steps = attemptOf(derive(rewritten()), question).timeline.filter((s) => s.kind === "writing");
+    expect(steps).toEqual([span(1_000, 2_000, { pastes: 1, laterDeleted: true }), span(30_000, 31_000)]);
+  });
+
+  it("does not mark a span later deleted while some of its text survives", () => {
+    const result = derive(
+      sitting([{ activeMs: 10_000, events: [[0, open(question)], [1_000, typed(question, 0, "abc")], [2_000, deleted(question, 0, "ab")], [3_000, saved(question, "c")], [10_000, submit]] }]),
+    );
+    expect(attemptOf(result, question).timeline.filter((s) => s.kind === "writing")).toEqual([span(1_000, 2_000)]);
+  });
+
+  it("writes each Writing span as one line in the Digest, never the deleted text, and the learner's text in quotation marks", () => {
+    const { digest } = derive(rewritten());
+    expect(digest).toContain(
+      [
+        "  - 0.000 s: Visit 1 opened",
+        "  - 1.000 s–2.000 s: writing a Note · 1 paste · later deleted",
+        "  - 30.000 s–31.000 s: writing a Note",
+        '  - 32.000 s: Note saved: "Mine"',
+      ].join("\n"),
+    );
+    expect(digest).toContain('- Note (answering): "Mine"\n');
+    expect(digest).not.toContain("Copied");
+    expect(digest).not.toContain(" ok");
+  });
+
+  it("does not exclude writing as idle, however long, while changes come every few seconds", () => {
+    const events: [number, RawEventBody][] = [[0, open(question)]];
+    for (let i = 0; i < 18; i++) events.push([5_000 * (i + 1), typed(question, i, "x")]);
+    events.push([91_000, saved(question, "x".repeat(18))], [92_000, submit]);
+    const attempt = attemptOf(derive(sitting([{ activeMs: 92_000, events }])), question);
+    expect(attempt.timing.excludedIdle).toEqual([]);
+    expect(attempt.timing.answeringActiveMs).toBe(92_000);
+    expect(attempt.timeline.filter((s) => s.kind === "writing")).toEqual([span(5_000, 90_000)]);
+  });
+
+  it("makes no Writing span of writing after the reveal, which is not in the Answering timeline", () => {
+    const result = derive(
+      sitting([
+        { activeMs: 10_000, events: [[0, open(question)], [10_000, submit]] },
+        { activeMs: 5_000, events: [[1_000, typed(question, 0, "Later")], [2_000, saved(question, "Later")]] },
+      ]),
+    );
+    expect(attemptOf(result, question).timeline.map((s) => s.kind)).toEqual(["open", "leave"]);
+    expect(attemptOf(result, question).notes).toEqual({ reviewing: "Later" });
+  });
+
+  it("records a saved Challenge statement as the Phase's Appeal, which adds the bad-question Flag; emptying it keeps the Flag", () => {
+    const challenge = (position: number, inserted: string) => ({ type: "textInput", questionId: question.id, field: "challenge", entry: 0, position, removed: "", inserted, kind: "typing" }) as const;
+    const result = derive(
+      sitting([
+        {
+          startedAt: 1_000_000,
+          activeMs: 10_000,
+          events: [[0, open(question)], [1_000, challenge(0, "Two fit")], [2_000, saved(question, "Two fit", "challenge")], [10_000, submit]],
+        },
+        { startedAt: 2_000_000, activeMs: 5_000, events: [[1_000, saved(question, "Wrong key", "challenge")], [2_000, saved(question, "", "challenge")]] },
+      ]),
+    );
+    const attempt = attemptOf(result, question);
+    expect(attempt.appeals).toEqual([{ reason: "Two fit", phase: "answering", at: 1_002_000 }]);
+    expect(attempt.flags).toEqual([{ flag: "bad_question", phase: "answering", at: 1_002_000 }]);
+    expect(attempt.timeline).toEqual([
+      { atMs: 0, kind: "open" },
+      { atMs: 1_000, endMs: 1_000, kind: "writing", field: "challenge", pastes: 0, laterDeleted: false },
+      { atMs: 2_000, kind: "challengeStatement", text: "Two fit" },
+      { atMs: 10_000, kind: "leave" },
+    ]);
+    expect(result.digest).toContain('  - 1.000 s–1.000 s: writing a Challenge statement\n  - 2.000 s: Challenge statement saved: "Two fit"\n');
+    expect(result.digest).toContain('- Appeal (answering): the learner thinks the answer is wrong: "Two fit"\n');
+  });
+
+  it("reads a stored Raw log with only `note` and `appeal` events as before, the last appeal of a Phase winning", () => {
+    const result = derive(
+      sitting([
+        {
+          startedAt: 1_000_000,
+          activeMs: 10_000,
+          events: [
+            [0, open(question)],
+            [1_000, { type: "appeal", questionId: question.id, reason: "Two fit" }],
+            [2_000, { type: "appeal", questionId: question.id, reason: "Two answers fit" }],
+            [3_000, { type: "note", questionId: question.id, text: "Unsure" }],
+            [10_000, submit],
+          ],
+        },
+      ]),
+    );
+    const attempt = attemptOf(result, question);
+    expect(attempt.appeals).toEqual([{ reason: "Two answers fit", phase: "answering", at: 1_002_000 }]);
+    expect(attempt.flags).toEqual([{ flag: "bad_question", phase: "answering", at: 1_002_000 }]);
+    expect(attempt.notes).toEqual({ answering: "Unsure" });
+    expect(attempt.timeline).toEqual([
+      { atMs: 0, kind: "open" },
+      { atMs: 1_000, kind: "appeal", reason: "Two fit" },
+      { atMs: 2_000, kind: "appeal", reason: "Two answers fit" },
+      { atMs: 3_000, kind: "note", text: "Unsure" },
+      { atMs: 10_000, kind: "leave" },
+    ]);
   });
 });

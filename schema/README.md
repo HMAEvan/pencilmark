@@ -50,5 +50,5 @@ Written by the tool on start, for an AI reading the database:
 
 - `schemaVersion`: the version of the document shapes above.
 - `flagTypes`: the Flag type table. Each entry has `id`, `name`, `colour` and `level` (`"question"` for Flags, `"item"` for Item flags). A retired type gets `deprecated: true` and is never removed.
-- `timingDefaults`: `idleThresholdMs` (no interaction for longer than this is excluded from answering time) and `flickThresholdMs` (a Visit shorter than this is not counted).
+- `timingDefaults`: `idleThresholdMs` (no interaction for longer than this is excluded from answering time), `writingPauseMs` (a longer gap between two changes to a Note or Challenge statement ends a Writing span) and `flickThresholdMs` (a Visit shorter than this is not counted).
 - `conventions`: the rules above, in sentences for an AI reader.

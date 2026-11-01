@@ -1,4 +1,6 @@
-import { useEffect, useRef, useState } from "preact/hooks";
+import { useEffect, useMemo, useRef, useState } from "preact/hooks";
+import type { RawEventBody } from "../recorder/recorder";
+import { recordTextEntry, type TextEntryTarget } from "../recorder/textEntry";
 import { FLAGS, ITEM_FLAGS, type Confidence, type ContentBlock, type Flag, type ItemFlag, type Phase } from "../domain/types";
 import { blocksToText } from "../domain/display";
 import { RichText } from "./RichText";
@@ -37,31 +39,67 @@ export function FlagButtons({ flags, disabled, onToggle }: { flags: Flag[]; disa
   );
 }
 
-/** The Note is recorded when the field loses focus, not on every keystroke. */
+/**
+ * A textarea holding one Text entry (ADR-0010): every change is reported as a `textInput` event, and the whole text as a
+ * `textSave` event when it loses focus. `saved` is the entry's text as last saved.
+ */
+function TextEntryArea({
+  saved,
+  target,
+  placeholder,
+  disabled,
+  onRecord,
+  onDraft,
+}: {
+  saved: string;
+  target: TextEntryTarget;
+  placeholder: TranslationKey;
+  disabled?: boolean;
+  onRecord: (event: RawEventBody) => void;
+  /** The text as it stands, after every input. */
+  onDraft?: (text: string) => void;
+}) {
+  const [draft, setDraft] = useState(saved);
+  useEffect(() => setDraft(saved), [saved]);
+  const record = useRef(onRecord);
+  record.current = onRecord;
+  const entry = useMemo(() => recordTextEntry((event) => record.current(event), target, saved), [target.questionId, target.field, target.entry, saved]);
+  return (
+    <textarea
+      rows={3}
+      value={draft}
+      disabled={disabled}
+      placeholder={t(placeholder)}
+      onInput={(e) => {
+        const { inputType, isComposing } = e as InputEvent;
+        setDraft(e.currentTarget.value);
+        onDraft?.(e.currentTarget.value);
+        entry.input(e.currentTarget.value, inputType, isComposing);
+      }}
+      onCompositionEnd={(e) => entry.compositionEnd(e.currentTarget.value)}
+      onBlur={(e) => entry.blur(e.currentTarget.value)}
+    />
+  );
+}
+
+/** The Note: each change is recorded, and the whole Note is saved when the field loses focus. */
 export function NoteField({
   note,
+  questionId,
   label = "marks.note",
   disabled,
-  onSave,
+  onRecord,
 }: {
   note: string;
+  questionId: string;
   label?: TranslationKey;
   disabled?: boolean;
-  onSave: (text: string) => void;
+  onRecord: (event: RawEventBody) => void;
 }) {
-  const [draft, setDraft] = useState(note);
-  useEffect(() => setDraft(note), [note]);
   return (
     <label class="note">
       {t(label)}
-      <textarea
-        rows={3}
-        value={draft}
-        disabled={disabled}
-        placeholder={t("marks.notePlaceholder")}
-        onInput={(e) => setDraft(e.currentTarget.value)}
-        onBlur={() => draft !== note && onSave(draft)}
-      />
+      <TextEntryArea saved={note} target={{ questionId, field: "note", entry: 0 }} placeholder="marks.notePlaceholder" disabled={disabled} onRecord={onRecord} />
     </label>
   );
 }
@@ -188,19 +226,26 @@ export function HintPanel({
 }
 
 /**
- * "I think the answer is wrong": the reason is required, so the button stays disabled until one is written.
- * Without `onSubmit`, as in a Showcase, only the Appeals made are shown.
+ * "I think the answer is wrong": the reason is the Phase's Challenge statement, one Text entry recorded like a Note
+ * (ADR-0010), saved when its field loses focus; submitting closes the field. `statement` is this Phase's as last saved.
+ * Without `onRecord`, as in a Showcase, only the Appeals made are shown.
  */
-export function AppealForm({ appeals, disabled, onSubmit }: { appeals: string[]; disabled?: boolean; onSubmit?: (reason: string) => void }) {
+export function AppealForm({
+  appeals,
+  statement,
+  questionId,
+  disabled,
+  onRecord,
+}: {
+  appeals: string[];
+  statement: string;
+  questionId: string;
+  disabled?: boolean;
+  onRecord?: (event: RawEventBody) => void;
+}) {
   const [open, setOpen] = useState(false);
-  const [reason, setReason] = useState("");
-  const send = () => {
-    const trimmed = reason.trim();
-    if (!trimmed) return;
-    onSubmit?.(trimmed);
-    setReason("");
-    setOpen(false);
-  };
+  const [written, setWritten] = useState(statement);
+  useEffect(() => setWritten(statement), [statement]);
   return (
     <div class="appeal">
       {appeals.map((a, i) => (
@@ -208,23 +253,21 @@ export function AppealForm({ appeals, disabled, onSubmit }: { appeals: string[];
           {t("appeal.recorded", { reason: a })}
         </p>
       ))}
-      {open ? (
+      {open && onRecord ? (
         <>
           <label class="note">
             {t("appeal.reasonLabel")}
-            <textarea rows={3} value={reason} disabled={disabled} placeholder={t("appeal.reasonPlaceholder")} onInput={(e) => setReason(e.currentTarget.value)} />
+            <TextEntryArea saved={statement} target={{ questionId, field: "challenge", entry: 0 }} placeholder="appeal.reasonPlaceholder" disabled={disabled} onRecord={onRecord} onDraft={setWritten} />
           </label>
           <div class="actions">
-            <button class="small" disabled={disabled || !reason.trim()} onClick={send}>
+            {/* Pressing the button takes the focus from the field first, which saves the statement. */}
+            <button class="small" disabled={disabled || !written.trim()} onClick={() => setOpen(false)}>
               {t("appeal.submit")}
-            </button>
-            <button class="small secondary" onClick={() => setOpen(false)}>
-              {t("player.cancel")}
             </button>
           </div>
         </>
       ) : (
-        onSubmit && (
+        onRecord && (
           <button class="small secondary" disabled={disabled} onClick={() => setOpen(true)}>
             {t("appeal.open")}
           </button>

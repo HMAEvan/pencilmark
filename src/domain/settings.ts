@@ -9,6 +9,8 @@ export const SCHEMA_VERSION = 1;
 /** Preferences that change what Derivation computes. Derivation reads only these. */
 export type Rules = {
   idleThresholdMs: number;
+  /** The longest gap between two changes to a Text entry that still counts as one Writing span (ADR-0010). Not the idle threshold. */
+  writingPauseMs: number;
   flickThresholdMs: number;
   shuffleQuestions: boolean;
   shuffleOptions: boolean;
@@ -40,7 +42,7 @@ export type Preferences = { rules: Rules; display: Display };
 export type SettingsSnapshot = Preferences & { schemaVersion: number; appVersion: string };
 
 export const DEFAULT_PREFERENCES: Preferences = {
-  rules: { idleThresholdMs: 60_000, flickThresholdMs: 500, shuffleQuestions: true, shuffleOptions: true, collectConfidence: true },
+  rules: { idleThresholdMs: 60_000, writingPauseMs: 20_000, flickThresholdMs: 500, shuffleQuestions: true, shuffleOptions: true, collectConfidence: true },
   display: {
     sessionTimer: "shown",
     questionTimer: "shown",
@@ -51,6 +53,11 @@ export const DEFAULT_PREFERENCES: Preferences = {
     backupReminderDays: 7,
   },
 };
+
+/** A Session's rules, with the default for any rule added since its settings snapshot was taken. */
+export function rulesWithDefaults(rules: Rules): Rules {
+  return { ...DEFAULT_PREFERENCES.rules, ...rules };
+}
 
 export function settingsSnapshot(preferences: Preferences = DEFAULT_PREFERENCES): SettingsSnapshot {
   return { ...structuredClone(preferences), schemaVersion: SCHEMA_VERSION, appVersion: version };

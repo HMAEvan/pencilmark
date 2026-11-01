@@ -22,7 +22,7 @@ A runner completes one full lap of a 400 m track in 80 seconds, finishing where 
 - Hints used while answering: none of 2
 - Confidence: sure
 - Flags: concept confusion (reviewing)
-- Note (reviewing): I divided distance by time. A full lap ends where it started, so displacement and average velocity are zero.
+- Note (reviewing): "I divided distance by time. A full lap ends where it started, so displacement and average velocity are zero."
 - Answering timeline (time spent on this Question so far):
   - 0.000 s: Visit 1 opened
   - 20.550 s: selected A; answer now A
@@ -129,7 +129,7 @@ In which of these situations is the car accelerating? Select all that apply.
 - Hints used while answering: none of 2
 - Confidence: probably
 - Flags: none
-- Note (answering): Does turning at a steady speed count as accelerating? Come back to this.
+- Note (answering): "Does turning at a steady speed count as accelerating? Come back to this."
 - Answering timeline (time spent on this Question so far):
   - 0.000 s: Visit 1 opened
   - 11.836 s: selected B; answer now B
@@ -137,7 +137,7 @@ In which of these situations is the car accelerating? Select all that apply.
   - 18.068 s: selected E; answer now B, D, E
   - 28.591 s: Item flag on E: eliminated but unsure
   - 31.400 s: deselected E; answer now B, D
-  - 38.683 s: Note saved: Does turning at a steady speed count as accelerating? Come back to this.
+  - 38.683 s: Note saved: "Does turning at a steady speed count as accelerating? Come back to this."
   - 41.761 s: Visit 1 left
   - 41.761 s: Visit 2 opened
   - 49.550 s: Confidence: probably
@@ -192,13 +192,13 @@ A sore arm or mild fever after a vaccination is generally a sign of the immune s
 - Hints used while answering: none of 1
 - Confidence: sure
 - Flags: bad question (reviewing)
-- Appeal (reviewing): the learner thinks the answer is wrong: The Explanation says most vaccines contain no live virus, but the vaccine question just before it lists the live weakened MMR vaccine as a normal example. 'Most' looks wrong, and with a live vaccine a mild fever can come from the weakened virus itself.
-- Note (answering): The weakened virus in the last question is live, so is a fever really never the virus? Anyway, True fits better.
+- Appeal (reviewing): the learner thinks the answer is wrong: "The Explanation says most vaccines contain no live virus, but the vaccine question just before it lists the live weakened MMR vaccine as a normal example. 'Most' looks wrong, and with a live vaccine a mild fever can come from the weakened virus itself."
+- Note (answering): "The weakened virus in the last question is live, so is a fever really never the virus? Anyway, True fits better."
 - Answering timeline (time spent on this Question so far):
   - 0.000 s: Visit 1 opened
   - 7.657 s: selected A; answer now A
   - 9.339 s: Confidence: sure
-  - 12.577 s: Note saved: The weakened virus in the last question is live, so is a fever really never the virus? Anyway, True fits better.
+  - 12.577 s: Note saved: "The weakened virus in the last question is live, so is a fever really never the virus? Anyway, True fits better."
   - 16.589 s: Visit 1 left
 
 ## Question 8
@@ -280,7 +280,7 @@ Two objects moving at the same speed must have the same velocity.
 - Hints used while answering: none of 1
 - Confidence: none
 - Flags: careless (reviewing)
-- Note (reviewing): I meant to pick False. I clicked True by mistake.
+- Note (reviewing): "I meant to pick False. I clicked True by mistake."
 - Answering timeline (time spent on this Question so far):
   - 0.000 s: Visit 1 opened
   - 2.851 s: selected A; answer now A

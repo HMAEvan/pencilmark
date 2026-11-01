@@ -59,6 +59,16 @@ export function walkMarks(rawLog: RawLogChunk[], rules: Rules): { marks: Map<str
   };
   // ADR-0008: in Exam mode the answers are revealed on submission.
   let phase: Phase = "answering";
+  const setNote = (questionId: string, text: string) => {
+    const { notes } = marksOf(questionId);
+    if (text) notes[phase] = text;
+    else delete notes[phase];
+  };
+  /** One Appeal per Phase: the last saved wins. */
+  const setAppeal = (questionId: string, appeal: Appeal) => {
+    const m = marksOf(questionId);
+    m.appeals = [...m.appeals.filter((a) => a.phase !== appeal.phase), appeal];
+  };
 
   for (const chunk of rawLog) {
     for (const event of chunk.events) {
@@ -81,15 +91,26 @@ export function walkMarks(rawLog: RawLogChunk[], rules: Rules): { marks: Map<str
       } else if (event.type === "itemUnflag") {
         itemFlagsOf(event.questionId, event.optionId).delete(event.itemFlag);
       } else if (event.type === "appeal") {
-        // An appeal must give a reason; one without is not an appeal.
+        // An appeal must give a reason; one without is not an appeal. It is the first Challenge statement entry of its Phase (ADR-0010), so a later one replaces it.
         const reason = event.reason.trim();
         if (!reason) continue;
         addFlag(event.questionId, "bad_question", phase, at);
-        marksOf(event.questionId).appeals.push({ reason, phase, at });
+        setAppeal(event.questionId, { reason, phase, at });
       } else if (event.type === "note") {
-        const { notes } = marksOf(event.questionId);
-        if (event.text) notes[phase] = event.text;
-        else delete notes[phase];
+        setNote(event.questionId, event.text);
+      } else if (event.type === "textSave" && event.entry === 0) {
+        // Only the first Text entry of a Phase is recorded so far; several come with #56.
+        if (event.field === "note") {
+          setNote(event.questionId, event.text);
+        } else if (!event.text.trim()) {
+          // Emptying the Challenge statement removes it; the bad-question Flag stays.
+          const m = marksOf(event.questionId);
+          m.appeals = m.appeals.filter((a) => a.phase !== phase);
+        } else {
+          // Any Challenge statement adds the bad-question Flag, unless it is already on.
+          if (!flagsOf(event.questionId).has("bad_question")) addFlag(event.questionId, "bad_question", phase, at);
+          setAppeal(event.questionId, { reason: event.text, phase, at });
+        }
       }
     }
   }

@@ -38,7 +38,7 @@ export type SchemaDocument = {
   id: "schema";
   schemaVersion: number;
   flagTypes: FlagType[];
-  timingDefaults: { idleThresholdMs: number; flickThresholdMs: number };
+  timingDefaults: { idleThresholdMs: number; writingPauseMs: number; flickThresholdMs: number };
   conventions: string[];
   source: "user";
   updatedAt: number;
@@ -55,8 +55,8 @@ const CONVENTIONS = [
 ];
 
 export function schemaDocument(updatedAt: number): SchemaDocument {
-  const { idleThresholdMs, flickThresholdMs } = DEFAULT_PREFERENCES.rules;
-  return { id: "schema", schemaVersion: SCHEMA_VERSION, flagTypes: FLAG_TYPES, timingDefaults: { idleThresholdMs, flickThresholdMs }, conventions: CONVENTIONS, source: "user", updatedAt };
+  const { idleThresholdMs, writingPauseMs, flickThresholdMs } = DEFAULT_PREFERENCES.rules;
+  return { id: "schema", schemaVersion: SCHEMA_VERSION, flagTypes: FLAG_TYPES, timingDefaults: { idleThresholdMs, writingPauseMs, flickThresholdMs },conventions: CONVENTIONS, source: "user", updatedAt };
 }
 
 /** Writes `meta/schema` when it is missing or out of date; an unchanged document keeps its `updatedAt`. */

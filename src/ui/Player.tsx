@@ -4,7 +4,7 @@ import type { Confidence, Flag, ItemFlag, Question, QuestionSet, Session } from 
 import { blocksToText, letterAt } from "../domain/display";
 import { RichText } from "./RichText";
 import { t } from "../i18n/i18n";
-import { openRecorder, type Recorder } from "../recorder/recorder";
+import { openRecorder, type RawEventBody, type Recorder } from "../recorder/recorder";
 import { abandonSession, currentAttempts, loadOverrides, loadQuestions, setOverride, submitSession, type Override } from "../session/sessions";
 import { DEFAULT_PREFERENCES, type Display, type Rules } from "../domain/settings";
 import { answeringTimesSoFar } from "../derivation/derivation";
@@ -170,18 +170,24 @@ export function Player({ sessionId }: { sessionId: string }) {
     setMarked((m) => ({ ...m, hintsOpened: { ...m.hintsOpened, [questionId]: level + 1 } }));
     recorder.append({ type: "openHint", questionId, level });
   };
-  // Derivation adds the bad-question Flag for an appeal, so the Flag is shown at once too.
-  const appeal = (reason: string) => {
-    setMarked((m) => ({
-      ...m,
-      flags: { ...m.flags, [questionId]: [...(m.flags[questionId] ?? []).filter((f) => f !== "bad_question"), "bad_question"] },
-      appeals: { ...m.appeals, [questionId]: [...(m.appeals[questionId] ?? []), reason] },
-    }));
-    recorder.append({ type: "appeal", questionId, reason });
-  };
-  const saveNote = (text: string) => {
-    setMarked((m) => ({ ...m, notes: { ...m.notes, [questionId]: text } }));
-    recorder.append({ type: "note", questionId, text });
+  // A Note or Challenge statement records each change; its save is shown at once. Derivation adds the bad-question Flag
+  // for any Challenge statement and keeps it when the statement is emptied, so the Flag is shown at once too.
+  const recordText = (event: RawEventBody) => {
+    recorder.append(event);
+    if (event.type !== "textSave") return;
+    const { text } = event;
+    if (event.field === "note") {
+      setMarked((m) => ({ ...m, notes: { ...m.notes, [questionId]: text } }));
+      return;
+    }
+    setMarked((m) => {
+      const current = m.flags[questionId] ?? [];
+      return {
+        ...m,
+        flags: { ...m.flags, [questionId]: text.trim() && !current.includes("bad_question") ? [...current, "bad_question"] : current },
+        appeals: { ...m.appeals, [questionId]: text.trim() ? [text] : [] },
+      };
+    });
   };
   // An Override beside the derived time, which keeps counting: time spent on the Question afterwards is added on top.
   const overrideTime = async (ms: number | undefined) => {
@@ -294,8 +300,8 @@ export function Player({ sessionId }: { sessionId: string }) {
         {drawerOpen && (
           <div class="drawer-body">
             <FlagButtons flags={flags[questionId] ?? []} onToggle={toggleFlag} />
-            <AppealForm key={`appeal-${questionId}`} appeals={appeals[questionId] ?? []} onSubmit={appeal} />
-            <NoteField key={questionId} note={notes[questionId] ?? ""} onSave={saveNote} />
+            <AppealForm key={`appeal-${questionId}`} appeals={appeals[questionId] ?? []} statement={appeals[questionId]?.[0] ?? ""} questionId={questionId} onRecord={recordText} />
+            <NoteField key={questionId} note={notes[questionId] ?? ""} questionId={questionId} onRecord={recordText} />
             <details class="override">
               <summary>{t("player.overrideTime")}</summary>
               <TimeOverrideField key={questionId} overridden={overrides.get(questionId)?.answeringActiveMs !== undefined} onSave={(ms) => void overrideTime(ms)} />
