@@ -18,9 +18,9 @@ A Showcase page: the AI's Feedback first, and beside the question list the downl
 
 ![A Showcase page with the AI Feedback card, the question list and the Download Digest button](docs/screenshots/feedback.png)
 
-A Question on the Review page with its Answering timeline: each selection, Confidence and Visit at the time it happened.
+A Question on the Review page with its Answering timeline: selections and deselections, an Item flag, and a Note written in two stretches around an answer change, each at the time it happened.
 
-![A Review page card for Question 1 with its Answering timeline](docs/screenshots/review-timeline.png)
+![A Review page card for Question 5 whose Answering timeline shows selections and deselections, an Item flag, and a Note written in two stretches around an answer change](docs/screenshots/review-timeline.png)
 
 The Answering page mid-Question: a Hint open, a Confidence set, and the Flags offered while answering.
 
@@ -43,7 +43,7 @@ Each Skill is a folder holding a `SKILL.md`, the standard Agent Skills layout. T
 
 Sample Question packs are in [`samples/`](samples/); the file formats and the database are documented in [`schema/`](schema/README.md).
 
-> Work in progress. The interface is in Chinese and English, following the browser language; switch it at the bottom of any screen.
+> Work in progress. The interface is in Chinese and English, following the browser language; switch it at the top right of Home or at the bottom of the other pages.
 
 ## Architecture
 
