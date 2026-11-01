@@ -83,6 +83,8 @@ export const en = {
   "player.marksOpen": "Marks and Note",
   "player.marksClose": "Hide",
   "player.flaggedMark": "⚑",
+  "player.navChallenged": " (challenged)",
+  "player.challengedMark": "⚠",
   "marks.confidence": "Confidence",
   "marks.flags": "Flags",
   "marks.note": "Note",

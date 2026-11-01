@@ -37,23 +37,28 @@ export function App() {
   };
 
   const [page, id] = route;
+  const languageSelector = (
+    <label>
+      {t("language.label")}{" "}
+      <select value={language} onChange={(e) => chooseLanguage(e.currentTarget.value as LanguagePreference)}>
+        <option value="browser">{t("language.browser")}</option>
+        {LANGUAGES.map((option) => (
+          <option key={option} value={option}>
+            {t(`language.${option}`)}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+  const onHome = !((page === "session" || page === "review" || page === "showcase") && id);
   return (
     <>
+      {onHome && <div class="lang-top muted">{languageSelector}</div>}
       {mode === "artifactUnavailable" && <p class="card bad storage-warning">{t("storage.artifactUnavailable")}</p>}
       {page === "session" && id ? <Player key={id} sessionId={id} /> : page === "review" && id ? <Review key={id} sessionId={id} /> : page === "showcase" && id ? <ShowcaseReview key={id} name={id} /> : <Home />}
       <footer class="muted app-footer">
         {mode && <p>{t(mode === "artifact" ? "storage.artifact" : "storage.local")}</p>}
-        <label>
-          {t("language.label")}{" "}
-          <select value={language} onChange={(e) => chooseLanguage(e.currentTarget.value as LanguagePreference)}>
-            <option value="browser">{t("language.browser")}</option>
-            {LANGUAGES.map((option) => (
-              <option key={option} value={option}>
-                {t(`language.${option}`)}
-              </option>
-            ))}
-          </select>
-        </label>
+        {!onHome && languageSelector}
       </footer>
     </>
   );

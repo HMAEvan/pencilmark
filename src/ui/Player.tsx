@@ -76,10 +76,13 @@ const answeringTimeSoFar = (recorder: Recorder, rules: Rules, questionId: string
 /**
  * The Session's active time and the open Question's answering time, each shown unless its display preference hides it.
  * They tick once a second, or ten times a second when shown to the millisecond. Hiding a timer never stops recording.
+ * A ✎ beside the Question time opens the time correction; it stays when the Question time is hidden.
  */
-function Timers({ recorder, rules, display, questionId, override }: { recorder: Recorder; rules: Rules; display: Display; questionId: string; override?: Override }) {
+function Timers({ recorder, rules, display, questionId, override, onOverride }: { recorder: Recorder; rules: Rules; display: Display; questionId: string; override?: Override; onOverride: (ms: number | undefined) => void }) {
   const precision = display.timePrecision;
   const [, setTick] = useState(0);
+  const [correcting, setCorrecting] = useState(false);
+  useEffect(() => setCorrecting(false), [questionId]);
   useEffect(() => {
     const tick = setInterval(() => setTick((n) => n + 1), precision === "milliseconds" ? 100 : 1000);
     return () => clearInterval(tick);
@@ -87,7 +90,24 @@ function Timers({ recorder, rules, display, questionId, override }: { recorder: 
   return (
     <div class="timers">
       {display.sessionTimer === "shown" && <span class="muted">{t("player.sessionTimer", { time: formatDuration(recorder.activeMs(), precision) })}</span>}
-      {display.questionTimer === "shown" && <AnsweringTime label="player.questionTimer" derivedMs={answeringTimeSoFar(recorder, rules, questionId)} override={override} precision={precision} />}
+      <span class="question-timer">
+        {display.questionTimer === "shown" && <AnsweringTime label="player.questionTimer" derivedMs={answeringTimeSoFar(recorder, rules, questionId)} override={override} precision={precision} />}
+        <button class="link edit-time" aria-expanded={correcting} aria-label={t("player.overrideTime")} title={t("player.overrideTime")} onClick={() => setCorrecting(!correcting)}>
+          ✎
+        </button>
+      </span>
+      {correcting && (
+        <div class="time-popover card" role="group" aria-label={t("player.overrideTime")}>
+          <TimeOverrideField
+            key={questionId}
+            overridden={override?.answeringActiveMs !== undefined}
+            onSave={(ms) => {
+              onOverride(ms);
+              setCorrecting(false);
+            }}
+          />
+        </div>
+      )}
     </div>
   );
 }
@@ -99,6 +119,8 @@ export function Player({ sessionId }: { sessionId: string }) {
   /** The Option whose Item flag menu is open. */
   const [menuFor, setMenuFor] = useState<string | undefined>();
   const [drawerOpen, setDrawerOpen] = useState(false);
+  /** The top bar's dropped-down navigation. Ignored in the side column, where the navigation is always shown. */
+  const [navOpen, setNavOpen] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   /** The Leave dialog's step: choosing, or confirming the Abandon. */
@@ -134,6 +156,7 @@ export function Player({ sessionId }: { sessionId: string }) {
   const goTo = (next: number) => {
     setIndex(next);
     setMenuFor(undefined);
+    setNavOpen(false);
     recorder.append({ type: "navigate", questionId: session.questionOrder[next]! });
   };
   // Tapping a selected Option again deselects it.
@@ -209,33 +232,50 @@ export function Player({ sessionId }: { sessionId: string }) {
   };
 
   return (
-    <main>
+    <main class="player-page">
       {!recorder.integrity.ok && <p class="bad">{t("player.integrityFailed", { chunk: recorder.integrity.chunkId })}</p>}
-      <div class="player-header">
-        <p class="muted">{t("player.questionNumber", { n: index + 1, total })}</p>
-        <button class="secondary small" disabled={leaving !== undefined} onClick={() => setLeaving("choose")}>
-          {t("player.leave")}
-        </button>
-      </div>
-      <Timers recorder={recorder} rules={rules} display={displayOf(session)} questionId={questionId} override={overrides.get(questionId)} />
-      <nav class="question-nav" aria-label={t("player.navigation")}>
-        {session.questionOrder.map((id, i) => {
-          const answered = (answers[id]?.length ?? 0) > 0;
-          const flagged = (flags[id]?.length ?? 0) > 0;
-          const label = t(answered ? "player.navAnswered" : "player.navUnanswered", { n: i + 1 }) + (flagged ? t("player.navFlagged") : "");
-          return (
-            <button
-              key={id}
-              class={`nav-item${answered ? " answered" : ""}${flagged ? " flagged" : ""}${i === index ? " current" : ""}`}
-              aria-label={label}
-              aria-current={i === index ? "step" : undefined}
-              onClick={() => i !== index && goTo(i)}
-            >
-              {i + 1}
+      <div class="player">
+        <aside class={`answer-panel${navOpen ? " nav-open" : ""}`}>
+          <button class="question-number" aria-expanded={navOpen} onClick={() => setNavOpen(!navOpen)}>
+            {t("player.questionNumber", { n: index + 1, total })}
+            <span class="drop-caret"> ▾</span>
+          </button>
+          <Timers recorder={recorder} rules={rules} display={displayOf(session)} questionId={questionId} override={overrides.get(questionId)} onOverride={(ms) => void overrideTime(ms)} />
+          <div class="panel-nav">
+            <nav class="question-nav" aria-label={t("player.navigation")}>
+              {session.questionOrder.map((id, i) => {
+                const answered = (answers[id]?.length ?? 0) > 0;
+                const challenged = (flags[id] ?? []).includes("bad_question");
+                const flagged = (flags[id] ?? []).some((f) => f !== "bad_question");
+                const label = t(answered ? "player.navAnswered" : "player.navUnanswered", { n: i + 1 }) + (flagged ? t("player.navFlagged") : "") + (challenged ? t("player.navChallenged") : "");
+                return (
+                  <button
+                    key={id}
+                    class={`nav-item${answered ? " answered" : ""}${i === index ? " current" : ""}`}
+                    aria-label={label}
+                    aria-current={i === index ? "step" : undefined}
+                    onClick={() => i !== index && goTo(i)}
+                  >
+                    {i + 1}
+                    {(flagged || challenged) && (
+                      <span class="nav-marks" aria-hidden="true">
+                        {flagged && <span class="mark-flag">⚑</span>}
+                        {challenged && <span class="mark-challenge">⚠</span>}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </nav>
+            <button class="submit-session" disabled={confirming} onClick={() => setConfirming(true)}>
+              {t("player.submit")}
             </button>
-          );
-        })}
-      </nav>
+          </div>
+          <button class="secondary small panel-leave" disabled={leaving !== undefined} onClick={() => setLeaving("choose")}>
+            {t("player.leave")}
+          </button>
+        </aside>
+        <div class="player-body">
       <div class="card">
         {type === multipleAnswer && <p class="muted">{t("player.multipleAnswerInstruction")}</p>}
         {!isGraded(question) && <p class="muted">{t("player.unsupportedType")}</p>}
@@ -278,30 +318,25 @@ export function Player({ sessionId }: { sessionId: string }) {
         <button class="secondary" disabled={index === 0} onClick={() => goTo(index - 1)}>
           {t("player.previous")}
         </button>
-        {index < total - 1 ? (
-          <button onClick={() => goTo(index + 1)}>{t("player.next")}</button>
-        ) : (
-          <button disabled={confirming} onClick={() => setConfirming(true)}>
-            {t("player.submit")}
-          </button>
-        )}
+        <button disabled={index === total - 1} onClick={() => goTo(index + 1)}>
+          {t("player.next")}
+        </button>
       </div>
       <div class={`drawer${drawerOpen ? " open" : ""}`}>
         <button class="secondary small" aria-expanded={drawerOpen} onClick={() => setDrawerOpen(!drawerOpen)}>
           {t(drawerOpen ? "player.marksClose" : "player.marksOpen")}
-          {(flags[questionId]?.length ?? 0) > 0 && ` ${t("player.flaggedMark")}`}
+          {(flags[questionId] ?? []).some((f) => f !== "bad_question") && ` ${t("player.flaggedMark")}`}
+          {(flags[questionId] ?? []).includes("bad_question") && ` ${t("player.challengedMark")}`}
         </button>
         {drawerOpen && (
           <div class="drawer-body">
             <FlagButtons flags={flags[questionId] ?? []} onToggle={toggleFlag} />
             <AppealForm key={`appeal-${questionId}`} appeals={appeals[questionId] ?? []} onSubmit={appeal} />
             <NoteField key={questionId} note={notes[questionId] ?? ""} onSave={saveNote} />
-            <details class="override">
-              <summary>{t("player.overrideTime")}</summary>
-              <TimeOverrideField key={questionId} overridden={overrides.get(questionId)?.answeringActiveMs !== undefined} onSave={(ms) => void overrideTime(ms)} />
-            </details>
           </div>
         )}
+      </div>
+        </div>
       </div>
       {confirming && (
         <Dialog label={t("player.confirmSubmit")} onCancel={() => !submitting && setConfirming(false)}>
