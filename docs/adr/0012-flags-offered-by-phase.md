@@ -1,11 +1,15 @@
-# The Flags offered depend on the Phase; Flag types are retired, never removed
+# The Flags offered depend on the Phase; a faulty Question is a Challenge, not a Flag
 
-While answering, the learner does not yet know whether they were right, so they can only say what they notice about themselves: couldn't recall, didn't understand the question, didn't know where to start, or that the Question should be reviewed again. Mixed up concepts and careless slip are judgements made after seeing the answer, so they are offered only while reviewing. Bad question is offered in both Phases and is set apart from the learning Flags: opening it turns the Flag on and shows the Problem reasons and the Appeal; a separate control turns it off.
+While answering, the learner does not yet know whether they were right, so they can only say what they notice about themselves: couldn't recall, didn't understand the question, didn't know where to start, or that the Question should be reviewed again. Mixed up concepts and careless slip are judgements made after seeing the answer, so they are offered only while reviewing.
 
-Every Flag type stays readable. Raw logs recorded before this decision hold mixed up concepts and careless slip set while answering; they are derived and shown as before. A Flag type is retired by marking it deprecated in the Schema document, never by removing it.
+Saying the Question itself is faulty is a different kind of mark: about the Question, not the learner. It is a Challenge, set apart from the Flags in its own area, offered in both Phases. Opening the area turns the Challenge on and shows the Challenge reasons and the Challenge statement; picking a reason or writing a statement turns it on too. A separate control withdraws it: that clears every Challenge reason and deletes the Challenge statement, which can be restored, so what was written is never lost by a stray click. The earlier name, Appeal, asks to reverse a judgement, which fits a wrong answer but not an unclear stem, and not a Question still being answered.
+
+Every Flag type stays readable. Raw logs recorded before this decision hold mixed up concepts and careless slip set while answering, `bad_question` Flags, and `appeal` events; they are derived and shown as before, a `bad_question` Flag as a Challenge. A Flag type is retired by marking it deprecated in the Schema document, never by removing it.
 
 ## Considered Options
 
 - **One Flag list for both Phases**: rejected. While answering, mixed up concepts and careless slip ask for a judgement the learner cannot make yet, and the list does not say what each Flag is for.
 - **Dropping "review this again" in favour of starring**: rejected. A star belongs to the Question across Sessions and is not in the Digest; the Flag belongs to the Attempt and tells the grading AI where the learner wants more teaching.
-- **Bad question as a plain on/off Flag beside the others**: rejected. It now carries Problem reasons and the Appeal, so a tap that both turns it off and hides them would lose what the user wrote.
+- **Bad question as a plain on/off Flag beside the others**: rejected. It carries Challenge reasons and a statement, so a tap that both turns it off and hides them would lose what the user wrote, and calling it a Flag mixes a judgement on the Question with marks about the learner.
+- **Keeping the name Appeal (申诉)**: rejected for the reason above. Report (报错 is the usual Chinese word) was too broad in English; Challenge, as in challenging an answer key, says the learner believes the Question is faulty and wants it checked. The Chinese name is 报错.
+- **Withdrawing keeps the reasons, hidden**: rejected. Withdrawing means the learner no longer thinks the Question is faulty; the Raw log still holds everything.

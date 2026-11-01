@@ -109,8 +109,20 @@ How sure the user was of an Attempt: sure, probably, or guessed. Optional.
 _Avoid_: Certainty, uncertain flag, guessed flag
 
 **Flag** (标记):
-A Question-level mark recording a reason or a follow-up. Which Flags are offered depends on the Phase (ADR-0012): while answering, couldn't recall, didn't understand the question, didn't know where to start, review this again, and bad question; while reviewing, also mixed up concepts and careless slip. Bad question is set apart from the others (the learning Flags) and opens the Problem reasons and the Appeal. In code: `memory`, `not_understood`, `no_approach`, `focus`, `concept`, `careless`, `bad_question`.
-_Avoid_: Tag, label, bookmark
+A Question-level mark the learner sets about themselves: what to come back to, or where they went wrong. Which Flags are offered depends on the Phase (ADR-0012): while answering, couldn't recall, didn't understand the question, didn't know where to start, review this again; while reviewing, also mixed up concepts and careless slip. Saying the Question itself is faulty is a Challenge, not a Flag. In code: `memory`, `not_understood`, `no_approach`, `focus`, `concept`, `careless`.
+_Avoid_: Tag, label, bookmark, bad-question Flag (that is a Challenge)
+
+**Challenge** (报错):
+The learner's claim that a Question itself is faulty, made while answering or reviewing. It is on or off; while on, it carries the Challenge reasons picked and the Challenge statement. Opening the Challenge area turns it on, and so do picking a Challenge reason or writing a Challenge statement. Withdrawing it clears its Challenge reasons and deletes its Challenge statement, which can be restored. The grading Skill checks a Challenged Question first. In code until #64 renames them: the `bad_question` Flag type with `flag`/`unflag` events for on and off, `appeal` events (Raw logs before ADR-0010), `Appeal`, `AppealForm`; stored events keep their names and are always read.
+_Avoid_: Appeal, 申诉 (the old name: an appeal asks to reverse a judgement, which fits only a wrong answer and not answering before the reveal), bad-question Flag, report, complaint, dispute
+
+**Challenge reason** (报错原因):
+One of the fixed kinds of fault picked in a Challenge: the answer is wrong, the wording is unclear or ambiguous, the Options are faulty (none or more than one correct), or the Question is out of scope or does not match the material. Several may be picked; each change is a Raw log event and is in the Digest.
+_Avoid_: Problem reason, Appeal reason
+
+**Challenge statement** (报错说明):
+What the learner writes, in their own words, about what is wrong with a Question in a Challenge: one or more Text entries per Phase.
+_Avoid_: Appeal, Explanation (the whole-Question explanation), comment, Note
 
 **Item flag** (子项标记):
 A mark on a single Item: eliminated, eliminated but unsure, sure right, unknown term.
@@ -120,20 +132,16 @@ _Avoid_: Option flag, strike-through
 Free text the user attaches to an Attempt: one or more Text entries per Phase. Belongs to one Attempt, not to the Question across Sessions.
 _Avoid_: Comment, 笔记 (kept for a possible future note that belongs to the Question across Sessions, working name Question note)
 
-**Appeal** (申诉):
-The user's account of what is wrong with a Question, written in the bad-question area below the Problem reasons as one or more Text entries per Phase; the answer being wrong is one such problem. There is no submit step: while any entry holds text the Question has the bad-question Flag; clearing the entries does not remove the Flag. In code: `appeal` event (Raw logs before ADR-0010), `Appeal`, `AppealForm`.
-_Avoid_: Complaint, dispute, report
-
 **Raw log** (原始记录):
 The untouched, time-ordered record of everything the user did during a Session. Never edited; everything else about the Session is derived from it.
 _Avoid_: Event history, trace
 
 **Answering timeline** (作答时间线):
-Everything done on one Question during the answering Phase, in time order: its Visits, each selection and deselection, Item flags, Hints opened, Confidence, Flags, Appeals, Notes, Writing spans and Overrides (Overrides once they are Raw log events, #35). Shown on the review page and in the Digest. Extends what code calls the trajectory (the first choice and each answer change).
+Everything done on one Question during the answering Phase, in time order: its Visits, each selection and deselection, Item flags, Hints opened, Confidence, Flags, Challenges with their Challenge reasons, Notes, Challenge statements, Writing spans and Overrides (Overrides once they are Raw log events, #35). Shown on the review page and in the Digest. Extends what code calls the trajectory (the first choice and each answer change).
 _Avoid_: Trajectory (only the first choice and answer changes), trace
 
 **Timeline step** (时间线步骤):
-One entry of an Answering timeline: a Visit opened or left, a selection or deselection, an Item flag set or taken back, a Hint opened, a Confidence, Flag, Appeal or Note recorded, a Writing span (a stretch, from its start to its end), each at the answering time spent on the Question so far. Actions that changed nothing (taking back a mark never made, a Hint out of order) are not steps. In code: `TimelineStep`.
+One entry of an Answering timeline: a Visit opened or left, a selection or deselection, an Item flag set or taken back, a Hint opened, a Confidence, Flag, Challenge, Challenge reason, Challenge statement or Note recorded, a Writing span (a stretch, from its start to its end), each at the answering time spent on the Question so far. Actions that changed nothing (taking back a mark never made, a Hint out of order) are not steps. In code: `TimelineStep`.
 _Avoid_: Event (a Raw log event that changed nothing makes no step)
 
 **Override** (手动修正):
@@ -241,7 +249,7 @@ _Status_: provisional, not yet agreed
 Working names introduced while grilling how typing is recorded (ADR-0010), not yet agreed with /domain-modeling.
 
 **Text entry** (文本条目):
-One box of free text attached to an Attempt in one Phase: a Note or an Appeal. A Phase starts with one and the user may add more; each can be saved and collapsed, edited, deleted and restored. Every change to its text is a Raw log event.
+One box of free text attached to an Attempt in one Phase: a Note or a Challenge statement. A Phase starts with one and the user may add more; each can be saved and collapsed, edited, deleted and restored. Every change to its text is a Raw log event.
 _Status_: provisional, not yet agreed
 
 **Writing span** (写作时段):
@@ -264,7 +272,7 @@ _Avoid_: Player, quiz page
 _Status_: provisional, not yet agreed
 
 **Review page** (复习页):
-The page of a submitted Session: results, Answering timelines, Explanations, and the marks, Notes and Appeals added after the reveal; its actions have the Phase reviewing. In code: `Review`, `ReviewPage`.
+The page of a submitted Session: results, Answering timelines, Explanations, and the marks, Notes and Challenges added after the reveal; its actions have the Phase reviewing. In code: `Review`, `ReviewPage`.
 _Avoid_: Results page, 结果页
 _Status_: provisional, not yet agreed
 
@@ -272,14 +280,10 @@ _Status_: provisional, not yet agreed
 A Showcase's Review page, read-only, with its Feedback below. In code: `ShowcaseReview`.
 _Status_: provisional, not yet agreed
 
-**Problem reason** (问题原因):
-One reason picked under the bad-question Flag: the answer is wrong, the wording is unclear or ambiguous, the Options are faulty (none or more than one correct), or the Question is out of scope or does not match the material. Several may be picked; each change is a Raw log event and is in the Digest.
-_Status_: provisional, not yet agreed
-
 **Reviewing timeline** (复习时间线):
-Everything done on one Question during the reviewing Phase, in time order (Hints opened, Rationales expanded, Flags, Problem reasons, Notes and Appeals), shown in place of a per-Question reviewing time.
+Everything done on one Question during the reviewing Phase, in time order (Hints opened, Rationales expanded, Flags, Challenges, Notes and Challenge statements), shown in place of a per-Question reviewing time.
 _Status_: provisional, not yet agreed
 
 **Custom flag** (自定义标记):
-A Flag or Problem reason the user adds themselves, kept with their data and offered again in later Sessions. Not built yet.
+A Flag or Challenge reason the user adds themselves, kept with their data and offered again in later Sessions. Not built yet.
 _Status_: provisional, not yet agreed
