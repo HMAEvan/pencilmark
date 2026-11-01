@@ -3,12 +3,25 @@ import type { Storage } from "../storage/storage";
 import { createMemoryStorage } from "../storage/memoryStorage";
 import { commitImport, packErrorsText, parseQuestionPack, previewImport } from "../importer/importer";
 import { openRecorder, type Clock, type RawEventBody } from "../recorder/recorder";
+import { recordTextEntry, type TextEntryRecording, type TextField } from "../recorder/textEntry";
 import { startSession, submitSession } from "../session/sessions";
 
 // A Showcase replays its Showcase script in memory: the user's own Storage is never touched, and a reload discards everything.
 
 /** One action of the Showcase script: a Raw log event body naming Questions by their label in the Question pack, at `ms` from the start. A resume event's wall-clock time comes from the scripted Clock. */
 export type ShowcaseScriptEvent = { ms: number } & (Exclude<RawEventBody, { type: "show" }> | { type: "show" });
+
+/**
+ * One stretch in which a Text entry was written, from `from` to `to` ms. First `remove` is taken off the end of the
+ * text (it must be what the text ends with), then `add` is typed after it. The changes are spread evenly over the stretch,
+ * word by word: the first at `from`, the last at `to`.
+ */
+export type WritingStretch = { from: number; to: number; add?: string; remove?: string };
+
+/** Writing a Note or Challenge statement over time: the stretches in order, then one save at the end of the last. It has no `ms`; other actions may fall between its stretches. */
+export type ShowcaseWriteAction = { type: "write"; questionId: string; field: TextField; entry: number; stretches: WritingStretch[] };
+
+const WORDS = /\S+\s*|\s+/g;
 
 export type ShowcaseScript = {
   /** A file name under `samples/`, so the Importer's sample-pack test covers it. */
@@ -20,7 +33,7 @@ export type ShowcaseScript = {
   /** Displayed Option orders by Question label; a Question left out shows its Options in authored order. */
   optionOrders?: Record<string, string[]>;
   /** In time order. `submit` reveals the answers; the events after it are on the review page, which opens its own Recorder. */
-  events: ShowcaseScriptEvent[];
+  events: (ShowcaseScriptEvent | ShowcaseWriteAction)[];
 };
 
 /** What a Feedback was written by and from: the model, the grading Skill version and the date, and the claude.ai conversation when shared. */
@@ -79,12 +92,55 @@ export async function replayShowcase({ name, script, pack }: Showcase): Promise<
       optionOrders: Object.fromEntries([...byLabel].map(([label, q]) => [q.id, script.optionOrders?.[label] ?? q.optionIds])),
     },
   });
+  // A writing action becomes timed changes and a save, merged with the other actions by time (equal times keep script order).
+  type Change = { inputType: string; value: string } | { save: string };
+  type Timed = { ms: number; event: ShowcaseScriptEvent } | { ms: number; write: ShowcaseWriteAction; change: Change };
+  const timed: Timed[] = script.events.flatMap((action): Timed[] => {
+    if (action.type !== "write") return [{ ms: action.ms, event: action }];
+    question(action.questionId);
+    const where = `Showcase ${name}: writing ${action.field} ${action.entry} of ${action.questionId}`;
+    const out: Timed[] = [];
+    let text = "";
+    let last = 0;
+    for (const { from, to, add = "", remove = "" } of action.stretches) {
+      if (from > to || from < last) throw new Error(`${where}: stretches must be in time order, but ${from}-${to} ms follows ${last} ms`);
+      last = to;
+      if (!text.endsWith(remove)) throw new Error(`${where}: cannot remove "${remove}", the text ends with "${text.slice(-remove.length)}"`);
+      const changes: Change[] = [];
+      // Deleting runs back from the end a word at a time, then typing runs forward.
+      for (const word of [...(remove.match(WORDS) ?? [])].reverse()) {
+        text = text.slice(0, text.length - word.length);
+        changes.push({ inputType: "deleteContentBackward", value: text });
+      }
+      for (const word of add.match(WORDS) ?? []) {
+        text += word;
+        changes.push({ inputType: "insertText", value: text });
+      }
+      changes.forEach((change, i) => out.push({ ms: changes.length === 1 ? from : Math.round(from + ((to - from) * i) / (changes.length - 1)), write: action, change }));
+    }
+    out.push({ ms: last, write: action, change: { save: text } });
+    return out;
+  });
+  timed.sort((a, b) => a.ms - b.ms);
+  const recordings = new Map<string, TextEntryRecording>();
   let ms = 0;
   const clock: Clock = { wall: () => start + ms, monotonic: () => ms };
   let recorder = await openRecorder(storage, session.id, clock);
-  for (const { ms: at, ...event } of script.events) {
-    if (at < ms) throw new Error(`Showcase ${name}: events must be in time order, but ${at} ms follows ${ms} ms`);
-    ms = at;
+  let authored = 0;
+  for (const item of timed) {
+    ms = item.ms;
+    if ("write" in item) {
+      const { questionId, field, entry } = item.write;
+      const key = `${questionId} ${field} ${entry}`;
+      if (!recordings.has(key)) recordings.set(key, recordTextEntry((e) => recorder.append(withIds(e as never)), { questionId, field, entry }, ""));
+      const recording = recordings.get(key)!;
+      if ("save" in item.change) recording.blur(item.change.save);
+      else recording.input(item.change.value, item.change.inputType, false);
+      continue;
+    }
+    const { ms: at, ...event } = item.event;
+    if (at < authored) throw new Error(`Showcase ${name}: events must be in time order, but ${at} ms follows ${authored} ms`);
+    authored = at;
     if (event.type === "show") recorder.show();
     else if (event.type === "hide") await recorder.hide();
     else if (event.type === "submit") {

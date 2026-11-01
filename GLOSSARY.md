@@ -237,7 +237,7 @@ A ready-made example bundled with the tool: a Question pack, a scripted Session 
 _Status_: provisional, not yet agreed
 
 **Showcase script** (演示脚本):
-The part of a Showcase that stands in for a learner: the actions of one Session, each with its time from the start, written against the Question pack's labels. Replaying it through the Recorder produces the Showcase's Raw log.
+The part of a Showcase that stands in for a learner: the actions of one Session, each with its time from the start, written against the Question pack's labels. Replaying it through the Recorder produces the Showcase's Raw log. An action with one `ms` replays as one event; a writing action (`write`) names a Question, a Text entry and the stretches it was written in, and replays as Text entry changes spread word by word over each stretch, then a save.
 _Status_: provisional, not yet agreed
 
 Working name introduced while building issue #40, not yet agreed with /domain-modeling.
