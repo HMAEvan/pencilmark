@@ -38,10 +38,14 @@
     { "ms": 109725, "type": "navigate", "questionId": "q5" },
     { "ms": 121561, "type": "select", "questionId": "q5", "optionId": "opt_braking" },
     { "ms": 124392, "type": "select", "questionId": "q5", "optionId": "opt_speeding_up" },
-    { "ms": 127793, "type": "select", "questionId": "q5", "optionId": "opt_roundabout" },
-    { "ms": 138316, "type": "itemFlag", "questionId": "q5", "optionId": "opt_roundabout", "itemFlag": "eliminated_unsure" },
-    { "ms": 141125, "type": "deselect", "questionId": "q5", "optionId": "opt_roundabout" },
-    { "ms": 148408, "type": "note", "questionId": "q5", "text": "Does turning at a steady speed count as accelerating? Come back to this." },
+    { "type": "write", "questionId": "q5", "field": "note", "entry": 0, "stretches": [
+      { "from": 125300, "to": 132000, "add": "Does turning at a steady speed" },
+      { "from": 135000, "to": 143800, "add": " count as accelerating? Come back to this." }
+    ] },
+    { "ms": 133400, "type": "select", "questionId": "q5", "optionId": "opt_roundabout" },
+    { "ms": 144600, "type": "itemFlag", "questionId": "q5", "optionId": "opt_roundabout", "itemFlag": "eliminated_unsure" },
+    { "ms": 146300, "type": "deselect", "questionId": "q5", "optionId": "opt_roundabout" },
+    { "ms": 148100, "type": "flag", "questionId": "q5", "flag": "focus" },
 
     { "ms": 151486, "type": "navigate", "questionId": "q8" },
     { "ms": 162987, "type": "select", "questionId": "q8", "optionId": "opt_protein" },
@@ -53,38 +57,49 @@
     { "ms": 190101, "type": "navigate", "questionId": "q9" },
     { "ms": 197758, "type": "select", "questionId": "q9", "optionId": "opt_true" },
     { "ms": 199440, "type": "confidence", "questionId": "q9", "confidence": "sure" },
-    { "ms": 202678, "type": "note", "questionId": "q9", "text": "The weakened virus in the last question is live, so is a fever really never the virus? Anyway, True fits better." },
+    { "type": "write", "questionId": "q9", "field": "note", "entry": 0, "stretches": [
+      { "from": 200300, "to": 212000, "add": "The weakened virus in the last question is live," },
+      { "from": 219000, "to": 229000, "add": " so is a fever really never the virus? Anyway, True fits better." }
+    ] },
 
-    { "ms": 206690, "type": "navigate", "questionId": "q3" },
-    { "ms": 216001, "type": "select", "questionId": "q3", "optionId": "opt_top_down" },
-    { "ms": 218828, "type": "select", "questionId": "q3", "optionId": "opt_insulate" },
-    { "ms": 224706, "type": "select", "questionId": "q3", "optionId": "opt_boil" },
-    { "ms": 233990, "type": "deselect", "questionId": "q3", "optionId": "opt_boil" },
-    { "ms": 237326, "type": "select", "questionId": "q3", "optionId": "opt_pipes" },
-    { "ms": 241025, "type": "confidence", "questionId": "q3", "confidence": "sure" },
+    { "ms": 231000, "type": "navigate", "questionId": "q3" },
+    { "ms": 240311, "type": "select", "questionId": "q3", "optionId": "opt_top_down" },
+    { "ms": 243138, "type": "select", "questionId": "q3", "optionId": "opt_insulate" },
+    { "ms": 249016, "type": "select", "questionId": "q3", "optionId": "opt_boil" },
+    { "ms": 258300, "type": "deselect", "questionId": "q3", "optionId": "opt_boil" },
+    { "ms": 261636, "type": "select", "questionId": "q3", "optionId": "opt_pipes" },
+    { "ms": 265335, "type": "confidence", "questionId": "q3", "confidence": "sure" },
 
-    { "ms": 243533, "type": "navigate", "questionId": "q10" },
-    { "ms": 254837, "type": "select", "questionId": "q10", "optionId": "opt_mutates" },
-    { "ms": 268490, "type": "select", "questionId": "q10", "optionId": "opt_build_up" },
-    { "ms": 272074, "type": "confidence", "questionId": "q10", "confidence": "probably" },
+    { "ms": 267843, "type": "navigate", "questionId": "q10" },
+    { "ms": 279147, "type": "select", "questionId": "q10", "optionId": "opt_mutates" },
+    { "ms": 292800, "type": "select", "questionId": "q10", "optionId": "opt_build_up" },
+    { "ms": 296384, "type": "confidence", "questionId": "q10", "confidence": "probably" },
 
-    { "ms": 274284, "type": "navigate", "questionId": "q6" },
-    { "ms": 277135, "type": "select", "questionId": "q6", "optionId": "opt_true" },
+    { "ms": 298594, "type": "navigate", "questionId": "q6" },
+    { "ms": 301445, "type": "select", "questionId": "q6", "optionId": "opt_true" },
 
-    { "ms": 279312, "type": "navigate", "questionId": "q5" },
-    { "ms": 287101, "type": "confidence", "questionId": "q5", "confidence": "probably" },
-    { "ms": 291086, "type": "submit" },
+    { "ms": 303622, "type": "navigate", "questionId": "q5" },
+    { "ms": 311411, "type": "confidence", "questionId": "q5", "confidence": "probably" },
+    { "ms": 315396, "type": "submit" },
 
-    { "ms": 298250, "type": "show" },
-    { "ms": 298521, "type": "onScreen", "questionId": "q4" },
-    { "ms": 305901, "type": "expandRationale", "questionId": "q4", "optionId": "opt_5" },
-    { "ms": 319953, "type": "note", "questionId": "q4", "text": "I divided distance by time. A full lap ends where it started, so displacement and average velocity are zero." },
-    { "ms": 322240, "type": "flag", "questionId": "q4", "flag": "concept" },
-    { "ms": 330156, "type": "onScreen", "questionId": "q9" },
-    { "ms": 337008, "type": "appeal", "questionId": "q9", "reason": "The Explanation says most vaccines contain no live virus, but the vaccine question just before it lists the live weakened MMR vaccine as a normal example. 'Most' looks wrong, and with a live vaccine a mild fever can come from the weakened virus itself." },
-    { "ms": 350028, "type": "onScreen", "questionId": "q6" },
-    { "ms": 355684, "type": "flag", "questionId": "q6", "flag": "careless" },
-    { "ms": 361903, "type": "note", "questionId": "q6", "text": "I meant to pick False. I clicked True by mistake." },
-    { "ms": 369620, "type": "hide" }
+    { "ms": 322560, "type": "show" },
+    { "ms": 322831, "type": "onScreen", "questionId": "q4" },
+    { "ms": 330211, "type": "expandRationale", "questionId": "q4", "optionId": "opt_5" },
+    { "type": "write", "questionId": "q4", "field": "note", "entry": 0, "stretches": [
+      { "from": 333500, "to": 345800, "add": "I divided distance by time. A full lap ends where it started," },
+      { "from": 351200, "to": 361900, "add": " so displacement and average velocity are zero." }
+    ] },
+    { "ms": 364300, "type": "flag", "questionId": "q4", "flag": "concept" },
+    { "ms": 372500, "type": "onScreen", "questionId": "q9" },
+    { "type": "write", "questionId": "q9", "field": "challenge", "entry": 0, "stretches": [
+      { "from": 374500, "to": 404000, "add": "The Explanation says most vaccines contain no live virus, but the vaccine question before it lists the live weakened MMR vaccine." },
+      { "from": 411000, "to": 432000, "add": " 'Most' looks wrong: with a live vaccine a mild fever can come from the weakened virus itself." }
+    ] },
+    { "ms": 438500, "type": "onScreen", "questionId": "q6" },
+    { "ms": 444000, "type": "flag", "questionId": "q6", "flag": "careless" },
+    { "type": "write", "questionId": "q6", "field": "note", "entry": 0, "stretches": [
+      { "from": 447000, "to": 457500, "add": "I meant to pick False. I clicked True by mistake." }
+    ] },
+    { "ms": 462000, "type": "hide" }
   ]
 }

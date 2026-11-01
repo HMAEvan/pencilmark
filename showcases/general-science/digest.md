@@ -13,7 +13,7 @@ A runner completes one full lap of a 400 m track in 80 seconds, finishing where 
 - Correct answer: C
 - Result: wrong
 - Answering time: 25.614 s
-- Reviewing time: 31.635 s
+- Reviewing time: 49.669 s
 - First choice: A after 20.550 s
 - Answer changes: none
 - Misconception the question writer had in mind (their guess, not a finding):
@@ -124,20 +124,23 @@ In which of these situations is the car accelerating? Select all that apply.
 - Result: wrong (partial score 0.67)
 - Answering time: 53.535 s
 - First choice: B after 11.836 s
-- Answer changes: B, D at 14.667 s (after 2.831 s), B, D, E at 18.068 s (after 3.401 s), B, D at 31.400 s (after 13.332 s)
+- Answer changes: B, D at 14.667 s (after 2.831 s), B, D, E at 23.675 s (after 9.008 s), B, D at 36.575 s (after 12.900 s)
 - Item flags: E eliminated but unsure (answering)
 - Hints used while answering: none of 2
 - Confidence: probably
-- Flags: none
+- Flags: Review this again (answering)
 - Note (answering) 1: "Does turning at a steady speed count as accelerating? Come back to this."
 - Answering timeline (time spent on this Question so far):
   - 0.000 s: Visit 1 opened
   - 11.836 s: selected B; answer now B
   - 14.667 s: selected D; answer now B, D
-  - 18.068 s: selected E; answer now B, D, E
-  - 28.591 s: Item flag on E: eliminated but unsure
-  - 31.400 s: deselected E; answer now B, D
-  - 38.683 s: Note saved: "Does turning at a steady speed count as accelerating? Come back to this."
+  - 15.575 s–22.275 s: writing a Note
+  - 23.675 s: selected E; answer now B, D, E
+  - 25.275 s–34.075 s: writing a Note
+  - 34.075 s: Note saved: "Does turning at a steady speed count as accelerating? Come back to this."
+  - 34.875 s: Item flag on E: eliminated but unsure
+  - 36.575 s: deselected E; answer now B, D
+  - 38.375 s: Flag added: Review this again
   - 41.761 s: Visit 1 left
   - 41.761 s: Visit 2 opened
   - 49.550 s: Confidence: probably
@@ -184,22 +187,23 @@ A sore arm or mild fever after a vaccination is generally a sign of the immune s
 - Answer given: A
 - Correct answer: A
 - Result: correct
-- Answering time: 16.589 s
-- Reviewing time: 19.872 s
+- Answering time: 40.899 s
+- Reviewing time: 1:06.000
 - First choice: A after 7.657 s
 - Answer changes: none
 - Item flags: none
 - Hints used while answering: none of 1
 - Confidence: sure
 - Flags: bad question (reviewing)
-- Challenge statement (reviewing) 1: "The Explanation says most vaccines contain no live virus, but the vaccine question just before it lists the live weakened MMR vaccine as a normal example. 'Most' looks wrong, and with a live vaccine a mild fever can come from the weakened virus itself."
+- Challenge statement (reviewing) 1: "The Explanation says most vaccines contain no live virus, but the vaccine question before it lists the live weakened MMR vaccine. 'Most' looks wrong: with a live vaccine a mild fever can come from the weakened virus itself."
 - Note (answering) 1: "The weakened virus in the last question is live, so is a fever really never the virus? Anyway, True fits better."
 - Answering timeline (time spent on this Question so far):
   - 0.000 s: Visit 1 opened
   - 7.657 s: selected A; answer now A
   - 9.339 s: Confidence: sure
-  - 12.577 s: Note saved: "The weakened virus in the last question is live, so is a fever really never the virus? Anyway, True fits better."
-  - 16.589 s: Visit 1 left
+  - 10.199 s–38.899 s: writing a Note
+  - 38.899 s: Note saved: "The weakened virus in the last question is live, so is a fever really never the virus? Anyway, True fits better."
+  - 40.899 s: Visit 1 left
 
 ## Question 8
 
@@ -271,7 +275,7 @@ Two objects moving at the same speed must have the same velocity.
 - Correct answer: B
 - Result: wrong
 - Answering time: 5.028 s
-- Reviewing time: 19.592 s
+- Reviewing time: 23.500 s
 - First choice: A after 2.851 s
 - Answer changes: none
 - Misconception the question writer had in mind (their guess, not a finding):
