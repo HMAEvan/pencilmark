@@ -6,6 +6,9 @@ import type { RawEventBody } from "./recorder";
 /** Which kind of Text entry: stored in every event, so the values never change. */
 export type TextField = "note" | "challenge";
 
+/** Whether a Text entry's text counts as written: a Challenge statement of only white space does not. */
+export const holdsText = (field: TextField, text: string) => (field === "note" ? text !== "" : text.trim() !== "");
+
 /** Taken from the input event's `inputType`; a committed composition is typing. */
 export type TextChangeKind = "typing" | "deleting" | "pasting" | "cutting" | "dragging" | "undo" | "redo" | "other";
 
@@ -33,6 +36,9 @@ export function textDifference(before: string, after: string): { position: numbe
   return { position: start, removed: before.slice(start, before.length - end), inserted: after.slice(start, after.length - end) };
 }
 
+/** What is done to a Text entry besides changing its text: adding, collapsing and editing leave the text alone. */
+export type TextEntryAction = "textAdd" | "textCollapse" | "textEdit" | "textDelete" | "textRestore";
+
 export type TextEntryRecording = {
   /** An `input` event, with the field's value after it. Ignored while an input method is composing. */
   input(value: string, inputType: string, isComposing: boolean): void;
@@ -40,12 +46,15 @@ export type TextEntryRecording = {
   compositionEnd(value: string): void;
   /** The field lost focus: the whole text is saved, when it changed since the last save. */
   blur(value: string): void;
+  /** Records the action. Deleting empties the entry and restoring brings back the text it had just before the latest delete. */
+  action(type: TextEntryAction): void;
 };
 
 /** Records one Text entry's changes and saves; `saved` is its text as last saved. */
 export function recordTextEntry(append: (event: RawEventBody) => void, target: TextEntryTarget, saved: string): TextEntryRecording {
   let text = saved;
   let lastSaved = saved;
+  let beforeDelete = "";
   const record = (value: string, kind: TextChangeKind) => {
     const difference = textDifference(text, value);
     if (!difference) return;
@@ -64,6 +73,17 @@ export function recordTextEntry(append: (event: RawEventBody) => void, target: T
       if (value === lastSaved) return;
       lastSaved = value;
       append({ type: "textSave", ...target, text: value });
+    },
+    action(type) {
+      if (type === "textDelete") {
+        beforeDelete = text;
+        text = "";
+        lastSaved = "";
+      } else if (type === "textRestore") {
+        text = beforeDelete;
+        lastSaved = beforeDelete;
+      }
+      append({ type, ...target });
     },
   };
 }

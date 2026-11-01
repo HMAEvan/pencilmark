@@ -190,3 +190,12 @@ main.player-page { max-width: 960px; padding-top: calc(var(--bar-h) + 12px); }
 .rich .katex-display { overflow-x: auto; overflow-y: hidden; }
 .math-error { color: var(--bad); font-family: ui-monospace, monospace; border-bottom: 1px wavy var(--bad); }
 .option .rich { display: inline; }
+.text-entries { display: flex; flex-direction: column; gap: 8px; align-items: flex-start; margin-top: 4px; }
+.text-entry { width: 100%; }
+.text-entry .note-read { margin-top: 0; }
+.text-entry .actions { margin: 4px 0; }
+.text-entry-bar { display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: center; justify-content: space-between; }
+.text-counter { color: var(--muted); font-variant-numeric: tabular-nums; }
+.text-counter.bad { color: var(--bad); }
+.text-hint { margin: 0 0 4px; font-size: 0.85rem; }
+.text-deleted { margin: 0; color: var(--muted); font-size: 0.9rem; }

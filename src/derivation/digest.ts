@@ -2,11 +2,12 @@ import { PHASES, type Flag, type Question } from "../domain/types";
 import { blocksToText, letterAt, letterOf } from "../domain/display";
 import { FLAG_TYPE, ITEM_FLAG_TYPE } from "../domain/schemaDocument";
 import type { DerivedAttempt } from "./derivation";
-import type { FlagMark, RemovedFlags } from "./marks";
+import type { FlagMark, PhaseTextEntries, RemovedFlags } from "./marks";
 import { finalValues, type FinalValues, type OverrideValues } from "./overrides";
 import { excludedIdleMs } from "./timing";
 import type { TimelineStep } from "./timeline";
 import { isGraded, questionTypeOf } from "../questionTypes/questionType";
+import type { TextField } from "../recorder/textEntry";
 import { multipleAnswer } from "../questionTypes/multipleAnswer";
 
 // The Digest is written for an AI to grade from, so its labels are fixed English, not interface text.
@@ -31,14 +32,21 @@ const quoted = (text: string) => JSON.stringify(text);
 
 const flagList =(flags: FlagMark[]) => flags.map((f) => `${FLAG_TYPE[f.flag].name} (${f.phase})`).join(", ");
 
-/** Removed Flags are listed too: taking a Flag back is evidence of hesitation. An appeal's reason follows the Flags. */
-function markLines({ confidence, flags, appeals, notes }: DerivedAttempt, removed: FlagMark[], collectConfidence: boolean): string[] {
+/** The Text entries of one field, per Phase and entry; a deleted one is only said to have been written, never what it said. */
+function entryLines(label: string, entries: PhaseTextEntries): string[] {
+  return PHASES.flatMap((phase) =>
+    (entries[phase] ?? []).map((e) => `- ${label} (${phase}) ${e.entry + 1}: ${e.deleted ? "written and later deleted" : quoted(e.text)}`),
+  );
+}
+
+/** Removed Flags are listed too: taking a Flag back is evidence of hesitation. The Challenge statements follow the Flags. */
+function markLines({ confidence, flags, challengeStatements, notes }: DerivedAttempt, removed: FlagMark[], collectConfidence: boolean): string[] {
   const lines = [
     `- Confidence: ${collectConfidence ? (confidence ?? "none") : "not collected"}`,
     `- Flags: ${flags.length ? flagList(flags) : "none"}${removed.length ? `; removed: ${flagList(removed)}` : ""}`,
-    ...appeals.map((a) => `- Appeal (${a.phase}): the learner thinks the answer is wrong: ${quoted(a.reason)}`),
+    ...entryLines("Challenge statement", challengeStatements),
+    ...entryLines("Note", notes),
   ];
-  for (const phase of PHASES) if (notes[phase]) lines.push(`- Note (${phase}): ${quoted(notes[phase])}`);
   return lines;
 }
 
@@ -66,6 +74,9 @@ function hintLines({ hintsUsed, optionOrder }: DerivedAttempt, question: Questio
   if (reviewing.length) lines.push(`- Hints opened while reviewing: level ${reviewing.map((h) => h.level + 1).join(", ")}`);
   return lines;
 }
+
+/** "Note", "Note 2": the first entry of a field needs no number. */
+const entryName = (field: TextField, entry: number) => `${field === "note" ? "Note" : "Challenge statement"}${entry > 0 ? ` ${entry + 1}` : ""}`;
 
 /** One line per step of the Answering timeline, at the answering time spent on the Question so far. */
 function timelineLines({ timeline, optionOrder }: DerivedAttempt): string[] {
@@ -95,12 +106,17 @@ function timelineLines({ timeline, optionOrder }: DerivedAttempt): string[] {
       case "appeal":
         return `Appeal: ${quoted(step.reason)}`;
       case "note":
-        return step.text ? `Note saved: ${quoted(step.text)}` : "Note cleared";
-      case "challengeStatement":
-        return step.text ? `Challenge statement saved: ${quoted(step.text)}` : "Challenge statement cleared";
+      case "challengeStatement": {
+        const name = entryName(step.kind === "note" ? "note" : "challenge", step.entry);
+        return step.laterDeleted ? `${name} saved, later deleted` : step.text ? `${name} saved: ${quoted(step.text)}` : `${name} cleared`;
+      }
+      case "textDelete":
+        return `${entryName(step.field, step.entry)} deleted`;
+      case "textRestore":
+        return `${entryName(step.field, step.entry)} restored`;
       case "writing":
         return [
-          `writing a ${step.field === "note" ? "Note" : "Challenge statement"}`,
+          `writing a ${entryName(step.field, step.entry)}`,
           ...(step.pastes ? [`${step.pastes} paste${step.pastes === 1 ? "" : "s"}`] : []),
           ...(step.laterDeleted ? ["later deleted"] : []),
         ].join(" · ");

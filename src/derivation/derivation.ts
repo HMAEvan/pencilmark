@@ -22,8 +22,9 @@ export { finalAnsweringActiveMs, finalValues, type FinalValues, type OverriddenV
  * 7: the Answering timeline, in the Attempt and the Digest; the Misconception line in the Digest.
  * 8: the Digest writes a partial score to at most two decimal places.
  * 9: Writing spans and Challenge statements saved, in the Answering timeline and the Digest; one Appeal per Phase; the learner's text in quotation marks in the Digest.
+ * 10: several Notes and Challenge statements per Phase, each with its place; a deleted one without its text, deleted and restored in the Answering timeline; the Appeal line is gone from the Digest.
  */
-export const ALGORITHM_VERSION = 9;
+export const ALGORITHM_VERSION = 10;
 
 export type DerivationInput = {
   title: string;

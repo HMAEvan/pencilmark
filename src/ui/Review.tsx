@@ -7,6 +7,7 @@ import { t } from "../i18n/i18n";
 import { openRecorder, type RawEventBody, type Recorder } from "../recorder/recorder";
 import { loadDerivedSession, recordReviewMark, setOverride, type Attempt, type Derivation, type Override } from "../session/sessions";
 import { AppealForm, FlagButtons, HintPanel, ItemFlagMarks, NoteField } from "./Marks";
+import { TextEntriesRead } from "./TextEntries";
 import { digestWithOverrides, finalValues, type FinalValues, type OverrideValues } from "../derivation/derivation";
 import { excludedIdleMs } from "../derivation/timing";
 import { buildAnswerPack } from "../exports/answerPack";
@@ -272,26 +273,25 @@ export function ReviewPage({ shown, recording, banner, actions, children }: { sh
             ) : (
               attempt.flags.length > 0 && <p class="muted">{t("review.flagsRead", { flags: attempt.flags.map((f) => t(`flag.${f.flag}`)).join(t("review.answerSeparator")) })}</p>
             )}
+            <TextEntriesRead entries={attempt.challengeStatements.answering} label="review.answeringStatement" />
             {/* Written after the reveal, so it is the reviewing Challenge statement. */}
-            <AppealForm
-              appeals={attempt.appeals.map((a) => a.reason)}
-              statement={attempt.appeals.find((a) => a.phase === "reviewing")?.reason ?? ""}
-              questionId={attempt.questionId}
-              disabled={marking}
-              onRecord={recording?.recordText}
-            />
-            {attempt.notes.answering && <p class="note-read">{t("review.answeringNote", { note: attempt.notes.answering })}</p>}
+            {recording ? (
+              <AppealForm entries={attempt.challengeStatements.reviewing ?? []} questionId={attempt.questionId} disabled={marking} onRecord={recording.recordText} />
+            ) : (
+              <TextEntriesRead entries={attempt.challengeStatements.reviewing} label="review.reviewingStatementRead" />
+            )}
+            <TextEntriesRead entries={attempt.notes.answering} label="review.answeringNote" />
             {/* Recorded after the reveal, so it is the reviewing Note; the answering Note is never changed here. */}
             {recording ? (
               <NoteField
                 label="review.reviewingNote"
-                note={attempt.notes.reviewing ?? ""}
+                entries={attempt.notes.reviewing ?? []}
                 questionId={attempt.questionId}
                 disabled={marking}
                 onRecord={recording.recordText}
               />
             ) : (
-              attempt.notes.reviewing && <p class="note-read">{t("review.reviewingNoteRead", { note: attempt.notes.reviewing })}</p>
+              <TextEntriesRead entries={attempt.notes.reviewing} label="review.reviewingNoteRead" />
             )}
             {recording && (
               <OverrideEditor
@@ -367,7 +367,7 @@ export function Review({ sessionId }: { sessionId: string }) {
   const recording: Recording = {
     marking,
     mark: (event) => void mark(event),
-    recordText: (event) => (event.type === "textSave" ? void mark(event) : recorderRef.current?.append(event)),
+    recordText: (event) => (event.type === "textSave" || event.type === "textDelete" || event.type === "textRestore" ? void mark(event) : recorderRef.current?.append(event)),
     saveOverride: (questionId, values) => void saveOverride(questionId, values),
     toggleRationale: (questionId, optionId, open) => recorderRef.current?.append({ type: open ? "expandRationale" : "collapseRationale", questionId, optionId }),
   };

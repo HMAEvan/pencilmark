@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useRef, useState } from "preact/hooks";
+import { useEffect, useRef, useState } from "preact/hooks";
 import type { RawEventBody } from "../recorder/recorder";
-import { recordTextEntry, type TextEntryTarget } from "../recorder/textEntry";
+import type { TextEntryMark } from "../derivation/marks";
+import { TextEntries } from "./TextEntries";
 import { FLAGS, ITEM_FLAGS, type Confidence, type ContentBlock, type Flag, type ItemFlag, type Phase } from "../domain/types";
 import { blocksToText } from "../domain/display";
 import { RichText } from "./RichText";
@@ -39,68 +40,25 @@ export function FlagButtons({ flags, disabled, onToggle }: { flags: Flag[]; disa
   );
 }
 
-/**
- * A textarea holding one Text entry (ADR-0010): every change is reported as a `textInput` event, and the whole text as a
- * `textSave` event when it loses focus. `saved` is the entry's text as last saved.
- */
-function TextEntryArea({
-  saved,
-  target,
-  placeholder,
-  disabled,
-  onRecord,
-  onDraft,
-}: {
-  saved: string;
-  target: TextEntryTarget;
-  placeholder: TranslationKey;
-  disabled?: boolean;
-  onRecord: (event: RawEventBody) => void;
-  /** The text as it stands, after every input. */
-  onDraft?: (text: string) => void;
-}) {
-  const [draft, setDraft] = useState(saved);
-  useEffect(() => setDraft(saved), [saved]);
-  const record = useRef(onRecord);
-  record.current = onRecord;
-  const entry = useMemo(() => recordTextEntry((event) => record.current(event), target, saved), [target.questionId, target.field, target.entry, saved]);
-  return (
-    <textarea
-      rows={3}
-      value={draft}
-      disabled={disabled}
-      placeholder={t(placeholder)}
-      onInput={(e) => {
-        const { inputType, isComposing } = e as InputEvent;
-        setDraft(e.currentTarget.value);
-        onDraft?.(e.currentTarget.value);
-        entry.input(e.currentTarget.value, inputType, isComposing);
-      }}
-      onCompositionEnd={(e) => entry.compositionEnd(e.currentTarget.value)}
-      onBlur={(e) => entry.blur(e.currentTarget.value)}
-    />
-  );
-}
-
-/** The Note: each change is recorded, and the whole Note is saved when the field loses focus. */
+/** The Note: several entries per Phase, each recorded change by change and saved when its field loses focus (ADR-0010). */
 export function NoteField({
-  note,
+  entries,
   questionId,
   label = "marks.note",
   disabled,
   onRecord,
 }: {
-  note: string;
+  entries: TextEntryMark[];
   questionId: string;
   label?: TranslationKey;
   disabled?: boolean;
   onRecord: (event: RawEventBody) => void;
 }) {
   return (
-    <label class="note">
+    <div class="note">
       {t(label)}
-      <TextEntryArea saved={note} target={{ questionId, field: "note", entry: 0 }} placeholder="marks.notePlaceholder" disabled={disabled} onRecord={onRecord} />
-    </label>
+      <TextEntries field="note" questionId={questionId} entries={entries} label={t(label)} placeholder="marks.notePlaceholder" disabled={disabled} onRecord={onRecord} />
+    </div>
   );
 }
 
@@ -226,57 +184,34 @@ export function HintPanel({
 }
 
 /**
- * "I think the answer is wrong": the reason is the Phase's Challenge statement, one Text entry recorded like a Note
- * (ADR-0010), saved when its field loses focus; submitting closes the field. `statement` is this Phase's as last saved.
- * Without `onRecord`, as in a Showcase, only the Appeals made are shown.
+ * "I think the answer is wrong": the Phase's Challenge statement entries, recorded like Notes (ADR-0010). There is no
+ * submit: the first entry holding text sets the bad-question Flag, which Derivation adds. `entries` are this Phase's as derived.
  */
 export function AppealForm({
-  appeals,
-  statement,
+  entries,
   questionId,
   disabled,
   onRecord,
 }: {
-  appeals: string[];
-  statement: string;
+  entries: TextEntryMark[];
   questionId: string;
   disabled?: boolean;
-  onRecord?: (event: RawEventBody) => void;
+  onRecord: (event: RawEventBody) => void;
 }) {
   const [open, setOpen] = useState(false);
-  const [written, setWritten] = useState(statement);
-  useEffect(() => setWritten(statement), [statement]);
   return (
     <div class="appeal">
-      {open && onRecord ? (
-        <>
-          <label class="note">
-            {t("appeal.reasonLabel")}
-            <TextEntryArea saved={statement} target={{ questionId, field: "challenge", entry: 0 }} placeholder="appeal.reasonPlaceholder" disabled={disabled} onRecord={onRecord} onDraft={setWritten} />
-          </label>
-          <div class="actions">
-            {/*
-              Pressing the button takes the focus from the field first, which saves the statement. Saving may disable the
-              page's marks for a moment, and may add an Appeal line, so the button stays enabled and the lines come after
-              it: either would otherwise swallow the click.
-            */}
-            <button class="small" disabled={!written.trim()} onClick={() => setOpen(false)}>
-              {t("appeal.submit")}
-            </button>
-          </div>
-        </>
+      {open || entries.length > 0 ? (
+        <div class="note">
+          {t("appeal.reasonLabel")}
+          <TextEntries field="challenge" questionId={questionId} entries={entries} label={t("appeal.reasonLabel")} placeholder="appeal.reasonPlaceholder" disabled={disabled} onRecord={onRecord} />
+        </div>
       ) : (
-        onRecord && (
-          <button class="small secondary" disabled={disabled} onClick={() => setOpen(true)}>
-            {t("appeal.open")}
-          </button>
-        )
+        <button class="small secondary" disabled={disabled} onClick={() => setOpen(true)}>
+          {t("appeal.open")}
+        </button>
       )}
-      {appeals.map((a, i) => (
-        <p key={i} class="note-read">
-          {t("appeal.recorded", { reason: a })}
-        </p>
-      ))}
     </div>
   );
 }
+

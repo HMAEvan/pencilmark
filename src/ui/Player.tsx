@@ -7,6 +7,7 @@ import { t } from "../i18n/i18n";
 import { openRecorder, type RawEventBody, type Recorder } from "../recorder/recorder";
 import { abandonSession, currentAttempts, loadOverrides, loadQuestions, setOverride, submitSession, type Override } from "../session/sessions";
 import { DEFAULT_PREFERENCES, type Display, type Rules } from "../domain/settings";
+import { walkMarks, type TextEntryMark } from "../derivation/marks";
 import { answeringTimesSoFar, finalAnsweringActiveMs } from "../derivation/derivation";
 import { AnsweringTime, TimeOverrideField } from "./AnsweringTime";
 import { AppealForm, ConfidenceButtons, FlagButtons, HintPanel, ItemFlagMarks, ItemFlagMenu, NoteField, useLongPress } from "./Marks";
@@ -31,11 +32,12 @@ type Marked = {
   itemFlags: Record<string, Record<string, ItemFlag[]>>;
   /** How many Hints are open: they open in level order, so this is also the next level. */
   hintsOpened: Record<string, number>;
-  appeals: Record<string, string[]>;
-  notes: Record<string, string>;
+  /** The Notes and Challenge statements written while answering, by Question id. */
+  notes: Record<string, TextEntryMark[]>;
+  statements: Record<string, TextEntryMark[]>;
 };
 
-const NOTHING_MARKED: Marked = { answers: {}, confidence: {}, flags: {}, itemFlags: {}, hintsOpened: {}, appeals: {}, notes: {} };
+const NOTHING_MARKED: Marked = { answers: {}, confidence: {}, flags: {}, itemFlags: {}, hintsOpened: {}, notes: {}, statements: {} };
 
 /** A judgement on an Option: an Option is eliminated, eliminated but unsure, or sure right, never two of these at once. */
 const JUDGEMENTS: ItemFlag[] = ["eliminated", "eliminated_unsure", "sure_right"];
@@ -67,8 +69,8 @@ async function load(sessionId: string): Promise<(Loaded & { marked: Marked }) | 
     flags: Object.fromEntries(attempts.map((a) => [a.questionId, a.flags.map((f) => f.flag)])),
     itemFlags: Object.fromEntries(attempts.map((a) => [a.questionId, Object.fromEntries(Object.entries(a.itemFlags).map(([optionId, marks]) => [optionId, marks.map((m) => m.itemFlag)]))])),
     hintsOpened: Object.fromEntries(attempts.map((a) => [a.questionId, a.hintsUsed.length])),
-    appeals: Object.fromEntries(attempts.map((a) => [a.questionId, a.appeals.map((x) => x.reason)])),
-    notes: Object.fromEntries(attempts.map((a) => [a.questionId, a.notes.answering ?? ""])),
+    notes: Object.fromEntries(attempts.map((a) => [a.questionId, a.notes.answering ?? []])),
+    statements: Object.fromEntries(attempts.map((a) => [a.questionId, a.challengeStatements.answering ?? []])),
   };
   return { session, set, questions, overrides: await loadOverrides(storage, session.id), marked, recorder };
 }
@@ -184,7 +186,7 @@ export function Player({ sessionId }: { sessionId: string }) {
   const question = questions.get(questionId)!;
   const optionOrder = session.optionOrders[questionId] ?? question.options.map((o) => o.id);
   const type = questionTypeOf(question);
-  const { answers, confidence, flags, itemFlags, hintsOpened, appeals, notes } = marked;
+  const { answers, confidence, flags, itemFlags, hintsOpened, notes, statements } = marked;
   const answer = answers[questionId] ?? [];
   // Sessions from before settings snapshots were kept all ran with the defaults.
   const rules = session.settings?.rules ?? DEFAULT_PREFERENCES.rules;
@@ -229,24 +231,18 @@ export function Player({ sessionId }: { sessionId: string }) {
     setMarked((m) => ({ ...m, hintsOpened: { ...m.hintsOpened, [questionId]: level + 1 } }));
     recorder.append({ type: "openHint", questionId, level });
   };
-  // A Note or Challenge statement records each change; its save is shown at once. Derivation adds the bad-question Flag
-  // for any Challenge statement and keeps it when the statement is emptied, so the Flag is shown at once too.
+  // A Note or Challenge statement records each change. Its saves, deletes and restores are marks: the entries are worked
+  // out again from the Raw log so far, by the same rules as Derivation, and so is the bad-question Flag a statement sets.
   const recordText = (event: RawEventBody) => {
     recorder.append(event);
-    if (event.type !== "textSave") return;
-    const { text } = event;
-    if (event.field === "note") {
-      setMarked((m) => ({ ...m, notes: { ...m.notes, [questionId]: text } }));
-      return;
-    }
-    setMarked((m) => {
-      const current = m.flags[questionId] ?? [];
-      return {
-        ...m,
-        flags: { ...m.flags, [questionId]: text.trim() && !current.includes("bad_question") ? [...current, "bad_question"] : current },
-        appeals: { ...m.appeals, [questionId]: text.trim() ? [text] : [] },
-      };
-    });
+    if (event.type !== "textSave" && event.type !== "textDelete" && event.type !== "textRestore") return;
+    const derived = walkMarks(recorder.rawLog(), rules).marks.get(event.questionId);
+    setMarked((m) => ({
+      ...m,
+      flags: { ...m.flags, [event.questionId]: (derived?.flags ?? []).map((f) => f.flag) },
+      notes: { ...m.notes, [event.questionId]: derived?.notes.answering ?? [] },
+      statements: { ...m.statements, [event.questionId]: derived?.challengeStatements.answering ?? [] },
+    }));
   };
   // An Override beside the derived time, which keeps counting: time spent on the Question afterwards is added on top.
   const overrideTime = async (ms: number | undefined) => {
@@ -373,8 +369,8 @@ export function Player({ sessionId }: { sessionId: string }) {
         {drawerOpen && (
           <div class="drawer-body">
             <FlagButtons flags={flags[questionId] ?? []} onToggle={toggleFlag} />
-            <AppealForm key={`appeal-${questionId}`} appeals={appeals[questionId] ?? []} statement={appeals[questionId]?.[0] ?? ""} questionId={questionId} onRecord={recordText} />
-            <NoteField key={questionId} note={notes[questionId] ?? ""} questionId={questionId} onRecord={recordText} />
+            <AppealForm key={`appeal-${questionId}`} entries={statements[questionId] ?? []} questionId={questionId} onRecord={recordText} />
+            <NoteField key={questionId} entries={notes[questionId] ?? []} questionId={questionId} onRecord={recordText} />
           </div>
         )}
       </div>

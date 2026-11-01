@@ -32,13 +32,19 @@ export function AnsweringTimeline({ timeline, optionOrder, precision }: { timeli
       case "appeal":
         return t("timeline.appeal", { reason: step.reason });
       case "note":
-        return step.text ? t("timeline.note", { note: step.text }) : t("timeline.noteCleared");
-      case "challengeStatement":
-        return step.text ? t("timeline.challengeStatement", { text: step.text }) : t("timeline.challengeStatementCleared");
+      case "challengeStatement": {
+        const text = step.kind === "note" ? "note" : "challengeStatement";
+        const n = step.entry + 1;
+        if (step.laterDeleted) return t(`timeline.${text}LaterDeleted`, { n });
+        return step.text ? t(`timeline.${text}`, { n, text: step.text }) : t(`timeline.${text}Cleared`, { n });
+      }
+      case "textDelete":
+      case "textRestore":
+        return t(`timeline.${step.field === "note" ? "note" : "challengeStatement"}${step.kind === "textDelete" ? "Deleted" : "Restored"}`, { n: step.entry + 1 });
       case "writing":
         // What the span wrote is never shown: it may have been deleted (ADR-0010).
         return [
-          t(step.field === "note" ? "timeline.writingNote" : "timeline.writingChallengeStatement"),
+          t(step.field === "note" ? "timeline.writingNote" : "timeline.writingChallengeStatement", { n: step.entry + 1 }),
           ...(step.pastes ? [step.pastes === 1 ? t("timeline.writingPaste") : t("timeline.writingPastes", { n: step.pastes })] : []),
           ...(step.laterDeleted ? [t("timeline.writingLaterDeleted")] : []),
         ].join(t("timeline.writingSeparator"));

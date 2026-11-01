@@ -76,6 +76,35 @@ describe("Recorder: Text entry", () => {
     expect(events).toEqual([change(0, "", "你", "typing"), { type: "textSave", ...NOTE, text: "你" }]);
   });
 
+  it("records adding, collapsing, editing, deleting and restoring an entry, each with its field and entry", async () => {
+    const second = { questionId: "q_x", field: "challenge", entry: 1 } as const;
+    const events = await recorded("", (entry) => {
+      entry.action("textAdd");
+      entry.action("textCollapse");
+      entry.action("textEdit");
+      entry.action("textDelete");
+      entry.action("textRestore");
+    }, second);
+    expect(events).toEqual(["textAdd", "textCollapse", "textEdit", "textDelete", "textRestore"].map((type) => ({ type, ...second })));
+  });
+
+  it("measures the next change from the text as it stands after a delete, and after a restore", async () => {
+    const events = await recorded("Old", (entry) => {
+      entry.action("textDelete");
+      entry.input("N", "insertText", false);
+      entry.action("textDelete");
+      entry.action("textRestore");
+      entry.input("N!", "insertText", false);
+    });
+    expect(events).toEqual([
+      { type: "textDelete", ...NOTE },
+      change(0, "", "N", "typing"),
+      { type: "textDelete", ...NOTE },
+      { type: "textRestore", ...NOTE },
+      change(1, "", "!", "typing"),
+    ]);
+  });
+
   it("names the field and entry, so a Challenge statement is recorded as `challenge`", async () => {
     const target = { questionId: "q_y", field: "challenge", entry: 0 } as const;
     const events = await recorded("", (entry) => {

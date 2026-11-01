@@ -1,6 +1,7 @@
 import type { Confidence, Flag, ItemFlag, Phase } from "../domain/types";
 import type { Rules } from "../domain/settings";
-import type { RawLogChunk } from "../recorder/recorder";
+import type { RecordedChunk } from "../recorder/recorder";
+import { holdsText as holds, type TextField } from "../recorder/textEntry";
 
 // What the user marked on each Question, walked from the Raw log. Only the final state goes into the Attempt;
 // every change, removals included, stays in the Raw log.
@@ -14,20 +15,23 @@ export type ItemFlagMark = { itemFlag: ItemFlag; phase: Phase; at: number };
 /** The final Item flags of each Option that has any, keyed by Option id; stored, so a plain record. */
 export type ItemFlags = Record<string, ItemFlagMark[]>;
 
-/** "I think the answer is wrong", with the user's reason. `at` is wall-clock UTC epoch ms. */
-export type Appeal = { reason: string; phase: Phase; at: number };
+/**
+ * A Text entry as it ends (ADR-0010). `entry` is its place among the Phase's entries of its field. A deleted entry that
+ * was not restored carries no text: what it said stays in the Raw log only.
+ */
+export type TextEntryMark = { entry: number; deleted: false; text: string } | { entry: number; deleted: true };
 
-/** One Note per Phase, so a Note written after seeing the answer is kept apart; a Phase without one is absent. */
-export type PhaseNotes = Partial<Record<Phase, string>>;
+/** The Text entries of one field by Phase, so what is written after seeing the answer is kept apart; a Phase without any is absent. */
+export type PhaseTextEntries = Partial<Record<Phase, TextEntryMark[]>>;
 
-export type QuestionMarks = { confidence: Confidence | null; flags: FlagMark[]; itemFlags: ItemFlags; appeals: Appeal[]; notes: PhaseNotes };
+export type QuestionMarks = { confidence: Confidence | null; flags: FlagMark[]; itemFlags: ItemFlags; notes: PhaseTextEntries; challengeStatements: PhaseTextEntries };
 
 /** Every removal of a Flag, in order, as the Flag was before removal. Keyed by Question id; stored, so a plain record. */
 export type RemovedFlags = Record<string, FlagMark[]>;
 
-export const emptyMarks = (): QuestionMarks => ({ confidence: null, flags: [], itemFlags: {}, appeals: [], notes: {} });
+export const emptyMarks = (): QuestionMarks => ({ confidence: null, flags: [], itemFlags: {}, notes: {}, challengeStatements: {} });
 
-export function walkMarks(rawLog: RawLogChunk[], rules: Rules): { marks: Map<string, QuestionMarks>; removedFlags: RemovedFlags } {
+export function walkMarks(rawLog: RecordedChunk[], rules: Rules): { marks: Map<string, QuestionMarks>; removedFlags: RemovedFlags } {
   const marks = new Map<string, QuestionMarks>();
   // Kept in the order last added, so a Flag added again moves to the end.
   const flags = new Map<string, Map<Flag, FlagMark>>();
@@ -59,15 +63,24 @@ export function walkMarks(rawLog: RawLogChunk[], rules: Rules): { marks: Map<str
   };
   // ADR-0008: in Exam mode the answers are revealed on submission.
   let phase: Phase = "answering";
-  const setNote = (questionId: string, text: string) => {
-    const { notes } = marksOf(questionId);
-    if (text) notes[phase] = text;
-    else delete notes[phase];
+  // Each Text entry is replayed on its own: its text, whether it was deleted, and the text it had just before that.
+  type Replayed = { text: string; deleted: boolean; before: string };
+  const replayed = new Map<string, Map<number, Replayed>>();
+  const entryOf = (questionId: string, field: TextField, entry: number) => {
+    const key = `${questionId} ${field} ${phase}`;
+    let entries = replayed.get(key);
+    if (!entries) replayed.set(key, (entries = new Map()));
+    let e = entries.get(entry);
+    if (!e) entries.set(entry, (e = { text: "", deleted: false, before: "" }));
+    return e;
   };
-  /** One Appeal per Phase: the last saved wins. */
-  const setAppeal = (questionId: string, appeal: Appeal) => {
-    const m = marksOf(questionId);
-    m.appeals = [...m.appeals.filter((a) => a.phase !== appeal.phase), appeal];
+  /** Any Challenge statement adds the bad-question Flag, unless it is already on (`always`: an Appeal from before ADR-0010 added it again). */
+  const saveText = (questionId: string, field: TextField, entry: number, text: string, at: number, always = false) => {
+    const e = entryOf(questionId, field, entry);
+    e.text = text;
+    if (!holds(field, text)) return;
+    e.deleted = false;
+    if (field === "challenge" && (always || !flagsOf(questionId).has("bad_question"))) addFlag(questionId, "bad_question", phase, at);
   };
 
   for (const chunk of rawLog) {
@@ -93,28 +106,30 @@ export function walkMarks(rawLog: RawLogChunk[], rules: Rules): { marks: Map<str
       } else if (event.type === "appeal") {
         // An appeal must give a reason; one without is not an appeal. It is the first Challenge statement entry of its Phase (ADR-0010), so a later one replaces it.
         const reason = event.reason.trim();
-        if (!reason) continue;
-        addFlag(event.questionId, "bad_question", phase, at);
-        setAppeal(event.questionId, { reason, phase, at });
+        if (reason) saveText(event.questionId, "challenge", 0, reason, at, true);
       } else if (event.type === "note") {
-        setNote(event.questionId, event.text);
-      } else if (event.type === "textSave" && event.entry === 0) {
-        // Only the first Text entry of a Phase is recorded so far; several come with #56.
-        if (event.field === "note") {
-          setNote(event.questionId, event.text);
-        } else if (!event.text.trim()) {
-          // Emptying the Challenge statement removes it; the bad-question Flag stays.
-          const m = marksOf(event.questionId);
-          m.appeals = m.appeals.filter((a) => a.phase !== phase);
-        } else {
-          // Any Challenge statement adds the bad-question Flag, unless it is already on.
-          if (!flagsOf(event.questionId).has("bad_question")) addFlag(event.questionId, "bad_question", phase, at);
-          setAppeal(event.questionId, { reason: event.text, phase, at });
-        }
+        saveText(event.questionId, "note", 0, event.text, at);
+      } else if (event.type === "textSave") {
+        saveText(event.questionId, event.field, event.entry, event.text, at);
+      } else if (event.type === "textDelete") {
+        const e = entryOf(event.questionId, event.field, event.entry);
+        if (holds(event.field, e.text)) Object.assign(e, { before: e.text, text: "", deleted: true });
+      } else if (event.type === "textRestore") {
+        const e = entryOf(event.questionId, event.field, event.entry);
+        if (e.deleted) Object.assign(e, { text: e.before, deleted: false });
       }
     }
   }
 
+  for (const [key, entries] of replayed) {
+    const [questionId, field, entryPhase] = key.split(" ") as [string, TextField, Phase];
+    const list = [...entries]
+      .sort(([a], [b]) => a - b)
+      .flatMap(([entry, e]): TextEntryMark[] => (e.deleted ? [{ entry, deleted: true }] : holds(field, e.text) ? [{ entry, deleted: false, text: e.text }] : []));
+    if (list.length === 0) continue;
+    const m = marksOf(questionId);
+    (field === "note" ? m.notes : m.challengeStatements)[entryPhase] = list;
+  }
   for (const [questionId, f] of flags) marksOf(questionId).flags = [...f.values()];
   for (const [questionId, options] of itemFlags) {
     for (const [optionId, f] of options) if (f.size > 0) marksOf(questionId).itemFlags[optionId] = [...f.values()];

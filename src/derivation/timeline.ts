@@ -1,7 +1,7 @@
 import type { Confidence, Flag, ItemFlag } from "../domain/types";
 import type { Rules } from "../domain/settings";
 import type { RawEvent } from "../recorder/recorder";
-import type { TextField } from "../recorder/textEntry";
+import { holdsText, type TextField } from "../recorder/textEntry";
 
 // The Answering timeline: everything done on one Question during the answering Phase, in time order. It extends the
 // trajectory, and runs on the same clock: each step's `atMs` is the active answering time spent on the Question so far,
@@ -20,15 +20,18 @@ export type TimelineStep = { atMs: number } & (
   | { kind: "flag" | "unflag"; flag: Flag }
   /** Raw logs before ADR-0010. */
   | { kind: "appeal"; reason: string }
-  /** Empty: the Note cleared. */
-  | { kind: "note"; text: string }
-  /** Empty: the Challenge statement cleared. */
-  | { kind: "challengeStatement"; text: string }
+  /**
+   * Empty: the Note or Challenge statement cleared. `laterDeleted`: the entry ended deleted, so its text is not here either.
+   * `entry` is the Text entry's place among the Phase's entries of its field.
+   */
+  | { kind: "note" | "challengeStatement"; entry: number; text: string; laterDeleted: boolean }
+  /** A Text entry deleted while it held text, or restored. Adding, collapsing and editing an entry are no steps. */
+  | { kind: "textDelete" | "textRestore"; field: TextField; entry: number }
   /**
    * A Writing span, from `atMs` to `endMs`, the first and last change in it. `laterDeleted`: it wrote text and none of it
    * survives in the Text entry. What it wrote is not here: deleted text is never shown, only in the Raw log.
    */
-  | { kind: "writing"; endMs: number; field: TextField; pastes: number; laterDeleted: boolean }
+  | { kind: "writing"; endMs: number; field: TextField; entry: number; pastes: number; laterDeleted: boolean }
 );
 
 type WritingStep = Extract<TimelineStep, { kind: "writing" }>;
@@ -58,6 +61,13 @@ export function answeringTimelines(rules: Rules, hintCount: (questionId: string)
   const writingPauseMs = rules.writingPauseMs;
   let writing: { entry: string; step: WritingStep } | undefined;
   const writers = new Map<string, (WritingStep | undefined)[]>();
+  // For each Text entry: its text as last saved, and what it held just before it was deleted, which a restore brings back.
+  const savedText = new Map<string, string>();
+  const deleted = new Map<string, { text: string; writers: (WritingStep | undefined)[] }>();
+  type SavedStep = Extract<TimelineStep, { kind: "note" | "challengeStatement" }>;
+  const savedSteps = new Map<string, SavedStep[]>();
+  // The saves before a delete that was not restored: what they said is never shown.
+  const deletedSaves = new Map<string, SavedStep[]>();
   const wrote = new Set<WritingStep>();
   const endWriting = () => (writing = undefined);
   const add = (questionId: string, seq: number, step: TimelineStep) => {
@@ -65,6 +75,17 @@ export function answeringTimelines(rules: Rules, hintCount: (questionId: string)
     let list = steps.get(questionId);
     if (!list) steps.set(questionId, (list = []));
     list.push({ seq, step });
+  };
+
+  /** A Note or Challenge statement saved. Writing in an entry deleted earlier makes it a new entry again. */
+  const saved = (questionId: string, seq: number, atMs: number, field: TextField, entry: number, text: string) => {
+    const key = `${questionId} ${field} ${entry}`;
+    savedText.set(key, text);
+    if (holdsText(field, text)) deleted.delete(key);
+    if (field === "challenge" && holdsText(field, text)) setOf(flags, questionId).add("bad_question");
+    const step = { atMs, kind: field === "note" ? "note" : "challengeStatement", entry, text, laterDeleted: false } as const;
+    add(questionId, seq, step);
+    savedSteps.set(key, [...(savedSteps.get(key) ?? []), step]);
   };
 
   return {
@@ -103,18 +124,31 @@ export function answeringTimelines(rules: Rules, hintCount: (questionId: string)
       } else if (event.type === "confidence") {
         if (rules.collectConfidence) add(questionId, seq, { atMs, kind: "confidence", confidence: event.confidence });
       } else if (event.type === "note") {
-        add(questionId, seq, { atMs, kind: "note", text: event.text });
+        saved(questionId, seq, atMs, "note", 0, event.text);
       } else if (event.type === "textSave") {
-        if (event.field === "note") {
-          add(questionId, seq, { atMs, kind: "note", text: event.text });
-        } else {
-          if (event.text.trim()) setOf(flags, questionId).add("bad_question");
-          add(questionId, seq, { atMs, kind: "challengeStatement", text: event.text });
-        }
+        saved(questionId, seq, atMs, event.field, event.entry, event.text);
+      } else if (event.type === "textDelete") {
+        const key = `${questionId} ${event.field} ${event.entry}`;
+        const text = savedText.get(key) ?? "";
+        if (!holdsText(event.field, text)) return;
+        deleted.set(key, { text, writers: writers.get(key) ?? [] });
+        deletedSaves.set(key, [...(savedSteps.get(key) ?? [])]);
+        savedText.set(key, "");
+        writers.set(key, []);
+        add(questionId, seq, { atMs, kind: "textDelete", field: event.field, entry: event.entry });
+      } else if (event.type === "textRestore") {
+        const key = `${questionId} ${event.field} ${event.entry}`;
+        const before = deleted.get(key);
+        if (!before) return;
+        deleted.delete(key);
+        deletedSaves.delete(key);
+        savedText.set(key, before.text);
+        writers.set(key, before.writers);
+        add(questionId, seq, { atMs, kind: "textRestore", field: event.field, entry: event.entry });
       } else if (event.type === "textInput") {
         const entry = `${questionId} ${event.field} ${event.entry}`;
         if (!writing || writing.entry !== entry || atMs - writing.step.endMs > writingPauseMs) {
-          const step: WritingStep = { atMs, endMs: atMs, kind: "writing", field: event.field, pastes: 0, laterDeleted: false };
+          const step: WritingStep = { atMs, endMs: atMs, kind: "writing", field: event.field, entry: event.entry, pastes: 0, laterDeleted: false };
           add(questionId, seq, step);
           writing = { entry, step };
         }
@@ -130,6 +164,8 @@ export function answeringTimelines(rules: Rules, hintCount: (questionId: string)
     timelines(): Map<string, TimelineStep[]> {
       const surviving = new Set([...writers.values()].flat());
       for (const step of wrote) step.laterDeleted = !surviving.has(step);
+      // What an entry deleted and not restored said is never shown.
+      for (const steps of deletedSaves.values()) for (const step of steps) Object.assign(step, { text: "", laterDeleted: true });
       return new Map([...steps].map(([questionId, list]) => [questionId, list.sort((a, b) => a.seq - b.seq).map((s) => s.step)]));
     },
   };

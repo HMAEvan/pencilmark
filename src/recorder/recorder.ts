@@ -1,6 +1,6 @@
 import type { Storage } from "../storage/storage";
 import type { Confidence, Flag, ItemFlag } from "../domain/types";
-import type { TextChangeKind, TextEntryTarget } from "./textEntry";
+import type { TextChangeKind, TextEntryAction, TextEntryTarget } from "./textEntry";
 
 // ADR-0001: one append-only, time-ordered stream per Session, chunked only by saving.
 
@@ -24,6 +24,8 @@ export type RawEventBody =
   | ({ type: "textInput"; position: number; removed: string; inserted: string; kind: TextChangeKind } & TextEntryTarget)
   /** A Text entry's whole text, saved when its field lost focus; an empty `text` removes it. */
   | ({ type: "textSave"; text: string } & TextEntryTarget)
+  /** Adding, collapsing, editing, deleting or restoring a Text entry (#56); its text is in the changes and saves. */
+  | ({ type: TextEntryAction } & TextEntryTarget)
   | { type: "hide" }
   /** A resume event: the page was shown or reopened. `wall` is UTC epoch ms. */
   | { type: "show"; wall: number }
