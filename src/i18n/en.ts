@@ -90,7 +90,7 @@ export const en = {
   "marks.confidence": "Confidence",
   "marks.flags": "Flags",
   "marks.note": "Note",
-  "marks.notePlaceholder": "Write your thoughts; saved when you leave the box",
+  "marks.notePlaceholder": "Write your thoughts",
   "confidence.sure": "Sure",
   "confidence.probably": "Probably",
   "confidence.guessed": "Guessed",

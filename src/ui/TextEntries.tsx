@@ -36,7 +36,12 @@ function TextEntrySlot({
   const [draft, setDraft] = useState(saved);
   // An entry that already holds text starts collapsed, as when the user comes back to the Question.
   const [open, setOpen] = useState(saved === "");
-  useEffect(() => setDraft(saved), [saved]);
+  // The draft follows the saved text as soon as it changes (a restore, a re-derivation), not a render later.
+  const [seen, setSeen] = useState(saved);
+  if (seen !== saved) {
+    setSeen(saved);
+    setDraft(saved);
+  }
   const record = useRef(onRecord);
   record.current = onRecord;
   const recording = useMemo(() => recordTextEntry((event) => record.current(event), slot, saved), [slot.questionId, slot.field, slot.entry, saved]);
@@ -45,9 +50,11 @@ function TextEntrySlot({
   latest.current = { draft, recording };
   useEffect(() => () => latest.current.recording.blur(latest.current.draft), []);
 
-  const act = (type: Parameters<TextEntryRecording["action"]>[0]) => {
+  // Deleting empties the box at once: saved text comes back from the Raw log later, and the old text must not be saved again meanwhile.
+  const remove = () => {
     recording.blur(draft);
-    recording.action(type);
+    recording.action("textDelete");
+    setDraft("");
   };
   const first = slot.entry === 0;
 
@@ -69,7 +76,7 @@ function TextEntrySlot({
           <button class="small secondary" disabled={disabled} onClick={() => (recording.action("textEdit"), setOpen(true))}>
             {t("text.edit")}
           </button>
-          <button class="small secondary" disabled={disabled} onClick={() => (act("textDelete"), setOpen(true))}>
+          <button class="small secondary" disabled={disabled} onClick={() => (remove(), setOpen(true))}>
             {t("text.delete")}
           </button>
         </div>
@@ -109,7 +116,7 @@ function TextEntrySlot({
             {t("text.saveCollapse")}
           </button>
           {(saved !== "" || draft !== "") && (
-            <button class="small secondary" disabled={disabled} onClick={() => act("textDelete")}>
+            <button class="small secondary" disabled={disabled} onClick={remove}>
               {t("text.delete")}
             </button>
           )}

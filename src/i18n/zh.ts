@@ -88,7 +88,7 @@ export const zh = {
   "marks.confidence": "信心度",
   "marks.flags": "标记",
   "marks.note": "备注",
-  "marks.notePlaceholder": "写下想法，离开输入框时保存",
+  "marks.notePlaceholder": "写下想法",
   "confidence.sure": "确定",
   "confidence.probably": "大概",
   "confidence.guessed": "蒙的",
