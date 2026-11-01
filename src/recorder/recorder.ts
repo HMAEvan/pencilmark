@@ -1,5 +1,6 @@
 import type { Storage } from "../storage/storage";
 import type { Confidence, Flag, ItemFlag } from "../domain/types";
+import type { TextChangeKind, TextEntryTarget } from "./textEntry";
 
 // ADR-0001: one append-only, time-ordered stream per Session, chunked only by saving.
 
@@ -15,10 +16,14 @@ export type RawEventBody =
   | { type: "itemUnflag"; questionId: string; optionId: string; itemFlag: ItemFlag }
   /** Hints open one level at a time, lightest (0) first. */
   | { type: "openHint"; questionId: string; level: number }
-  /** "I think the answer is wrong": adds the bad-question Flag, with the user's reason. */
+  /** Raw logs before ADR-0010: "I think the answer is wrong", with the user's reason; the first Challenge statement entry of its Phase. */
   | { type: "appeal"; questionId: string; reason: string }
-  /** The whole Note as saved; an empty `text` removes it. */
+  /** Raw logs before ADR-0010: the whole Note as saved, the first Note entry of its Phase; an empty `text` removes it. */
   | { type: "note"; questionId: string; text: string }
+  /** One change to a Text entry (ADR-0010): at `position`, in UTF-16 code units, `removed` was replaced by `inserted`. */
+  | ({ type: "textInput"; position: number; removed: string; inserted: string; kind: TextChangeKind } & TextEntryTarget)
+  /** A Text entry's whole text, saved when its field lost focus; an empty `text` removes it. */
+  | ({ type: "textSave"; text: string } & TextEntryTarget)
   | { type: "hide" }
   /** A resume event: the page was shown or reopened. `wall` is UTC epoch ms. */
   | { type: "show"; wall: number }

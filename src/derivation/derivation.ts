@@ -4,7 +4,7 @@ import { questionTypeOf } from "../questionTypes/questionType";
 import { writeDigest } from "./digest";
 import type { OverrideValues } from "./overrides";
 import { emptyTiming, emptyTrajectory, walkRawLog, type ChunkGap, type QuestionTiming, type SessionTotals, type Trajectory } from "./timing";
-import type { Rules } from "../domain/settings";
+import { rulesWithDefaults, type Rules } from "../domain/settings";
 import { emptyMarks, walkMarks, type QuestionMarks, type RemovedFlags } from "./marks";
 import { walkHints, type HintUse } from "./hints";
 import type { TimelineStep } from "./timeline";
@@ -21,8 +21,9 @@ export { finalAnsweringActiveMs, finalValues, type FinalValues, type OverriddenV
  * 6: Item flags, Hints used and appeals.
  * 7: the Answering timeline, in the Attempt and the Digest; the Misconception line in the Digest.
  * 8: the Digest writes a partial score to at most two decimal places.
+ * 9: Writing spans and Challenge statements saved, in the Answering timeline and the Digest; one Appeal per Phase; the learner's text in quotation marks in the Digest.
  */
-export const ALGORITHM_VERSION = 8;
+export const ALGORITHM_VERSION = 9;
 
 export type DerivationInput = {
   title: string;
@@ -69,7 +70,8 @@ export type DerivationResult = {
   digest: string;
 };
 
-export function derive(input: DerivationInput): DerivationResult {
+export function derive(given: DerivationInput): DerivationResult {
+  const input = { ...given, rules: rulesWithDefaults(given.rules) };
   const { marks, removedFlags } = walkMarks(input.rawLog, input.rules);
   const byId = new Map(input.questions.map((q) => [q.id, q]));
   const hintCount = (questionId: string) => byId.get(questionId)?.hints?.length ?? 0;
@@ -122,7 +124,7 @@ export function derive(input: DerivationInput): DerivationResult {
  */
 export function answeringTimesSoFar(rawLog: RecordedChunk[], rules: Rules): Map<string, number> {
   // Answers play no part in time, so Options are not looked up.
-  const walk = walkRawLog(rawLog, rules, (_questionId, answer) => answer);
+  const walk = walkRawLog(rawLog, rulesWithDefaults(rules), (_questionId, answer) => answer);
   return new Map([...walk.questions].map(([questionId, timing]) => [questionId, timing.answeringActiveMs]));
 }
 

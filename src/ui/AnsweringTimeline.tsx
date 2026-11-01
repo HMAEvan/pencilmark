@@ -33,8 +33,20 @@ export function AnsweringTimeline({ timeline, optionOrder, precision }: { timeli
         return t("timeline.appeal", { reason: step.reason });
       case "note":
         return step.text ? t("timeline.note", { note: step.text }) : t("timeline.noteCleared");
+      case "challengeStatement":
+        return step.text ? t("timeline.challengeStatement", { text: step.text }) : t("timeline.challengeStatementCleared");
+      case "writing":
+        // What the span wrote is never shown: it may have been deleted (ADR-0010).
+        return [
+          t(step.field === "note" ? "timeline.writingNote" : "timeline.writingChallengeStatement"),
+          ...(step.pastes ? [step.pastes === 1 ? t("timeline.writingPaste") : t("timeline.writingPastes", { n: step.pastes })] : []),
+          ...(step.laterDeleted ? [t("timeline.writingLaterDeleted")] : []),
+        ].join(t("timeline.writingSeparator"));
     }
   };
+  // A Writing span is a stretch, so its line gives its start and end.
+  const when = (step: TimelineStep) =>
+    step.kind === "writing" ? t("timeline.span", { start: formatDuration(step.atMs, precision), end: formatDuration(step.endMs, precision) }) : formatDuration(step.atMs, precision);
   return (
     <div class="timeline">
       <h4>{t("timeline.heading")}</h4>
@@ -42,7 +54,7 @@ export function AnsweringTimeline({ timeline, optionOrder, precision }: { timeli
         <ol>
           {timeline.map((step, i) => (
             <li key={i}>
-              <span class="timeline-time">{formatDuration(step.atMs, precision)}</span> {describe(step)}
+              <span class="timeline-time">{when(step)}</span> {describe(step)}
             </li>
           ))}
         </ol>
