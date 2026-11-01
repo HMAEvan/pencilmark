@@ -287,3 +287,9 @@ _Status_: provisional, not yet agreed
 **Custom flag** (自定义标记):
 A Flag the user adds themselves, kept with their data and offered again in later Sessions. A Challenge reason added by the user is a custom Challenge reason, not a Custom flag, since a Challenge is not a Flag. Not built yet.
 _Status_: provisional, not yet agreed
+
+Working name introduced while building issue #71, not yet agreed with /domain-modeling.
+
+**Marks and Notes area** (标记与备注):
+The blue collapsible section on the Answering page and on each Review page card holding the Flags of the current Phase, their explanations and the Notes; the Challenge area (#64) sits below it. In code: `MarksArea`.
+_Status_: provisional, not yet agreed
