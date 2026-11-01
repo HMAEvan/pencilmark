@@ -7,6 +7,8 @@ Domain language: `GLOSSARY.md`. Decisions: `docs/adr/`. Read both before touchin
 - Every commit references its issue; the commit that finishes a ticket says `Fixes #N` and lands on main.
 - Commit before running code review: review compares against HEAD and cannot see uncommitted changes.
 - Test only at the three agreed seams (Derivation, Importer, Recorder), test-first. The UI has no automated tests.
+- A spec or ticket that changes the UI ends with an `## Acceptance` section: numbered manual steps in the running app, each with its expected result. Before closing the ticket, walk every step in the app.
+- In a spec or ticket, write each open question inline as `[NEEDS CLARIFICATION: <question>]` and leave the decision to the user. A ticket still carrying a marker is not `ready-for-agent`.
 - No interface text in components: every string is a translation key.
 - Hashing is used only for the Raw log hash chain. Use a hash elsewhere only where not using it would add a great deal of complexity.
 - Sealed Raw log chunks are never written again by any code path.
