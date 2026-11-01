@@ -117,11 +117,11 @@ A mark on a single Item: eliminated, eliminated but unsure, sure right, unknown 
 _Avoid_: Option flag, strike-through
 
 **Note** (备注):
-Free text the user attaches to an Attempt.
+Free text the user attaches to an Attempt: one or more Text entries per Phase.
 _Avoid_: Comment
 
 **Appeal** (申诉):
-The user's "I think the answer is wrong" on a Question, with a required reason. Adds the bad-question Flag and keeps the reason, with its Phase and time. In code: `appeal` event, `Appeal`, `AppealForm`.
+The user's "I think the answer is wrong" on a Question, with the reason written as one or more Text entries per Phase. There is no submit step: while any entry holds text the Question has the bad-question Flag; clearing the entries does not remove the Flag. In code: `appeal` event (Raw logs before ADR-0010), `Appeal`, `AppealForm`.
 _Avoid_: Complaint, dispute, report
 
 **Raw log** (原始记录):
@@ -129,11 +129,11 @@ The untouched, time-ordered record of everything the user did during a Session. 
 _Avoid_: Event history, trace
 
 **Answering timeline** (作答时间线):
-Everything done on one Question during the answering Phase, in time order: its Visits, each selection and deselection, Item flags, Hints opened, Confidence, Flags, Appeals, Notes and Overrides (Overrides once they are Raw log events, #35). Shown on the review page and in the Digest. Extends what code calls the trajectory (the first choice and each answer change).
+Everything done on one Question during the answering Phase, in time order: its Visits, each selection and deselection, Item flags, Hints opened, Confidence, Flags, Appeals, Notes, Writing spans and Overrides (Overrides once they are Raw log events, #35). Shown on the review page and in the Digest. Extends what code calls the trajectory (the first choice and each answer change).
 _Avoid_: Trajectory (only the first choice and answer changes), trace
 
 **Timeline step** (时间线步骤):
-One entry of an Answering timeline: a Visit opened or left, a selection or deselection, an Item flag set or taken back, a Hint opened, a Confidence, Flag, Appeal or Note recorded, each at the answering time spent on the Question so far. Actions that changed nothing (taking back a mark never made, a Hint out of order) are not steps. In code: `TimelineStep`.
+One entry of an Answering timeline: a Visit opened or left, a selection or deselection, an Item flag set or taken back, a Hint opened, a Confidence, Flag, Appeal or Note recorded, a Writing span (a stretch, from its start to its end), each at the answering time spent on the Question so far. Actions that changed nothing (taking back a mark never made, a Hint out of order) are not steps. In code: `TimelineStep`.
 _Avoid_: Event (a Raw log event that changed nothing makes no step)
 
 **Override** (手动修正):
@@ -236,4 +236,18 @@ Working name introduced while building issue #40, not yet agreed with /domain-mo
 
 **Feedback label** (讲解标注):
 What a Showcase's Feedback was written by and from: the model, the grading Skill version and the date, with a link to the claude.ai conversation when shared. A label whose grading Skill version is not the current one marks the Feedback as stale. In code: `FeedbackLabel`.
+_Status_: provisional, not yet agreed
+
+Working names introduced while grilling how typing is recorded (ADR-0010), not yet agreed with /domain-modeling.
+
+**Text entry** (文本条目):
+One box of free text attached to an Attempt in one Phase: a Note or an Appeal. A Phase starts with one and the user may add more; each can be saved and collapsed, edited, deleted and restored. Every change to its text is a Raw log event.
+_Status_: provisional, not yet agreed
+
+**Writing span** (写作时段):
+A stretch of writing on one Text entry, shown as one Timeline step with its start and end. It ends at a gap longer than the Writing pause, at the end of a Visit, or at any other Timeline step.
+_Status_: provisional, not yet agreed
+
+**Writing pause** (写作停顿阈值):
+The longest gap between two changes to a Text entry that still counts as one Writing span; a setting, 20 seconds by default. Not the idle threshold.
 _Status_: provisional, not yet agreed
