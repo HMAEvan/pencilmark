@@ -109,7 +109,7 @@ How sure the user was of an Attempt: sure, probably, or guessed. Optional.
 _Avoid_: Certainty, uncertain flag, guessed flag
 
 **Flag** (标记):
-A Question-level mark recording a reason or a follow-up: concept confusion, careless, focus, memory, bad question.
+A Question-level mark recording a reason or a follow-up. Which Flags are offered depends on the Phase (ADR-0012): while answering, couldn't recall, didn't understand the question, didn't know where to start, review this again, and bad question; while reviewing, also mixed up concepts and careless slip. Bad question is set apart from the others (the learning Flags) and opens the Problem reasons and the Appeal. In code: `memory`, `not_understood`, `no_approach`, `focus`, `concept`, `careless`, `bad_question`.
 _Avoid_: Tag, label, bookmark
 
 **Item flag** (子项标记):
@@ -117,11 +117,11 @@ A mark on a single Item: eliminated, eliminated but unsure, sure right, unknown 
 _Avoid_: Option flag, strike-through
 
 **Note** (备注):
-Free text the user attaches to an Attempt: one or more Text entries per Phase.
-_Avoid_: Comment
+Free text the user attaches to an Attempt: one or more Text entries per Phase. Belongs to one Attempt, not to the Question across Sessions.
+_Avoid_: Comment, 笔记 (kept for a possible future note that belongs to the Question across Sessions, working name Question note)
 
 **Appeal** (申诉):
-The user's "I think the answer is wrong" on a Question, with the reason written as one or more Text entries per Phase. There is no submit step: while any entry holds text the Question has the bad-question Flag; clearing the entries does not remove the Flag. In code: `appeal` event (Raw logs before ADR-0010), `Appeal`, `AppealForm`.
+The user's account of what is wrong with a Question, written in the bad-question area below the Problem reasons as one or more Text entries per Phase; the answer being wrong is one such problem. There is no submit step: while any entry holds text the Question has the bad-question Flag; clearing the entries does not remove the Flag. In code: `appeal` event (Raw logs before ADR-0010), `Appeal`, `AppealForm`.
 _Avoid_: Complaint, dispute, report
 
 **Raw log** (原始记录):
@@ -250,4 +250,36 @@ _Status_: provisional, not yet agreed
 
 **Writing pause** (写作停顿阈值):
 The longest gap between two changes to a Text entry that still counts as one Writing span; a setting, 20 seconds by default. Not the idle threshold.
+_Status_: provisional, not yet agreed
+
+Working names introduced while grilling the answering and review-page layout (ADR-0011, ADR-0012), not yet agreed with /domain-modeling. Pages are named "X page" (中文「X页」); later pages follow the same rule (Sessions page 轮次页, Settings page 设置页).
+
+**Home** (首页):
+The page PencilMark opens on: the introduction, the Sets and importing. In code: `Home`.
+_Status_: provisional, not yet agreed
+
+**Answering page** (答题页):
+The page where a Session is answered, one Question at a time; its actions have the Phase answering. In code: `Player`.
+_Avoid_: Player, quiz page
+_Status_: provisional, not yet agreed
+
+**Review page** (复习页):
+The page of a submitted Session: results, Answering timelines, Explanations, and the marks, Notes and Appeals added after the reveal; its actions have the Phase reviewing. In code: `Review`, `ReviewPage`.
+_Avoid_: Results page, 结果页
+_Status_: provisional, not yet agreed
+
+**Showcase page** (示例页):
+A Showcase's Review page, read-only, with its Feedback below. In code: `ShowcaseReview`.
+_Status_: provisional, not yet agreed
+
+**Problem reason** (问题原因):
+One reason picked under the bad-question Flag: the answer is wrong, the wording is unclear or ambiguous, the Options are faulty (none or more than one correct), or the Question is out of scope or does not match the material. Several may be picked; each change is a Raw log event and is in the Digest.
+_Status_: provisional, not yet agreed
+
+**Reviewing timeline** (复习时间线):
+Everything done on one Question during the reviewing Phase, in time order (Hints opened, Rationales expanded, Flags, Problem reasons, Notes and Appeals), shown in place of a per-Question reviewing time.
+_Status_: provisional, not yet agreed
+
+**Custom flag** (自定义标记):
+A Flag or Problem reason the user adds themselves, kept with their data and offered again in later Sessions. Not built yet.
 _Status_: provisional, not yet agreed
