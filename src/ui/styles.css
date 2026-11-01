@@ -9,6 +9,7 @@
   --bad: #c62828;
   --flag-mark: #1e6fd9;
   --challenge-mark: #c25e00;
+  --partial: #b58900;
   --bar-h: 44px;
   color-scheme: light dark;
 }
@@ -24,6 +25,7 @@
     --bad: #ef9a9a;
     --flag-mark: #6aa9f5;
     --challenge-mark: #ffb74d;
+    --partial: #e6c34d;
   }
 }
 * { box-sizing: border-box; }
@@ -180,6 +182,34 @@ main.player-page { max-width: 960px; padding-top: calc(var(--bar-h) + 12px); }
   .time-popover { position: static; margin-top: 4px; }
   .panel-nav, .answer-panel.nav-open .panel-nav { display: block; position: static; padding: 0; border: 0; max-height: none; overflow: visible; }
   .panel-leave { order: 0; align-self: flex-start; }
+}
+
+/* The Review page and the Showcase page share the Answering page's layouts (ADR-0011). */
+.nav-item.result-right { color: var(--ok); border: 1px solid var(--ok); background: color-mix(in srgb, var(--ok) 18%, transparent); }
+.nav-item.result-wrong { color: var(--bad); border: 1px solid var(--bad); background: color-mix(in srgb, var(--bad) 18%, transparent); }
+.nav-item.result-partial { color: var(--partial); border: 1px solid var(--partial); background: color-mix(in srgb, var(--partial) 22%, transparent); }
+.nav-item.result-unanswered { color: var(--muted); border: 1px dashed var(--muted); }
+.nav-item.result-ungraded { color: var(--muted); border: 1px solid var(--muted); background: color-mix(in srgb, var(--muted) 18%, transparent); }
+.review-score { margin: 0; flex: 1; min-width: 0; font-weight: 600; }
+.review-ungraded { margin-left: 6px; font-weight: 400; }
+.review-body .card { scroll-margin-top: calc(var(--bar-h) + 12px); }
+.card-popover { margin: 4px 0 8px; border-color: var(--accent); }
+.card-popover p { margin: 4px 0; }
+.card-popover.actions { padding: 8px 12px; }
+h3 .edit-time { margin-left: 6px; }
+.landscape-only { display: none; }
+.portrait-only .actions, .digest-controls > p { font-size: 0.9rem; }
+.digest-controls > p { margin: 4px 0; }
+
+@media (max-width: 599px), (max-aspect-ratio: 1000/1000) {
+  .review-ungraded { display: none; }
+}
+@media (min-width: 600px) and (min-aspect-ratio: 1001/1000) {
+  .landscape-only { display: flex; flex-direction: column; gap: 4px; }
+  .portrait-only { display: none; }
+  .review-body .card { scroll-margin-top: 12px; }
+  .review-score { flex: none; }
+  .answer-panel .actions { flex-direction: column; align-items: flex-start; margin: 4px 0; }
 }
 
 /* Question content rendered from Markdown with maths. */

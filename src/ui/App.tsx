@@ -56,7 +56,7 @@ export function App() {
       {onHome && <div class="lang-top muted">{languageSelector}</div>}
       {mode === "artifactUnavailable" && <p class="card bad storage-warning">{t("storage.artifactUnavailable")}</p>}
       {page === "session" && id ? <Player key={id} sessionId={id} /> : page === "review" && id ? <Review key={id} sessionId={id} /> : page === "showcase" && id ? <ShowcaseReview key={id} name={id} /> : <Home />}
-      <footer class={`muted app-footer${page === "session" && id ? " wide" : ""}`}>
+      <footer class={`muted app-footer${onHome ? "" : " wide"}`}>
         {mode && <p>{t(mode === "artifact" ? "storage.artifact" : "storage.local")}</p>}
         {!onHome && languageSelector}
       </footer>

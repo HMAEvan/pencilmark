@@ -17,9 +17,7 @@ import { isGraded, questionTypeOf } from "../questionTypes/questionType";
 import { multipleAnswer } from "../questionTypes/multipleAnswer";
 import { useRecorder } from "./useRecorder";
 import { Dialog } from "./Dialog";
-
-/** The window shape that turns the top bar into the side column; keep in step with the media query in styles.css. */
-const SIDE_COLUMN_QUERY = "(min-width: 600px) and (min-aspect-ratio: 1001/1000)";
+import { useNavDropdown } from "./useNavDropdown";
 
 type Loaded = { session: Session; set: QuestionSet; questions: Map<string, Question>; overrides: Map<string, Override>; recorder: Recorder };
 
@@ -140,23 +138,7 @@ export function Player({ sessionId }: { sessionId: string }) {
   /** The Option whose Item flag menu is open. */
   const [menuFor, setMenuFor] = useState<string | undefined>();
   const [drawerOpen, setDrawerOpen] = useState(false);
-  /** The top bar's dropped-down navigation. Ignored in the side column, where the navigation is always shown. */
-  const [navOpen, setNavOpen] = useState(false);
-  useEffect(() => {
-    if (!navOpen) return;
-    const close = () => setNavOpen(false);
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && close();
-    const onPointer = (e: PointerEvent) => !(e.target as Element).closest(".answer-panel") && close();
-    const layout = matchMedia(SIDE_COLUMN_QUERY);
-    document.addEventListener("keydown", onKey);
-    document.addEventListener("pointerdown", onPointer);
-    layout.addEventListener("change", close);
-    return () => {
-      document.removeEventListener("keydown", onKey);
-      document.removeEventListener("pointerdown", onPointer);
-      layout.removeEventListener("change", close);
-    };
-  }, [navOpen]);
+  const [navOpen, setNavOpen] = useNavDropdown();
   const [confirming, setConfirming] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   /** The Leave dialog's step: choosing, or confirming the Abandon. */
