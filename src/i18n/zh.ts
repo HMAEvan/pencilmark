@@ -69,6 +69,8 @@ export const zh = {
   "player.confirmAbandon": "这一轮将标记为已放弃：记录会保留，但不能再继续或提交。确定放弃吗？",
   "player.confirmAbandonYes": "放弃",
   "player.sessionTimer": "本轮用时 {time}",
+  "player.sessionTimerShort": "总 {time}",
+  "player.questionTimerShort": "本题 {time}",
   "player.questionTimer": "本题用时 {time}",
   "player.overrideTime": "修正本题用时",
   "player.multipleAnswerInstruction": "多选题：选出所有正确的选项",

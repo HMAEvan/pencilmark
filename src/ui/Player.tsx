@@ -7,7 +7,7 @@ import { t } from "../i18n/i18n";
 import { openRecorder, type Recorder } from "../recorder/recorder";
 import { abandonSession, currentAttempts, loadOverrides, loadQuestions, setOverride, submitSession, type Override } from "../session/sessions";
 import { DEFAULT_PREFERENCES, type Display, type Rules } from "../domain/settings";
-import { answeringTimesSoFar } from "../derivation/derivation";
+import { answeringTimesSoFar, finalAnsweringActiveMs } from "../derivation/derivation";
 import { AnsweringTime, TimeOverrideField } from "./AnsweringTime";
 import { AppealForm, ConfidenceButtons, FlagButtons, HintPanel, ItemFlagMarks, ItemFlagMenu, NoteField, useLongPress } from "./Marks";
 import { storage } from "./appStorage";
@@ -17,6 +17,9 @@ import { isGraded, questionTypeOf } from "../questionTypes/questionType";
 import { multipleAnswer } from "../questionTypes/multipleAnswer";
 import { useRecorder } from "./useRecorder";
 import { Dialog } from "./Dialog";
+
+/** The window shape that turns the top bar into the side column; keep in step with the media query in styles.css. */
+const SIDE_COLUMN_QUERY = "(min-width: 600px) and (min-aspect-ratio: 1001/1000)";
 
 type Loaded = { session: Session; set: QuestionSet; questions: Map<string, Question>; overrides: Map<string, Override>; recorder: Recorder };
 
@@ -87,11 +90,29 @@ function Timers({ recorder, rules, display, questionId, override, onOverride }: 
     const tick = setInterval(() => setTick((n) => n + 1), precision === "milliseconds" ? 100 : 1000);
     return () => clearInterval(tick);
   }, [precision]);
+  const derivedMs = answeringTimeSoFar(recorder, rules, questionId);
+  const finalMs = finalAnsweringActiveMs(derivedMs, override ?? {});
   return (
     <div class="timers">
-      {display.sessionTimer === "shown" && <span class="muted">{t("player.sessionTimer", { time: formatDuration(recorder.activeMs(), precision) })}</span>}
+      {display.sessionTimer === "shown" && (
+        <>
+          <span class="muted timer-full">{t("player.sessionTimer", { time: formatDuration(recorder.activeMs(), precision) })}</span>
+          <span class="muted timer-short" role="img" aria-label={t("player.sessionTimer", { time: formatDuration(recorder.activeMs(), precision) })}>
+            {t("player.sessionTimerShort", { time: formatDuration(recorder.activeMs(), precision) })}
+          </span>
+        </>
+      )}
       <span class="question-timer">
-        {display.questionTimer === "shown" && <AnsweringTime label="player.questionTimer" derivedMs={answeringTimeSoFar(recorder, rules, questionId)} override={override} precision={precision} />}
+        {display.questionTimer === "shown" && (
+          <>
+            <span class="timer-full">
+              <AnsweringTime label="player.questionTimer" derivedMs={derivedMs} override={override} precision={precision} />
+            </span>
+            <span class="timer-short" role="img" aria-label={t("player.questionTimer", { time: formatDuration(finalMs, precision) })}>
+              {t("player.questionTimerShort", { time: formatDuration(finalMs, precision) })}
+            </span>
+          </>
+        )}
         <button class="link edit-time" aria-expanded={correcting} aria-label={t("player.overrideTime")} title={t("player.overrideTime")} onClick={() => setCorrecting(!correcting)}>
           ✎
         </button>
@@ -121,6 +142,21 @@ export function Player({ sessionId }: { sessionId: string }) {
   const [drawerOpen, setDrawerOpen] = useState(false);
   /** The top bar's dropped-down navigation. Ignored in the side column, where the navigation is always shown. */
   const [navOpen, setNavOpen] = useState(false);
+  useEffect(() => {
+    if (!navOpen) return;
+    const close = () => setNavOpen(false);
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && close();
+    const onPointer = (e: PointerEvent) => !(e.target as Element).closest(".answer-panel") && close();
+    const layout = matchMedia(SIDE_COLUMN_QUERY);
+    document.addEventListener("keydown", onKey);
+    document.addEventListener("pointerdown", onPointer);
+    layout.addEventListener("change", close);
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.removeEventListener("pointerdown", onPointer);
+      layout.removeEventListener("change", close);
+    };
+  }, [navOpen]);
   const [confirming, setConfirming] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   /** The Leave dialog's step: choosing, or confirming the Abandon. */
@@ -236,10 +272,10 @@ export function Player({ sessionId }: { sessionId: string }) {
       {!recorder.integrity.ok && <p class="bad">{t("player.integrityFailed", { chunk: recorder.integrity.chunkId })}</p>}
       <div class="player">
         <aside class={`answer-panel${navOpen ? " nav-open" : ""}`}>
-          <button class="question-number" aria-expanded={navOpen} onClick={() => setNavOpen(!navOpen)}>
-            {t("player.questionNumber", { n: index + 1, total })}
-            <span class="drop-caret"> ▾</span>
+          <button class="question-number question-toggle" aria-expanded={navOpen} onClick={() => setNavOpen(!navOpen)}>
+            {t("player.questionNumber", { n: index + 1, total })} ▾
           </button>
+          <p class="question-number question-label">{t("player.questionNumber", { n: index + 1, total })}</p>
           <Timers recorder={recorder} rules={rules} display={displayOf(session)} questionId={questionId} override={overrides.get(questionId)} onOverride={(ms) => void overrideTime(ms)} />
           <div class="panel-nav">
             <nav class="question-nav" aria-label={t("player.navigation")}>

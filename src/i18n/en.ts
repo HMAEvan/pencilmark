@@ -71,6 +71,8 @@ export const en = {
   "player.confirmAbandon": "The Session will be marked as abandoned: its record is kept, but it can no longer be continued or submitted. Abandon it?",
   "player.confirmAbandonYes": "Abandon",
   "player.sessionTimer": "Session time {time}",
+  "player.sessionTimerShort": "Total {time}",
+  "player.questionTimerShort": "Q {time}",
   "player.questionTimer": "Question time {time}",
   "player.overrideTime": "Override this Question's time",
   "player.multipleAnswerInstruction": "Multiple answer: select every correct Option",
