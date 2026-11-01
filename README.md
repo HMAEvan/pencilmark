@@ -1,27 +1,71 @@
 # PencilMark
 
-A revision tool that records how each question was answered (hesitation, answer changes, eliminations, hints, confidence, marks), so that AI grading can focus its explanation on where the reasoning actually wavered, not just on what was wrong.
+Ordinary quiz tools keep one thing about each question: right or wrong. PencilMark keeps how each Question was answered: where you hesitated, which Options you eliminated, how often you changed your answer, which Hints you opened, how sure you were, what you wrote in a Note. It hands an AI that record, the Digest, so its Feedback can aim at where your reasoning wavered, not only at what was wrong.
 
-PencilMark runs entirely in the browser. It is served from GitHub Pages at <https://hmaevan.github.io/pencilmark/>, where it keeps its data on your device (IndexedDB), and can also run as a claude.ai Artifact, keeping its data in the Artifact's database so it follows you to any device (see [Artifact mode](#artifact-mode)). The footer says which one a copy is using.
+**Live demo: <https://hmaevan.github.io/pencilmark/>.** Everything runs in the browser, with no server and no account. The quickest look is the Showcases below: ready-made example Sessions you can open from Home (**See the example**) without importing anything.
 
-> Work in progress. The interface is in Chinese and English, following the browser language; switch it at the bottom of any screen.
+## Showcases
+
+A Showcase is a Question pack, a scripted Session sat on it, the Digest that Session produces, and an AI's Feedback on that Digest. Opening one replays the script in memory and shows its Showcase page; nothing is saved. The Showcase page leads with a card of the Feedback, and **Sit these Questions yourself** opens the usual import preview of the Showcase's Question pack.
+
+| Showcase | Language | Live page | Question pack | Fact-check report | Feedback conversation | Grading Skill | Date | App version |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| General science | English | [open](https://hmaevan.github.io/pencilmark/#/showcase/general-science) | [`samples/general-science.json`](samples/general-science.json) | [`fact-check.md`](showcases/general-science/fact-check.md) | [Claude Opus 5.5 in claude.ai](https://claude.ai/share/d6569f86-0775-4180-8cd5-bcf644eca653) | 1.5.0 | 2026-11-02 | 0.1.0 |
+
+## What it looks like
+
+A Showcase page: the AI's Feedback first, and beside the question list the downloads for the Digest and the grading Skill.
+
+![A Showcase page with the AI Feedback card, the question list and the Download Digest button](docs/screenshots/feedback.png)
+
+A Question on the Review page with its Answering timeline: each selection, Confidence and Visit at the time it happened.
+
+![A Review page card for Question 1 with its Answering timeline](docs/screenshots/review-timeline.png)
+
+The Answering page mid-Question: a Hint open, a Confidence set, and the Flags offered while answering.
+
+![The Answering page with a Hint open, a Confidence set and Flags marked](docs/screenshots/answering.png)
 
 ## How it works
 
-1. Press **Download question-writing Skill** and attach the file to any AI chat with your study material (or paste its text with **Copy question-writing Skill as text**). To let the AI reuse your existing Tracks and Topics, also paste the result of **Copy my Tracks and Topics**. Then paste the AI's reply (a **Question pack**, JSON) into the import box.
-2. The pack becomes a **Set** on the home screen. Start it to sit a **Session**.
-3. Submit, review your answers, and press **Download grading Skill** and **Download Digest** and attach the files to an AI chat. In a chat that already has the Skill, send only the Digest. Beside each download is a link to copy the same text instead (**Copy grading Skill as text**, **Copy Digest as text**); where the AI can create files, it returns the pack as a `.json` file that you import with **Choose file**.
+1. Press **Download question-writing Skill** and attach the file to any AI chat with your study material (or paste its text with **Copy question-writing Skill as text**). To let the AI reuse your existing Tracks and Topics, also paste the result of **Copy my Tracks and Topics**. Then paste the AI's reply (a **Question pack**, JSON) into the import box and press **Check and preview**.
+2. Confirm the preview and the pack becomes a **Set** on Home. Press **Start** to sit a **Session**.
+3. Submit, review your answers, and press **Download grading Skill** and **Download Digest** and attach the files to an AI chat. In a chat that already has the Skill, send only the Digest. Beside each download is a link to copy the same text instead (**Copy grading Skill as text**, **Copy Digest as text**). Where the AI can create files, it returns a Question pack as a `.json` file that you import with **Choose file**.
 
-To try it without any material, press **Import sample Set** on an empty home screen.
+To try it without any material, press **Import the sample Set** on an empty Home.
 
-The two Skills are self-contained that work in any AI chat, and in Claude as skills:
+The two Skills are self-contained, work in any AI chat, and work in Claude as skills:
 
 - [`skills/pencilmark-question-writing/SKILL.md`](skills/pencilmark-question-writing/SKILL.md): the Question pack format, with a complete example.
 - [`skills/pencilmark-grading/SKILL.md`](skills/pencilmark-grading/SKILL.md): how to read a Digest and teach from it.
 
-Each Skill is a folder holding a `SKILL.md`, the standard Agent Skills layout. To install one in Claude, add its folder (such as `skills/pencilmark-grading/`) as a skill. Each Skill carries a `metadata.version` in its frontmatter; the version goes up whenever the Skill's text changes in a way a reader would notice.
+Each Skill is a folder holding a `SKILL.md`, the standard Agent Skills layout. To install one in Claude, add its folder (such as `skills/pencilmark-grading/`) as a skill. Each carries a `metadata.version` in its frontmatter, raised whenever its text changes in a way a reader would notice.
 
-Sample Question packs are in [`samples/`](samples/); [`general-science.json`](samples/general-science.json) was written by Claude Opus 5.5 with the question-writing Skill in [a shared claude.ai chat](https://claude.ai/share/d6569f86-0775-4180-8cd5-bcf644eca653). The file formats and the database are documented in [`schema/`](schema/README.md). Domain terms are defined in [`GLOSSARY.md`](GLOSSARY.md); design decisions are in [`docs/adr/`](docs/adr/).
+Sample Question packs are in [`samples/`](samples/); the file formats and the database are documented in [`schema/`](schema/README.md).
+
+> Work in progress. The interface is in Chinese and English, following the browser language; switch it at the bottom of any screen.
+
+## Architecture
+
+```
+Raw log ──Derivation──▶ Attempts, Answering timelines ──▶ Digest ──▶ AI's Feedback
+append-only,            kept per Derivation,              for the AI
+hash-chained            re-derivable
+```
+
+- **Raw log.** Everything the user does in a Session is recorded as time-ordered events and never edited ([ADR-0001](docs/adr/0001-raw-log-append-only.md)). Typing in a Note is recorded change by change ([ADR-0010](docs/adr/0010-typing-recorded-change-by-change.md)).
+- **Derivation.** Attempts, answering times, Answering timelines and the Digest are computed from the Raw log, so a rule can change and be re-derived without touching what happened ([ADR-0002](docs/adr/0002-derived-data-kept-per-derivation.md)). User corrections are Overrides, kept beside the derived value.
+- **Hash chain.** Each sealed Raw log chunk carries a hash of itself and of the chunk before it. Sealed chunks are never written again, and a broken chain is reported when the Session is opened. Hashing is used nowhere else.
+- **Storage adapters.** One storage interface with adapters for IndexedDB (Local mode), the Artifact database (Artifact mode) and memory (tests and Showcases), in [`src/storage/`](src/storage/). There is no server of our own ([ADR-0006](docs/adr/0006-no-self-hosted-server.md)).
+- **Tests at three seams**, written test-first: Derivation, the Importer and the Recorder. The interface has no automated tests; each change to it ends with manual acceptance steps run in the app.
+
+Domain terms are defined in [`GLOSSARY.md`](GLOSSARY.md); every design decision is in [`docs/adr/`](docs/adr/).
+
+## How this was built
+
+Built with AI coding agents (Claude Code) under my direction. I set the goals and the working rules (a written spec, a domain glossary, decision records, test-first development at agreed seams, one issue per change with review) and chose between the alternatives the agents proposed. The agents drafted the documents and wrote the code.
+
+The working rules are in [`CLAUDE.md`](CLAUDE.md); changes are listed in [`CHANGELOG.md`](CHANGELOG.md).
 
 ## Security design
 
