@@ -89,7 +89,7 @@ Answers can be changed freely until the whole Session is submitted; answers are 
 _Avoid_: Test mode
 
 **Practice mode** (练习模式):
-Each Question's answer is revealed as soon as that Question is answered.
+Each Question's answer is revealed as soon as the user confirms their answer to that Question; from then on, actions on that Question have the Phase reviewing, on the Answering page too. Not built yet.
 _Avoid_: Study mode
 
 **Attempt** (作答):
@@ -113,7 +113,7 @@ A Question-level mark the learner sets about themselves: what to come back to, o
 _Avoid_: Tag, label, bookmark, bad-question Flag (that is a Challenge)
 
 **Challenge** (报错):
-The learner's claim that a Question itself is faulty, made while answering or reviewing. It is on or off; while on, it carries the Challenge reasons picked and the Challenge statement. Opening the Challenge area turns it on, and so do picking a Challenge reason or writing a Challenge statement. Withdrawing it (撤回报错) clears its Challenge reasons and deletes its Challenge statement, which can be restored; until a new Challenge is raised in the same Phase, reinstating it (恢复报错) brings back the Challenge, its reasons and its statement as they were before withdrawing. Not "undo": Reinstate restores the whole Challenge, Restore only one deleted Text entry. Opening the area after withdrawing changes nothing. The grading Skill checks a Challenged Question first. In code until #64 renames them: the `bad_question` Flag type with `flag`/`unflag` events for on and off, `appeal` events (Raw logs before ADR-0010), `Appeal`, `AppealForm`; stored events keep their names and are always read.
+The learner's claim that a Question itself is faulty, made while answering or reviewing. It is on or off; while on, it carries the Challenge reasons picked and the Challenge statement. Opening the Challenge area turns it on, and so do picking a Challenge reason or writing a Challenge statement. Withdrawing it (撤回报错) clears its Challenge reasons and deletes its Challenge statement, which can be restored; until a new Challenge is raised, reinstating it (恢复报错) brings back the Challenge, its reasons and its statement as they were before withdrawing, in any Phase: a Challenge withdrawn while answering can be reinstated on the Review page. Not "undo": Reinstate restores the whole Challenge, Restore only one deleted Text entry. Only the first opening on a Question turns it on, whatever the Phase; opening the area after withdrawing changes nothing. The grading Skill checks a Challenged Question first. In code until #64 renames them: the `bad_question` Flag type with `flag`/`unflag` events for on and off, `appeal` events (Raw logs before ADR-0010), `Appeal`, `AppealForm`; stored events keep their names and are always read.
 _Avoid_: Appeal, 申诉 (the old name: an appeal asks to reverse a judgement, which fits only a wrong answer and not answering before the reveal), bad-question Flag, report, complaint, dispute
 
 **Challenge reason** (报错原因):
@@ -213,7 +213,7 @@ _Status_: provisional, not yet agreed
 Working name introduced while building issue #7, not yet agreed with /domain-modeling.
 
 **Mark** (标记类记录):
-Anything the user records about an Attempt beyond the answer itself: Confidence, Flags, Item flags and the Note. Used in code for the group (`QuestionMarks`, `walkMarks`, `recordReviewMark`).
+Anything the user records about an Attempt beyond the answer itself: Confidence, Flags, Item flags, Notes and the Challenge. Used in code for the group (`QuestionMarks`, `walkMarks`, `recordReviewMark`).
 _Status_: provisional, not yet agreed
 
 Working names introduced while building issue #9, not yet agreed with /domain-modeling.
@@ -267,7 +267,7 @@ The page PencilMark opens on: the introduction, the Sets and importing. In code:
 _Status_: provisional, not yet agreed
 
 **Answering page** (答题页):
-The page where a Session is answered, one Question at a time; its actions have the Phase answering. In code: `Player`.
+The page where a Session is answered, one Question at a time; its actions have the Phase answering until that Question's answer is revealed (in Practice mode, before submitting). In code: `Player`.
 _Avoid_: Player, quiz page
 _Status_: provisional, not yet agreed
 
@@ -285,5 +285,5 @@ Everything done on one Question during the reviewing Phase, in time order (Hints
 _Status_: provisional, not yet agreed
 
 **Custom flag** (自定义标记):
-A Flag or Challenge reason the user adds themselves, kept with their data and offered again in later Sessions. Not built yet.
+A Flag the user adds themselves, kept with their data and offered again in later Sessions. A Challenge reason added by the user is a custom Challenge reason, not a Custom flag, since a Challenge is not a Flag. Not built yet.
 _Status_: provisional, not yet agreed
