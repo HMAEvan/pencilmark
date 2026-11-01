@@ -282,15 +282,9 @@ export function ReviewPage({ shown, recording, banner, actions, feedbackLink, ch
         {t("review.backHome")}
       </button>
       {feedbackLink && (
-        <a
-          href={`#${FEEDBACK_ID}`}
-          onClick={(e) => {
-            e.preventDefault();
-            jumpTo(document.getElementById(FEEDBACK_ID));
-          }}
-        >
+        <button type="button" onClick={() => jumpTo(document.getElementById(FEEDBACK_ID))}>
           {t("review.jumpToFeedback")}
-        </a>
+        </button>
       )}
     </div>
   );

@@ -191,6 +191,53 @@ function Preview({
   );
 }
 
+/**
+ * A button that opens the usual import preview for one Question pack, outside the Home page's form.
+ * Nothing is imported until the preview is confirmed; then `onImported` runs.
+ */
+export function PackImportButton({ pack, label, onImported }: { pack: string; label: TranslationKey; onImported: () => void }) {
+  const [errors, setErrors] = useState<PackError[]>([]);
+  const [preview, setPreview] = useState<ImportPreview>();
+  const [choices, setChoices] = useState<Record<string, SimilarChoice>>({});
+  // A ref, not state: two clicks can land before a re-render and would import twice.
+  const committing = useRef(false);
+  const open = async () => {
+    const parsed = parseQuestionPack(pack);
+    if (!parsed.ok) return setErrors(parsed.errors);
+    setErrors([]);
+    setChoices({});
+    setPreview(await previewImport(parsed.pack, storage));
+  };
+  const confirm = async () => {
+    if (!preview || committing.current) return;
+    committing.current = true;
+    try {
+      await commitImport(preview, storage, { confirmedTopicPaths: preview.newTopicPaths, similarChoices: choices });
+      setPreview(undefined);
+      onImported();
+    } finally {
+      committing.current = false;
+    }
+  };
+  return (
+    <>
+      <button type="button" onClick={() => void open()}>
+        {t(label)}
+      </button>
+      {errors.length > 0 && <Errors errors={errors} />}
+      {preview && (
+        <Preview
+          preview={preview}
+          choices={choices}
+          onChoose={(question, choice) => setChoices((current) => ({ ...current, [question]: choice }))}
+          onConfirm={confirm}
+          onCancel={() => setPreview(undefined)}
+        />
+      )}
+    </>
+  );
+}
+
 /** `offerSample`: while there are no Sets, the sample pack can be loaded into the usual preview. Nothing is imported without it. */
 export function ImportForm({ onImported, offerSample }: { onImported: () => void; offerSample: boolean }) {
   const [text, setText] = useState("");
