@@ -49,6 +49,6 @@ Conventions for every document:
 Written by the tool on start, for an AI reading the database:
 
 - `schemaVersion`: the version of the document shapes above.
-- `flagTypes`: the Flag type table. Each entry has `id`, `name`, `colour` and `level` (`"question"` for Flags, `"item"` for Item flags). A retired type gets `deprecated: true` and is never removed.
+- `flagTypes`: the Flag type table. Each entry has `id`, `name`, `colour` and `level` (`"question"` for Flags, `"item"` for Item flags). A retired type gets `deprecated: true` and is never removed. The Flag types are `memory`, `not_understood`, `no_approach`, `focus`, `concept`, `careless` and `bad_question`; `name` is the English name the Digest writes (for example "Couldn't recall"). While answering the tool offers `memory`, `not_understood`, `no_approach` and `focus`; `concept` and `careless` are offered only while reviewing, but a Raw log may hold them set while answering.
 - `timingDefaults`: `idleThresholdMs` (no interaction for longer than this is excluded from answering time), `writingPauseMs` (a longer gap between two changes to a Note or Challenge statement ends a Writing span) and `flickThresholdMs` (a Visit shorter than this is not counted).
 - `conventions`: the rules above, in sentences for an AI reader.

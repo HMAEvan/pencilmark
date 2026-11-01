@@ -10,7 +10,7 @@ import { DEFAULT_PREFERENCES, type Display, type Rules } from "../domain/setting
 import { walkMarks, type TextEntryMark } from "../derivation/marks";
 import { answeringTimesSoFar, finalAnsweringActiveMs } from "../derivation/derivation";
 import { AnsweringTime, TimeOverrideField } from "./AnsweringTime";
-import { AppealForm, ConfidenceButtons, FlagButtons, HintPanel, ItemFlagMarks, ItemFlagMenu, NoteField, useLongPress } from "./Marks";
+import { AppealForm, ConfidenceButtons, HintPanel, ItemFlagMarks, ItemFlagMenu, MarksArea, NoteField, useLongPress } from "./Marks";
 import { storage } from "./appStorage";
 import { navigate } from "./App";
 import { displayOf, formatDuration } from "./format";
@@ -139,7 +139,6 @@ export function Player({ sessionId }: { sessionId: string }) {
   const [index, setIndex] = useState(0);
   /** The Option whose Item flag menu is open. */
   const [menuFor, setMenuFor] = useState<string | undefined>();
-  const [drawerOpen, setDrawerOpen] = useState(false);
   const [navOpen, setNavOpen] = useNavDropdown();
   const [confirming, setConfirming] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -342,20 +341,10 @@ export function Player({ sessionId }: { sessionId: string }) {
           {t("player.next")}
         </button>
       </div>
-      <div class={`drawer${drawerOpen ? " open" : ""}`}>
-        <button class="secondary small" aria-expanded={drawerOpen} onClick={() => setDrawerOpen(!drawerOpen)}>
-          {t(drawerOpen ? "player.marksClose" : "player.marksOpen")}
-          {(flags[questionId] ?? []).some((f) => f !== "bad_question") && ` ${t("player.flaggedMark")}`}
-          {(flags[questionId] ?? []).includes("bad_question") && ` ${t("player.challengedMark")}`}
-        </button>
-        {drawerOpen && (
-          <div class="drawer-body">
-            <FlagButtons flags={flags[questionId] ?? []} onToggle={toggleFlag} />
-            <AppealForm key={`appeal-${questionId}`} entries={statements[questionId] ?? []} questionId={questionId} onRecord={recordText} />
-            <NoteField key={questionId} entries={notes[questionId] ?? []} questionId={questionId} onRecord={recordText} />
-          </div>
-        )}
-      </div>
+      <MarksArea key={`marks-${questionId}`} phase="answering" flags={flags[questionId] ?? []} onToggle={toggleFlag}>
+        <AppealForm key={`appeal-${questionId}`} entries={statements[questionId] ?? []} questionId={questionId} onRecord={recordText} />
+        <NoteField key={questionId} entries={notes[questionId] ?? []} questionId={questionId} onRecord={recordText} />
+      </MarksArea>
         </div>
       </div>
       {confirming && (

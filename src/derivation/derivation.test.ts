@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { answeringTimesSoFar, derive, digestWithOverrides, finalValues, type DerivationInput } from "./derivation";
-import type { Confidence, Flag, ItemFlag, Question } from "../domain/types";
+import { flagsOfferedIn, type Confidence, type Flag, type ItemFlag, type Question } from "../domain/types";
+import { schemaDocument } from "../domain/schemaDocument";
 import type { RawEvent, RawEventBody, RawLogChunk } from "../recorder/recorder";
 import { DEFAULT_PREFERENCES } from "../domain/settings";
 
@@ -402,7 +403,7 @@ describe("derive: provenance", () => {
         { rules: strict },
       ),
     );
-    expect(result.algorithmVersion).toBe(10);
+    expect(result.algorithmVersion).toBe(11);
     expect(result.parameters).toEqual({ idleThresholdMs: 30_000, writingPauseMs: 20_000, flickThresholdMs: 1_000, shuffleQuestions: true, shuffleOptions: true, collectConfidence: true });
     expect(result.chunks).toEqual([
       { id: `${SESSION}_0`, hash: "hash0" },
@@ -677,6 +678,51 @@ describe("derive: Flags", () => {
     expect(attemptOf(result, question).flags).toEqual([{ flag: "concept", phase: "answering", at: 2_000 }]);
     expect(attemptOf(result, second).flags).toEqual([{ flag: "bad_question", phase: "reviewing", at: 3_605_000 }]);
   });
+
+  it("derives the Flags offered while answering and writes their plain names in the Digest", () => {
+    const result = derive(
+      sitting([
+        {
+          activeMs: 10_000,
+          events: [[0, open(question)], [1_000, flag(question, "not_understood")], [2_000, flag(question, "no_approach")], [3_000, flag(question, "memory")], [4_000, flag(question, "focus")], [10_000, submit]],
+        },
+        { activeMs: 3_000, events: [[1_000, flag(question, "careless")]] },
+      ]),
+    );
+    expect(attemptOf(result, question).flags.map((f) => [f.flag, f.phase])).toEqual([
+      ["not_understood", "answering"],
+      ["no_approach", "answering"],
+      ["memory", "answering"],
+      ["focus", "answering"],
+      ["careless", "reviewing"],
+    ]);
+    expect(result.digest).toContain(
+      "- Flags: Didn't understand the question (answering), Didn't know where to start (answering), Couldn't recall (answering), Review this again (answering), Careless slip (reviewing)\n",
+    );
+  });
+
+  it("still derives and writes concept and careless set while answering, as stored Raw logs hold them", () => {
+    const result = derive(sitting([{ activeMs: 10_000, events: [[0, open(question)], [1_000, flag(question, "concept")], [2_000, flag(question, "careless")], [10_000, submit]] }]));
+    expect(attemptOf(result, question).flags.map((f) => [f.flag, f.phase])).toEqual([
+      ["concept", "answering"],
+      ["careless", "answering"],
+    ]);
+    expect(result.digest).toContain("- Flags: Mixed up concepts (answering), Careless slip (answering)\n");
+  });
+});
+
+describe("Flags offered by Phase", () => {
+  it("offers four Flags while answering and six while reviewing", () => {
+    expect(flagsOfferedIn("answering")).toEqual(["memory", "not_understood", "no_approach", "focus"]);
+    expect(flagsOfferedIn("reviewing")).toEqual(["memory", "not_understood", "no_approach", "focus", "concept", "careless"]);
+    expect(flagsOfferedIn("revisit")).toEqual(flagsOfferedIn("reviewing"));
+  });
+
+  it("lists the two new Flag types in the Schema document", () => {
+    const ids = schemaDocument(0).flagTypes.map((f) => f.id);
+    expect(ids).toContain("not_understood");
+    expect(ids).toContain("no_approach");
+  });
 });
 
 describe("derive: Note", () => {
@@ -718,14 +764,14 @@ describe("derive: Digest marks", () => {
   it("shows Confidence and Flags with their Phase for every Question, and each Phase's Note where there is one", () => {
     const { digest } = derive(marked(true));
     expect(digest).toContain(
-      ["- Answer changes: none", "- Item flags: none", "- Confidence: probably", "- Flags: concept confusion (answering), bad question (reviewing)", "- Note (answering) 1: \"Mixed up ATP and GTP\"", "- Note (reviewing) 1: \"It was the cristae\"", ""].join("\n"),
+      ["- Answer changes: none", "- Item flags: none", "- Confidence: probably", "- Flags: Mixed up concepts (answering), bad question (reviewing)", "- Note (answering) 1: \"Mixed up ATP and GTP\"", "- Note (reviewing) 1: \"It was the cristae\"", ""].join("\n"),
     );
     expect(digest).toContain(["- Answer changes: none", "- Item flags: none", "- Confidence: none", "- Flags: none", ""].join("\n"));
   });
 
   it("says Confidence was not collected when collection was off", () => {
     const { digest } = derive(marked(false));
-    expect(digest).toContain("- Confidence: not collected\n- Flags: concept confusion (answering), bad question (reviewing)\n");
+    expect(digest).toContain("- Confidence: not collected\n- Flags: Mixed up concepts (answering), bad question (reviewing)\n");
   });
 });
 
@@ -750,14 +796,14 @@ describe("derive: removed Flags", () => {
     const result = derive(sat());
     expect(attemptOf(result, question).flags.map((f) => f.flag)).toEqual(["careless"]);
     expect(attemptOf(result, second).flags).toEqual([]);
-    expect(result.digest).toContain("- Flags: careless (answering); removed: concept confusion (answering)\n");
-    expect(result.digest).toContain("- Flags: none; removed: memory (reviewing)\n");
+    expect(result.digest).toContain("- Flags: Careless slip (answering); removed: Mixed up concepts (answering)\n");
+    expect(result.digest).toContain("- Flags: none; removed: Couldn't recall (reviewing)\n");
   });
 
   it("keeps removed Flags in the Digest written with Overrides", () => {
     const result = derive(sat());
     const digest = digestWithOverrides(sat(), result, new Map([[question.id, { correct: true }]]));
-    expect(digest).toContain("- Flags: careless (answering); removed: concept confusion (answering)\n");
+    expect(digest).toContain("- Flags: Careless slip (answering); removed: Mixed up concepts (answering)\n");
   });
 });
 
@@ -1030,7 +1076,7 @@ describe("derive: Answering timeline", () => {
         "  - 10.000 s: Visit 2 opened",
         "  - 15.000 s: selected B; answer now B",
         "  - 17.000 s: Confidence: probably",
-        "  - 20.000 s: Flag added: careless",
+        "  - 20.000 s: Flag added: Careless slip",
         "  - 25.000 s: Visit 2 left",
         "",
       ].join("\n"),

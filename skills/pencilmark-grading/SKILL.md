@@ -2,7 +2,7 @@
 name: pencilmark-grading
 description: Grades a PencilMark Digest and teaches from it. Use when given a PencilMark Digest, a report starting "# Digest:", to grade or explain.
 metadata:
-  version: "1.4.0"
+  version: "1.5.0"
 ---
 
 # Grading from a PencilMark Digest
@@ -34,7 +34,16 @@ Each Question is a `## Question n` section: the stem, the Options under their di
 - **Item flags**: the learner's pencil marks on single Options, by letter, each with its Phase: `eliminated`, `eliminated but unsure`, `sure right`, `unknown term`. An Option eliminated but correct, or marked sure right but wrong, pinpoints the misconception; `unknown term` means a word in that Option was not understood, so teach the term.
 - **Hints used while answering** (in bold when any were used): how many of the Question's Hints the learner opened before the answer was revealed, lightest first, each with the time spent on the Question when it was opened and what it said. A correct answer reached with Hints is not yet known unaided. Absent when the Question has no Hints. **Hints opened while reviewing** were read after the reveal, like an explanation, and are not help.
 - **Confidence**: `sure`, `probably` or `guessed`; `none` if left empty, `not collected` if the tool did not ask.
-- **Flags**: the learner's own marks, each with the Phase it was set in (`answering` before the reveal, `reviewing` after it): concept confusion, careless, focus, memory, bad question. "Removed" Flags were set and then taken back, which is itself hesitation.
+- **Flags**: the learner's own marks, each with the Phase it was set in (`answering` before the reveal, `reviewing` after it). The names and what each means:
+  - `Couldn't recall`: the learner knew what it asks but could not remember the answer.
+  - `Didn't understand the question`: the wording itself was unclear to them (an unknown word in an Option is the `unknown term` Item flag instead).
+  - `Didn't know where to start`: they understood the question but had no way in.
+  - `Review this again`: they want more teaching on this one.
+  - `Mixed up concepts`: they confused it with another concept.
+  - `Careless slip`: they knew it, but misread, miscalculated or misclicked.
+  - `bad question`: they say the Question itself is faulty (see Challenge statement).
+
+  While answering the tool offers only the first four; `Mixed up concepts` and `Careless slip` are offered only while reviewing, once the learner has seen the answer. So a missing `Mixed up concepts` or `Careless slip` in the `answering` Phase means nothing. Older Digests may show either set while answering. "Removed" Flags were set and then taken back, which is itself hesitation.
 - **Challenge statement** (`Challenge statement (answering) 1: …`): what the learner wrote about what is wrong with the Question, in their own words. A Phase can have several entries, numbered 1, 2, … in the order they were started, and there is no submit step. The first one holding text comes with a `bad question` Flag.
 - **Note**: the learner's own words, per Phase and entry (`Note (answering) 1: …`, `Note (answering) 2: …`). Read them closely: they often say exactly what was confusing. `written and later deleted` in place of the text means the learner wrote that entry and then deleted it; its words are not in the Digest, so do not guess them, and do not read the deletion as doubt about the answer.
 
@@ -77,7 +86,7 @@ What counts as hesitation depends on the type. A multiple-answer Question is mar
 - An answer change that counts as hesitation for its type (see "Reading each Question type"), above all a change away from the correct answer (the first instinct was right) or several such changes on one Question.
 - A first choice that took much longer than on the other Questions, or a long answering time overall.
 - Confidence `guessed` on a correct answer: right, but not known.
-- A Flag removed, or a `concept confusion` Flag.
+- A Flag removed, or a `Mixed up concepts` Flag.
 - Hints used while answering, or an Option marked `eliminated but unsure` or `unknown term`.
 - The correct Option eliminated, or a wrong Option marked `sure right` (if the result is wrong and Confidence is high, this belongs in tier 1).
 
@@ -88,7 +97,7 @@ Explain the idea that would have made the choice obvious, and for a change away 
 ## Tone
 
 1. **Hypotheses, not verdicts.** A Misconception, or a cause you infer, is a possible reason to check against how the learner answered (the Answering timeline and marks in the Digest). Say "this may come from X, so here is X again", never "you got this wrong because X".
-2. **The learner's own account comes first.** When a Note or a `careless` Flag says it was a misclick or a slip, accept it. At most add a short recap; do not re-teach as if the learner did not know.
+2. **The learner's own account comes first.** When a Note or a `Careless slip` Flag says it was a misclick or a slip, accept it. At most add a short recap; do not re-teach as if the learner did not know.
 3. **Judge a Challenge on its merits.** Do not concede because the learner objects, nor defend the Question because you, or another AI, wrote it. Give the reason either way.
 4. **No lecturing, no blame, no empty praise.** Write like a specific, even-handed tutor: no "you should" or "you need to be careful", no "great job".
 5. **Guessed but right**: say it is not yet secure, without making a lucky guess sound shameful.

@@ -21,7 +21,7 @@ A runner completes one full lap of a 400 m track in 80 seconds, finishing where 
 - Item flags: none
 - Hints used while answering: none of 2
 - Confidence: sure
-- Flags: concept confusion (reviewing)
+- Flags: Mixed up concepts (reviewing)
 - Note (reviewing) 1: "I divided distance by time. A full lap ends where it started, so displacement and average velocity are zero."
 - Answering timeline (time spent on this Question so far):
   - 0.000 s: Visit 1 opened
@@ -100,12 +100,12 @@ Liquid water is at its densest at 0 °C, just before it freezes.
 - Item flags: none
 - Hints used while answering: none of 1
 - Confidence: guessed
-- Flags: memory (answering)
+- Flags: Couldn't recall (answering)
 - Answering timeline (time spent on this Question so far):
   - 0.000 s: Visit 1 opened
   - 7.766 s: selected B; answer now B
   - 10.215 s: Confidence: guessed
-  - 12.542 s: Flag added: memory
+  - 12.542 s: Flag added: Couldn't recall
   - 14.520 s: Visit 1 left
 
 ## Question 5
@@ -279,7 +279,7 @@ Two objects moving at the same speed must have the same velocity.
 - Item flags: none
 - Hints used while answering: none of 1
 - Confidence: none
-- Flags: careless (reviewing)
+- Flags: Careless slip (reviewing)
 - Note (reviewing) 1: "I meant to pick False. I clicked True by mistake."
 - Answering timeline (time spent on this Question so far):
   - 0.000 s: Visit 1 opened

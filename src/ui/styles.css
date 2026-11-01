@@ -102,8 +102,15 @@ button.small { padding: 4px 10px; font-size: 0.9rem; }
 .mark-challenge { color: var(--challenge-mark); }
 .nav-item.current { box-shadow: 0 0 0 2px var(--accent); }
 .confidence, .flags { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 12px; }
-.drawer { border-top: 1px solid var(--border); padding: 8px 0; margin-top: 12px; }
-.drawer-body { margin-top: 4px; }
+.marks-area { border: 1px solid var(--flag-mark); border-left-width: 4px; border-radius: 6px; margin-top: 12px; background: color-mix(in srgb, var(--flag-mark) 8%, var(--card)); }
+.marks-area-header { display: flex; justify-content: space-between; align-items: center; gap: 8px; width: 100%; padding: 8px 10px; background: none; border: 0; color: var(--fg); font: inherit; text-align: left; cursor: pointer; }
+.marks-area-body { padding: 0 10px 10px; }
+.marks-area-body .flags:first-child { margin-top: 0; }
+.challenge-flag { border-top: 1px dashed var(--border); padding-top: 8px; }
+.flag-read { border: 1px solid var(--flag-mark); border-radius: 12px; padding: 1px 10px; font-size: 0.85rem; }
+.flag-meanings { margin-top: 10px; font-size: 0.9rem; }
+.flag-meanings summary { cursor: pointer; color: var(--flag-mark); }
+.flag-meanings ul { margin: 6px 0; padding-left: 20px; }
 .note { display: block; margin-top: 12px; color: var(--muted); font-size: 0.9rem; }
 .note textarea { margin-top: 4px; font: inherit; color: var(--fg); }
 .timeline h4 { margin: 12px 0 0; font-size: 0.95rem; }

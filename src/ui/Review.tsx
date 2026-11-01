@@ -7,7 +7,7 @@ import { t, type TranslationKey } from "../i18n/i18n";
 import { useNavDropdown } from "./useNavDropdown";
 import { openRecorder, type RawEventBody, type Recorder } from "../recorder/recorder";
 import { loadDerivedSession, recordReviewMark, setOverride, type Attempt, type Derivation, type Override } from "../session/sessions";
-import { AppealForm, FlagButtons, HintPanel, ItemFlagMarks, NoteField } from "./Marks";
+import { AppealForm, HintPanel, ItemFlagMarks, MarksArea, NoteField } from "./Marks";
 import { TextEntriesRead } from "./TextEntries";
 import { digestWithOverrides, finalValues, type FinalValues, type OverrideValues } from "../derivation/derivation";
 import { buildAnswerPack } from "../exports/answerPack";
@@ -363,7 +363,7 @@ export function ReviewPage({ shown, recording, banner, actions, feedbackLink, ch
         const final = finalValues(attempt, override);
         const graded = isGraded(question);
         return (
-          <section class="card" key={attempt.id} data-question-id={attempt.questionId}>
+          <section class="card" key={attempt.questionId} data-question-id={attempt.questionId}>
             <ResultLine
               attempt={attempt}
               final={final}
@@ -424,35 +424,33 @@ export function ReviewPage({ shown, recording, banner, actions, feedbackLink, ch
             {derivation.parameters.collectConfidence && (
               <p class="muted">{t("review.confidence", { confidence: attempt.confidence ? t(`confidence.${attempt.confidence}`) : t("review.confidenceNone") })}</p>
             )}
-            {recording ? (
-              <FlagButtons
-                flags={attempt.flags.map((f) => f.flag)}
-                disabled={marking}
-                onToggle={(flag: Flag, on) => recording.mark({ type: on ? "flag" : "unflag", questionId: attempt.questionId, flag })}
-              />
-            ) : (
-              attempt.flags.length > 0 && <p class="muted">{t("review.flagsRead", { flags: attempt.flags.map((f) => t(`flag.${f.flag}`)).join(t("review.answerSeparator")) })}</p>
-            )}
-            <TextEntriesRead entries={attempt.challengeStatements.answering} label="review.answeringStatement" />
-            {/* Written after the reveal, so it is the reviewing Challenge statement. */}
-            {recording ? (
-              <AppealForm entries={attempt.challengeStatements.reviewing ?? []} questionId={attempt.questionId} disabled={marking} onRecord={recording.recordText} />
-            ) : (
-              <TextEntriesRead entries={attempt.challengeStatements.reviewing} label="review.reviewingStatementRead" />
-            )}
-            <TextEntriesRead entries={attempt.notes.answering} label="review.answeringNote" />
-            {/* Recorded after the reveal, so it is the reviewing Note; the answering Note is never changed here. */}
-            {recording ? (
-              <NoteField
-                label="review.reviewingNote"
-                entries={attempt.notes.reviewing ?? []}
-                questionId={attempt.questionId}
-                disabled={marking}
-                onRecord={recording.recordText}
-              />
-            ) : (
-              <TextEntriesRead entries={attempt.notes.reviewing} label="review.reviewingNoteRead" />
-            )}
+            <MarksArea
+              phase="reviewing"
+              flags={attempt.flags.map((f) => f.flag)}
+              disabled={marking}
+              onToggle={recording && ((flag: Flag, on) => recording.mark({ type: on ? "flag" : "unflag", questionId: attempt.questionId, flag }))}
+            >
+              <TextEntriesRead entries={attempt.challengeStatements.answering} label="review.answeringStatement" />
+              {/* Written after the reveal, so it is the reviewing Challenge statement. */}
+              {recording ? (
+                <AppealForm entries={attempt.challengeStatements.reviewing ?? []} questionId={attempt.questionId} disabled={marking} onRecord={recording.recordText} />
+              ) : (
+                <TextEntriesRead entries={attempt.challengeStatements.reviewing} label="review.reviewingStatementRead" />
+              )}
+              <TextEntriesRead entries={attempt.notes.answering} label="review.answeringNote" />
+              {/* Recorded after the reveal, so it is the reviewing Note; the answering Note is never changed here. */}
+              {recording ? (
+                <NoteField
+                  label="review.reviewingNote"
+                  entries={attempt.notes.reviewing ?? []}
+                  questionId={attempt.questionId}
+                  disabled={marking}
+                  onRecord={recording.recordText}
+                />
+              ) : (
+                <TextEntriesRead entries={attempt.notes.reviewing} label="review.reviewingNoteRead" />
+              )}
+            </MarksArea>
           </section>
         );
       })}

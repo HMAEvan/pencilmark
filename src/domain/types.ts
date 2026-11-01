@@ -107,10 +107,18 @@ export const PHASES: Phase[] = ["answering", "reviewing", "revisit"];
 
 export type Confidence = "sure" | "probably" | "guessed";
 
-/** Concept confusion, careless, focus, memory, bad question. */
-export type Flag = "concept" | "careless" | "focus" | "memory" | "bad_question";
+/** Couldn't recall, didn't understand the question, didn't know where to start, review this again, mixed up concepts, careless slip, bad question. */
+export type Flag = "memory" | "not_understood" | "no_approach" | "focus" | "concept" | "careless" | "bad_question";
 
-export const FLAGS: Flag[] = ["concept", "careless", "focus", "memory", "bad_question"];
+export const FLAGS: Flag[] = ["memory", "not_understood", "no_approach", "focus", "concept", "careless", "bad_question"];
+
+/** The Flags about the learner that are offered while answering; mixed up concepts and careless slip are judgements made after the reveal (ADR-0012). */
+const ANSWERING_FLAGS: Flag[] = ["memory", "not_understood", "no_approach", "focus"];
+
+/** The Flags offered in a Phase, in display order. Follows the Phase, not the page, so Practice mode needs no change. Not the bad-question Flag, which #64 turns into the Challenge. */
+export function flagsOfferedIn(phase: Phase): Flag[] {
+  return phase === "answering" ? ANSWERING_FLAGS : FLAGS.filter((f) => f !== "bad_question");
+}
 
 /** Eliminated, eliminated but unsure, sure right, unknown term. */
 export type ItemFlag = "eliminated" | "eliminated_unsure" | "sure_right" | "unknown_term";

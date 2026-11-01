@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from "preact/hooks";
 import type { RawEventBody } from "../recorder/recorder";
 import type { TextEntryMark } from "../derivation/marks";
 import { TextEntries } from "./TextEntries";
-import { FLAGS, ITEM_FLAGS, type Confidence, type ContentBlock, type Flag, type ItemFlag, type Phase } from "../domain/types";
+import type { ComponentChildren } from "preact";
+import { FLAGS, ITEM_FLAGS, flagsOfferedIn, type Confidence, type ContentBlock, type Flag, type ItemFlag, type Phase } from "../domain/types";
 import { blocksToText } from "../domain/display";
 import { RichText } from "./RichText";
 import { t, type TranslationKey } from "../i18n/i18n";
@@ -25,10 +26,11 @@ export function ConfidenceButtons({ value, onChange }: { value: Confidence | nul
   );
 }
 
-export function FlagButtons({ flags, disabled, onToggle }: { flags: Flag[]; disabled?: boolean; onToggle: (flag: Flag, on: boolean) => void }) {
+/** The Flags the Phase offers, as toggle buttons. The bad-question Flag is not among them: #64 turns it into the Challenge. */
+export function FlagButtons({ phase, flags, disabled, onToggle }: { phase: Phase; flags: Flag[]; disabled?: boolean; onToggle: (flag: Flag, on: boolean) => void }) {
   return (
     <div class="flags" role="group" aria-label={t("marks.flags")}>
-      {FLAGS.map((f) => {
+      {flagsOfferedIn(phase).map((f) => {
         const on = flags.includes(f);
         return (
           <button key={f} class={`small${on ? "" : " secondary"}`} aria-pressed={on} disabled={disabled} onClick={() => onToggle(f, !on)}>
@@ -36,6 +38,73 @@ export function FlagButtons({ flags, disabled, onToggle }: { flags: Flag[]; disa
           </button>
         );
       })}
+    </div>
+  );
+}
+
+/** One line per Flag type that can be set, then the closing line. */
+const MEANT_FLAGS = FLAGS.filter((f): f is Exclude<Flag, "bad_question"> => f !== "bad_question");
+
+/**
+ * The blue "Marks and Notes" area: closed by default, its header listing the Flags set. Inside: the Flags of the Phase, a collapsed
+ * explanation of each, the bad-question Flag set apart (until #64), then `children` (Challenge statements and Notes).
+ * Without `onToggle` it is read-only: the Flags set are shown without controls.
+ */
+export function MarksArea({
+  phase,
+  flags,
+  disabled,
+  onToggle,
+  children,
+}: {
+  phase: Phase;
+  flags: Flag[];
+  disabled?: boolean;
+  /** Absent where nothing is recorded, as in a Showcase. */
+  onToggle?: (flag: Flag, on: boolean) => void;
+  children?: ComponentChildren;
+}) {
+  const [open, setOpen] = useState(false);
+  const set = MEANT_FLAGS.filter((f) => flags.includes(f));
+  const badQuestion = flags.includes("bad_question");
+  return (
+    <div class="marks-area">
+      <button class="marks-area-header" aria-expanded={open} onClick={() => setOpen(!open)}>
+        <span>{t("marksArea.title") + (set.length ? ` · ${set.map((f) => t(`flag.${f}`)).join(t("marksArea.separator"))}` : "")}</span>
+        <span aria-hidden="true">{open ? "▴" : "▾"}</span>
+      </button>
+      {open && (
+        <div class="marks-area-body">
+          {onToggle ? (
+            <FlagButtons phase={phase} flags={flags} disabled={disabled} onToggle={onToggle} />
+          ) : (
+            <div class="flags" role="group" aria-label={t("marks.flags")}>
+              {set.length ? set.map((f) => <span key={f} class="flag-read">{t(`flag.${f}`)}</span>) : <span class="muted">{t("marksArea.noneSet")}</span>}
+            </div>
+          )}
+          {onToggle && (
+            <details class="flag-meanings">
+              <summary>{t("marksArea.whatMean")}</summary>
+              <ul>
+                {(flagsOfferedIn(phase) as Exclude<Flag, "bad_question">[]).map((f) => (
+                  <li key={f}>
+                    <strong>{t(`flag.${f}`)}</strong>: {t(`flagMeaning.${f}`)}
+                  </li>
+                ))}
+              </ul>
+              <p class="muted">{t("marksArea.digestNote")}</p>
+            </details>
+          )}
+          {onToggle && (
+            <div class="flags challenge-flag">
+              <button class={`small${badQuestion ? "" : " secondary"}`} aria-pressed={badQuestion} disabled={disabled} onClick={() => onToggle("bad_question", !badQuestion)}>
+                {t("flag.bad_question")}
+              </button>
+            </div>
+          )}
+          {children}
+        </div>
+      )}
     </div>
   );
 }

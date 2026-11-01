@@ -17,10 +17,12 @@ export type FlagType = {
 
 /** Keyed by Flag, so every Flag has exactly one entry. */
 export const FLAG_TYPE: Record<Flag, Omit<FlagType, "id">> = {
-  concept: { name: "concept confusion", colour: "#7b1fa2", level: "question" },
-  careless: { name: "careless", colour: "#ef6c00", level: "question" },
-  focus: { name: "focus", colour: "#1565c0", level: "question" },
-  memory: { name: "memory", colour: "#2e7d32", level: "question" },
+  memory: { name: "Couldn't recall", colour: "#2e7d32", level: "question" },
+  not_understood: { name: "Didn't understand the question", colour: "#00838f", level: "question" },
+  no_approach: { name: "Didn't know where to start", colour: "#5d4037", level: "question" },
+  focus: { name: "Review this again", colour: "#1565c0", level: "question" },
+  concept: { name: "Mixed up concepts", colour: "#7b1fa2", level: "question" },
+  careless: { name: "Careless slip", colour: "#ef6c00", level: "question" },
   bad_question: { name: "bad question", colour: "#c62828", level: "question" },
 };
 
