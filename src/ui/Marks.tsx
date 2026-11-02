@@ -277,8 +277,12 @@ export function ChallengeArea({
 }) {
   const [open, setOpen] = useState(false);
   const picked = CHALLENGE_REASONS.filter((r) => reasons.includes(r));
+  // While a mark is being recorded (`disabled`), presses that would record are ignored, but no control is `disabled`: that
+  // would drop the focus of the control just pressed to the page (#75, accessibility). They carry `aria-disabled` instead.
+  const raises = !open && state === "none" && onRaise !== undefined;
   const toggle = () => {
-    if (!open && state === "none" && !disabled) onRaise?.();
+    if (raises && disabled) return;
+    if (raises) onRaise();
     setOpen(!open);
   };
   const summary = [
@@ -287,7 +291,7 @@ export function ChallengeArea({
   ];
   return (
     <div class={`challenge-area${state === "on" ? " challenged" : ""}`}>
-      <button class="challenge-area-header" aria-expanded={open} onClick={toggle}>
+      <button class="challenge-area-header" aria-expanded={open} aria-disabled={raises && disabled ? true : undefined} onClick={toggle}>
         <span>
           <span class="mark-challenge" aria-hidden="true">
             ⚠{" "}
@@ -304,7 +308,7 @@ export function ChallengeArea({
               {CHALLENGE_REASONS.map((r) => {
                 const on = reasons.includes(r);
                 return (
-                  <button key={r} class={`small${on ? "" : " secondary"}`} aria-pressed={on} disabled={disabled} onClick={() => onReason(r, !on)}>
+                  <button key={r} class={`small${on ? "" : " secondary"}`} aria-pressed={on} aria-disabled={disabled ? true : undefined} onClick={() => !disabled && onReason(r, !on)}>
                     {t(`challengeReason.${r}`)}
                   </button>
                 );

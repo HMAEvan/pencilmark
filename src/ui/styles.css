@@ -57,7 +57,7 @@ button {
 button.secondary { background: transparent; color: var(--accent); }
 .push-right { margin-left: auto; }
 button.link { padding: 0; border: 0; background: none; color: var(--accent); text-decoration: underline; font-size: 0.9em; }
-button:disabled { opacity: 0.4; cursor: default; }
+button:disabled, button[aria-disabled="true"] { opacity: 0.4; cursor: default; }
 textarea {
   width: 100%; font: 14px/1.4 ui-monospace, monospace; padding: 8px; margin-bottom: 8px;
   background: var(--bg); color: var(--fg); border: 1px solid var(--border); border-radius: 8px;
