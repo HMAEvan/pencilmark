@@ -91,6 +91,7 @@
     ] },
     { "ms": 364300, "type": "flag", "questionId": "q4", "flag": "concept" },
     { "ms": 372500, "type": "onScreen", "questionId": "q9" },
+    { "ms": 373800, "type": "challengeReason", "questionId": "q9", "reason": "answer_wrong", "on": true },
     { "type": "write", "questionId": "q9", "field": "challenge", "entry": 0, "stretches": [
       { "from": 374500, "to": 404000, "add": "The Explanation says most vaccines contain no live virus, but the vaccine question before it lists the live weakened MMR vaccine." },
       { "from": 411000, "to": 432000, "add": " 'Most' looks wrong: with a live vaccine a mild fever can come from the weakened virus itself." }
