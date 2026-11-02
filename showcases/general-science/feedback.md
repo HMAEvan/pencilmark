@@ -1,39 +1,55 @@
 ## Overall picture
 
-You got 6 of 10 fully correct, plus partial credit (0.67) on Question 5. The vaccine questions were your strongest area: quick, mostly sure, and you noticed something real in Question 7. The motion questions were where things slipped. Questions 1 and 5 both come down to the same idea, that velocity includes direction, and Question 10 tests it too, although you've said that one was a misclick. On the ice questions you tended to reach the right answer after a first wrong instinct or a pause, rather than straight away.
+You got 6 of 10 fully right, plus partial credit (0.67) on Question 5. The wrong answers weren't careless guesses. Two came from changing your mind (Question 9 away from the right answer, Question 5 away from a correct tick), one from a speed/velocity mix-up you spotted yourself, and one was a misclick. Your Notes show you reasoning carefully, especially on the vaccine questions.
 
-## Tier 0: challenged question
+## Tier 0: Challenged
 
-**Question 7 (fever after vaccination).** Your challenge is partly right, and the correction belongs to the explanation rather than the answer.
+**Question 7.** You picked "The answer is wrong" and argued that live vaccines like MMR undercut the explanation.
 
-The marked answer, True, holds. The stem says "generally," and for most vaccines a sore arm or mild fever is the immune response itself: inflammation and signalling molecules, not a virus multiplying. "Most vaccines contain no live virus" is also accurate by count. Inactivated, protein, toxoid and mRNA vaccines make up the majority of routine schedules.
+On the marked answer: True still holds. The word "generally" carries the statement. The most common reactions are a sore arm and tiredness or fever within a day or two, and these come from the immune response to the vaccine, not from infection. That's true for both live and non-live vaccines.
 
-Your real point is that the explanation glossed over live attenuated vaccines, and it did. With MMR, varicella or yellow fever vaccines, the weakened virus does replicate a little. MMR's typical fever about 7–12 days after the shot, sometimes with a faint rash, comes from that limited replication of the vaccine virus. It is a mild, contained infection, and the symptoms are still largely your immune system responding to it. So "cannot cause the infection" was only true of the non-live vaccines, and I said the same thing too broadly in my earlier explanation. The result stands as correct, and your doubt in the Note was well placed.
+On your point, though, you're partly right, and your answering Note had already found it. With a live weakened vaccine, the vaccine virus does replicate a little. A mild fever (sometimes with a rash) about one to two weeks after MMR reflects that small, controlled infection with the weakened virus. So "not a sign of infection" draws a sharper line than the biology does. The explanation's claim that these vaccines "cannot cause the infection" only applies to non-live vaccines.
 
-## Tier 1: confident but wrong
+"Most" itself is defensible, since the majority of routine vaccines (inactivated, protein, toxoid, conjugate, mRNA) contain no live virus. The real flaw is that the explanation ignored live vaccines entirely.
 
-**Question 1 (average velocity of a lap).** You answered "sure," and your own review note already identifies the problem exactly: 400 ÷ 80 is average speed. A quick test for next time: before dividing, ask "where did it end up relative to where it started?" If the answer is "back at the start," average velocity is zero, no matter how far it travelled.
+Verdict: the answer stands, but the Question and explanation are oversimplified, and your objection is accurate. A better stem would be: "After most vaccinations, a sore arm or mild fever comes from the immune response, not from the vaccine making you ill." You answered correctly, so your score isn't affected.
 
-**Question 9 (why flu vaccines are updated).** You first picked B, the correct answer, then switched to C after about 14 seconds. C is tempting because both stories involve evolution. The difference is what changes. In antibiotic resistance, the drug is still the same, but the bacterium evolves ways to survive it. In the flu case, the virus's surface proteins drift, so your immune memory, trained on last year's shape, no longer fits as well. The vaccine isn't a drug that the virus learns to withstand. It's a picture of the target, and the target keeps changing appearance. That's why the fix is a new picture each season, not a stronger dose. (Your first instinct was the right one here.)
+## Tier 1: Confident but wrong
 
-## Tier 2: hesitation, hints, guesses
+**Question 5** (you flagged it "Review this again"). You built B, D, then added E. You wrote a Note asking whether turning at steady speed counts, marked E "eliminated but unsure", and removed it.
 
-**Question 5 (when a car is accelerating).** This is the one to spend time on. You ticked E (the roundabout), wrote a note asking whether turning at steady speed counts, marked E "eliminated but unsure," then removed it. The answer to your note is yes. Acceleration is any change in velocity, and velocity includes direction. Picture the car heading east at 30 km/h, then a moment later heading north at 30 km/h. Its speed hasn't changed, but its velocity has. Another way to check is Newton's first law: with no net force, a car would carry on in a straight line. To make it curve, the tyres must push it sideways toward the centre of the roundabout, and a net force always means acceleration. This is called centripetal acceleration.
+It does count. Acceleration is any change in velocity, and velocity is an arrow with a length (speed) and a direction. On a roundabout the length stays the same but the direction keeps changing, so velocity changes.
 
-**Question 2 (why ice is less dense).** You first chose A (trapped air bubbles) and switched to B after opening the first hint. The giveaway against A is that perfectly clear, bubble-free ice still floats. So the low density has to come from the crystal itself: the hexagonal hydrogen-bonded lattice spaces the molecules farther apart than in the liquid.
+A test that settles it: if nothing pushed the car sideways, would it keep going straight? Yes. Something (the friction between tyres and road) has to push it toward the centre. By $F = ma$, a net force means an acceleration. This is centripetal acceleration, and it points toward the centre of the curve.
 
-**Question 4 (water's densest temperature).** Correct, but you marked it "guessed" and "couldn't recall." The number to remember is about 4 °C. Between 4 °C and 0 °C, water begins forming ice-like clusters and expands. That's also why the bottom of a deep lake in winter sits at around 4 °C.
+**Question 9.** Your first choice was B, the correct answer, and you switched to C after about 14 seconds, with "probably". The antibiotic-resistance comparison may have felt like a real mechanism. There's a grain of truth in it: flu does evolve under pressure from people's immunity.
 
-**Question 6 (what vaccines can contain).** Correct with one hint. The weakened live virus (C) was the last option you added, about 19 seconds after the others. This is the same live-vaccine point as Question 7. Weakened viruses are a standard vaccine ingredient. They can replicate a little, but they have been altered so they can't cause the serious disease.
+The difference is what changes and what fails. An antibiotic is a drug acting on the bacterium, and resistance means the bacterium survives the drug. A vaccine doesn't act on the virus at all. It trains your immune system to recognise particular surface antigens. When flu's antigens drift, the old memory cells no longer fit well, so the vaccine is updated to match.
 
-**Question 8 (consequences of floating ice).** You briefly ticked B (boiling at altitude) and then removed it, finishing correct and sure. Boiling point falls at altitude because there's less air pressure pushing down on the water. It has nothing to do with ice.
+To tell them apart next time, ask: "Is something attacking the pathogen directly, or is the immune system's target changing shape?"
+
+**Question 1.** Your review Note already has the fix: you divided distance by time, which gives speed. A quick check for next time: before dividing, ask "where did it finish relative to where it started?" If the answer is "in the same place", the average velocity is zero, whatever the distance travelled.
+
+## Tier 2: Correct, but with hesitation
+
+**Question 2.** You first chose "air bubbles", then opened a Hint and switched to the right answer. Trapped air is a tempting explanation because cloudy ice does contain bubbles. But perfectly clear ice also floats. The low density comes from the open hexagonal lattice that hydrogen bonds lock into, not from anything mixed in.
+
+**Question 4.** Correct, but you marked it guessed and flagged "Couldn't recall". The fact to hold onto: water is densest at about 4 °C. A memory hook: the water at the bottom of a frozen lake sits at about 4 °C, because that's the densest water and it sinks.
+
+**Question 6.** You picked the mRNA and protein options quickly. C (weakened live virus) came last, about 19 seconds later and after a Hint. "Live" may have sounded unsafe. The key word is *weakened* (attenuated): it can replicate slightly but can't cause serious disease. That is exactly what separates it from D, the fully active virus. This is the same idea behind your Question 7 Challenge.
+
+**Question 8.** You ticked "boiling at altitude", then removed it after about 9 seconds and ended up fully correct. Boiling point depends on air pressure, which is unrelated to ice. A useful filter for this kind of question: does the option follow from "ice floats" or "water expands as it freezes"? If not, drop it.
 
 ## Tier 3
 
-**Question 3** (memory cells) was correct, quick and sure. **Question 10** was a misclick by your own account. The idea it tests, that the same speed in different directions means different velocities, is the same one behind Questions 1 and 5.
+**Question 3** was fast, sure and right. **Question 10** was a misclick, as your Note says. You meant False, and False is correct: same speed in different directions gives different velocities.
 
-## What to work on
+## Weak areas
 
-Your main gap is **velocity as a vector**. Questions 1, 5 and 10 all depend on direction being part of velocity, and that changes how displacement, average velocity and acceleration behave. Next, there's **what drives change in the flu virus versus drug resistance**, which comes up in Question 9. The water-density points in Questions 2 and 4 are close to secure and just need the specific facts fixed in memory.
+The clearest thread is that **direction matters** (Questions 1, 5 and 10). Speed ignores direction; velocity and acceleration don't. Turning is the case most worth revisiting.
 
-Which would you like to go deeper on: turning and centripetal acceleration, or how flu's changing antigens work?
+The second is **how vaccines relate to the virus** (Questions 6, 7 and 9): live weakened versus non-live vaccines, and why changing antigens make updates necessary.
+
+On water, just pin down the two facts: open lattice and densest at 4 °C.
+
+Which would you like to go deeper on: circular motion and centripetal acceleration, or live versus non-live vaccines?

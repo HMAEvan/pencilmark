@@ -7,6 +7,7 @@ Each merged change worth mentioning adds a line under Unreleased. At a milestone
 - On a phone held upright, the top bar's text and buttons are as large as the rest of the page.
 - Saying a Question is faulty is now a Challenge in its own orange area below Marks and Notes, "Something's wrong with this question", with four Challenge reasons and the Challenge statement, on the Answering page and each Review page card; the Digest and grading Skill (1.6.0) check every Challenged Question first.
 - "Not a problem after all" withdraws a Challenge, taking back its reasons and deleting its statement; Reinstate beside the Challenge area's header brings it back as it was, also on the Review page for a Challenge withdrawn while answering. The grading Skill (1.7.0) does not check a withdrawn Challenge.
+- The general-science Showcase's Feedback is regenerated in the same claude.ai chat with grading Skill 1.7.0, so it reads the Challenge and its reasons.
 
 ## v0.1.0
 

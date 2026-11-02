@@ -10,7 +10,7 @@ A Showcase is a Question pack, a scripted Session sat on it, the Digest that Ses
 
 | Showcase | Language | Live page | Question pack | Fact-check report | Feedback conversation | Grading Skill | Date | App version |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| General science | English | [open](https://hmaevan.github.io/pencilmark/#/showcase/general-science) | [`samples/general-science.json`](samples/general-science.json) | [`fact-check.md`](showcases/general-science/fact-check.md) | [Claude Opus 5.5 in claude.ai](https://claude.ai/share/d6569f86-0775-4180-8cd5-bcf644eca653) | 1.5.0 | 2026-11-02 | 0.1.0 |
+| General science | English | [open](https://hmaevan.github.io/pencilmark/#/showcase/general-science) | [`samples/general-science.json`](samples/general-science.json) | [`fact-check.md`](showcases/general-science/fact-check.md) | [Claude Opus 5.5 in claude.ai](https://claude.ai/share/d6569f86-0775-4180-8cd5-bcf644eca653) | 1.7.0 | 2026-11-02 | 0.2.0 |
 
 ## What it looks like
 
