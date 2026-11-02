@@ -26,8 +26,10 @@ export { finalAnsweringActiveMs, finalValues, type FinalValues, type OverriddenV
  * 11: the Digest writes the Flags under their plain names (Couldn't recall, Careless slip…); two new Flag types.
  * 12: the Challenge, no longer a Flag: on or off with its Phase, its Challenge reasons, raising and reason changes as Timeline steps,
  *     in the Attempt and the Digest; a stored `appeal` event is a Challenge statement step, a stored `bad_question` Flag the Challenge.
+ * 13: withdrawing a Challenge (its reasons taken back, its statements deleted) and reinstating it, as Timeline steps; restoring a
+ *     Challenge statement raises a new Challenge; the Attempt and the Digest carry a withdrawn Challenge as withdrawn.
  */
-export const ALGORITHM_VERSION = 12;
+export const ALGORITHM_VERSION = 13;
 
 export type DerivationInput = {
   title: string;

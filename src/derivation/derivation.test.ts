@@ -404,7 +404,7 @@ describe("derive: provenance", () => {
         { rules: strict },
       ),
     );
-    expect(result.algorithmVersion).toBe(12);
+    expect(result.algorithmVersion).toBe(13);
     expect(result.parameters).toEqual({ idleThresholdMs: 30_000, writingPauseMs: 20_000, flickThresholdMs: 1_000, shuffleQuestions: true, shuffleOptions: true, collectConfidence: true });
     expect(result.chunks).toEqual([
       { id: `${SESSION}_0`, hash: "hash0" },
@@ -1014,6 +1014,162 @@ describe("derive: Challenge", () => {
     const { digest } = derive(sitting([{ activeMs: 10_000, events: [[0, open(question)], [1_000, reason(question, "out_of_scope")], [2_000, reason(question, "out_of_scope", false)], [10_000, submit]] }]));
     expect(digest).toContain("  - 1.000 s: Challenge reason picked: Out of scope or not matching the material\n  - 2.000 s: Challenge reason taken back: Out of scope or not matching the material\n");
     expect(digest).toContain("- Challenge: on (answering)\n- Challenge reasons: none\n");
+  });
+});
+
+describe("derive: withdrawing and reinstating a Challenge", () => {
+  const raise = (q: Question) => ({ type: "challengeRaise", questionId: q.id }) as const;
+  const reason = (q: Question, r: ChallengeReason, on = true) => ({ type: "challengeReason", questionId: q.id, reason: r, on }) as const;
+  const statement = (q: Question, entry: number, text: string) => ({ type: "textSave", questionId: q.id, field: "challenge", entry, text }) as const;
+  const restore = (q: Question, entry: number) => ({ type: "textRestore", questionId: q.id, field: "challenge", entry }) as const;
+  const withdraw = (q: Question) => ({ type: "challengeWithdraw", questionId: q.id }) as const;
+  const reinstate = (q: Question) => ({ type: "challengeReinstate", questionId: q.id }) as const;
+  const deletedEntry = (entry: number) => ({ entry, deleted: true });
+
+  // Q1 while answering: the Challenge raised at 1 s, "wording unclear" picked at 2 s, a statement saved at 3 s, withdrawn at 5 s.
+  const withdrawn = (answeringAfter: [number, RawEventBody][] = [], reviewing: [number, RawEventBody][] = []) =>
+    sitting([
+      {
+        startedAt: 1_000_000,
+        activeMs: 20_000,
+        events: [
+          [0, open(question)],
+          [1_000, raise(question)],
+          [2_000, reason(question, "wording_unclear")],
+          [3_000, statement(question, 0, "Two answers fit")],
+          [5_000, withdraw(question)],
+          ...answeringAfter,
+          [20_000, submit],
+        ],
+      },
+      { startedAt: 2_000_000, activeMs: 10_000, events: reviewing },
+    ]);
+
+  it("takes back every Challenge reason and deletes every Challenge statement entry, and carries the Challenge as withdrawn", () => {
+    const attempt = attemptOf(derive(withdrawn()), question);
+    expect(attempt.challenge).toEqual({ on: false, phase: "answering", at: 1_001_000, withdrawn: { phase: "answering", at: 1_005_000 } });
+    expect(attempt.challengeReasons).toEqual([]);
+    expect(attempt.challengeStatements).toEqual({ answering: [deletedEntry(0)] });
+  });
+
+  it("deletes the Challenge statement entries of both Phases when withdrawn while reviewing", () => {
+    const result = derive(
+      sitting([
+        { startedAt: 1_000_000, activeMs: 10_000, events: [[0, open(question)], [1_000, statement(question, 0, "Before")], [10_000, submit]] },
+        { startedAt: 2_000_000, activeMs: 10_000, events: [[1_000, statement(question, 0, "After")], [2_000, statement(question, 1, "More")], [3_000, withdraw(question)]] },
+      ]),
+    );
+    const attempt = attemptOf(result, question);
+    expect(attempt.challenge).toEqual({ on: false, phase: "answering", at: 1_001_000, withdrawn: { phase: "reviewing", at: 2_003_000 } });
+    expect(attempt.challengeStatements).toEqual({ answering: [deletedEntry(0)], reviewing: [deletedEntry(0), deletedEntry(1)] });
+  });
+
+  it("makes withdrawing a Timeline step, after which the statement saved before is later deleted", () => {
+    expect(attemptOf(derive(withdrawn()), question).timeline).toEqual([
+      { atMs: 0, kind: "open" },
+      { atMs: 1_000, kind: "challenge" },
+      { atMs: 2_000, kind: "challengeReason", reason: "wording_unclear", on: true },
+      { atMs: 3_000, kind: "challengeStatement", entry: 0, text: "", laterDeleted: true },
+      { atMs: 5_000, kind: "challengeWithdraw" },
+      { atMs: 20_000, kind: "leave" },
+    ]);
+  });
+
+  it("makes no step of withdrawing a Challenge that is not on", () => {
+    const result = derive(sitting([{ activeMs: 10_000, events: [[0, open(question)], [1_000, withdraw(question)], [2_000, raise(question)], [3_000, withdraw(question)], [4_000, withdraw(question)], [10_000, submit]] }]));
+    const attempt = attemptOf(result, question);
+    expect(attempt.timeline.map((s) => s.kind)).toEqual(["open", "challenge", "challengeWithdraw", "leave"]);
+    expect(attempt.challenge).toEqual({ on: false, phase: "answering", at: 2_000, withdrawn: { phase: "answering", at: 3_000 } });
+  });
+
+  it("raises a new Challenge when a Challenge reason is picked after withdrawing, with only that reason and the old statement still deleted", () => {
+    const attempt = attemptOf(derive(withdrawn([[6_000, reason(question, "answer_wrong")]])), question);
+    expect(attempt.challenge).toEqual({ on: true, phase: "answering", at: 1_006_000 });
+    expect(attempt.challengeReasons).toEqual([{ reason: "answer_wrong", phase: "answering", at: 1_006_000 }]);
+    expect(attempt.challengeStatements).toEqual({ answering: [deletedEntry(0)] });
+    expect(attempt.timeline.map((s) => s.kind).slice(-3)).toEqual(["challenge", "challengeReason", "leave"]);
+  });
+
+  it("raises a new Challenge when the statement is restored or written after withdrawing", () => {
+    const restored = attemptOf(derive(withdrawn([[6_000, restore(question, 0)]])), question);
+    expect(restored.challenge).toEqual({ on: true, phase: "answering", at: 1_006_000 });
+    expect(restored.challengeReasons).toEqual([]);
+    expect(restored.challengeStatements).toEqual({ answering: texts("Two answers fit") });
+    expect(restored.timeline.map((s) => s.kind).slice(-3)).toEqual(["challenge", "textRestore", "leave"]);
+    const written = attemptOf(derive(withdrawn([[6_000, statement(question, 0, "Actually unclear")]])), question);
+    expect(written.challenge).toEqual({ on: true, phase: "answering", at: 1_006_000 });
+    expect(written.challengeStatements).toEqual({ answering: texts("Actually unclear") });
+  });
+
+  it("brings back the Challenge, its reasons and its statement as they were before withdrawing when reinstated", () => {
+    const result = derive(withdrawn([[8_000, reinstate(question)]]));
+    const attempt = attemptOf(result, question);
+    expect(attempt.challenge).toEqual({
+      on: true,
+      phase: "answering",
+      at: 1_001_000,
+      withdrawn: { phase: "answering", at: 1_005_000 },
+      reinstated: { phase: "answering", at: 1_008_000 },
+    });
+    expect(attempt.challengeReasons).toEqual([{ reason: "wording_unclear", phase: "answering", at: 1_002_000 }]);
+    expect(attempt.challengeStatements).toEqual({ answering: texts("Two answers fit") });
+    expect(attempt.timeline).toEqual([
+      { atMs: 0, kind: "open" },
+      { atMs: 1_000, kind: "challenge" },
+      { atMs: 2_000, kind: "challengeReason", reason: "wording_unclear", on: true },
+      { atMs: 3_000, kind: "challengeStatement", entry: 0, text: "Two answers fit", laterDeleted: false },
+      { atMs: 5_000, kind: "challengeWithdraw" },
+      { atMs: 8_000, kind: "challengeReinstate" },
+      { atMs: 20_000, kind: "leave" },
+    ]);
+  });
+
+  it("does not bring back an entry deleted before withdrawing", () => {
+    const deleteFirst = { type: "textDelete", questionId: question.id, field: "challenge", entry: 0 } as const;
+    const result = derive(withdrawn([[6_000, statement(question, 1, "Second")], [7_000, withdraw(question)], [8_000, reinstate(question)]]));
+    // Entry 0 went with the first withdrawal; writing entry 1 raised a new Challenge, so the second withdrawal took only entry 1.
+    expect(attemptOf(result, question).challengeStatements).toEqual({ answering: [deletedEntry(0), { entry: 1, deleted: false, text: "Second" }] });
+    const earlier = derive(
+      sitting([{ activeMs: 10_000, events: [[0, open(question)], [1_000, statement(question, 0, "Gone")], [2_000, deleteFirst], [3_000, statement(question, 1, "Kept")], [4_000, withdraw(question)], [5_000, reinstate(question)], [10_000, submit]] }]),
+    );
+    expect(attemptOf(earlier, question).challengeStatements).toEqual({ answering: [deletedEntry(0), { entry: 1, deleted: false, text: "Kept" }] });
+  });
+
+  it("does not reinstate once a new Challenge is raised", () => {
+    const attempt = attemptOf(derive(withdrawn([[6_000, reason(question, "answer_wrong")], [7_000, reinstate(question)]])), question);
+    expect(attempt.challenge).toEqual({ on: true, phase: "answering", at: 1_006_000 });
+    expect(attempt.challengeReasons.map((r) => r.reason)).toEqual(["answer_wrong"]);
+    expect(attempt.challengeStatements).toEqual({ answering: [deletedEntry(0)] });
+    expect(attempt.timeline.map((s) => s.kind)).not.toContain("challengeReinstate");
+  });
+
+  it("reinstates while reviewing a Challenge withdrawn while answering", () => {
+    const result = derive(withdrawn([], [[1_000, reinstate(question)]]));
+    const attempt = attemptOf(result, question);
+    expect(attempt.challenge).toEqual({
+      on: true,
+      phase: "answering",
+      at: 1_001_000,
+      withdrawn: { phase: "answering", at: 1_005_000 },
+      reinstated: { phase: "reviewing", at: 2_001_000 },
+    });
+    expect(attempt.challengeReasons).toEqual([{ reason: "wording_unclear", phase: "answering", at: 1_002_000 }]);
+    expect(attempt.challengeStatements).toEqual({ answering: texts("Two answers fit") });
+    // The Answering timeline is over at submission: the reinstating is not in it.
+    expect(attempt.timeline.map((s) => s.kind).slice(-2)).toEqual(["challengeWithdraw", "leave"]);
+  });
+
+  it("writes a withdrawn Challenge as withdrawn in the Digest, with the Phase of each step, and withdrawing and reinstating in the Answering timeline", () => {
+    const { digest } = derive(withdrawn());
+    expect(digest).toContain(
+      ["- Flags: none", "- Challenge: withdrawn (raised in answering, withdrawn in answering)", "- Challenge reasons: none", "- Challenge statement (answering) 1: written and later deleted", ""].join("\n"),
+    );
+    expect(digest).toContain("  - 5.000 s: Challenge withdrawn: its Challenge reasons taken back and its Challenge statements deleted\n");
+    const reinstated = derive(withdrawn([], [[1_000, reinstate(question)]])).digest;
+    expect(reinstated).toContain(
+      ["- Challenge: on (answering; withdrawn in answering, reinstated in reviewing)", "- Challenge reasons: The wording is unclear or ambiguous (answering)", '- Challenge statement (answering) 1: "Two answers fit"', ""].join("\n"),
+    );
+    expect(derive(withdrawn([[8_000, reinstate(question)]])).digest).toContain("  - 8.000 s: Challenge reinstated: its Challenge reasons and statements as before\n");
   });
 });
 

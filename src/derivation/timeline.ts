@@ -21,6 +21,8 @@ export type TimelineStep = { atMs: number } & (
   /** The Challenge turned on: raised, or by the first Challenge reason or statement. `challengeOff`: a stored `bad_question` removal turned it off. */
   | { kind: "challenge" | "challengeOff" }
   | { kind: "challengeReason"; reason: ChallengeReason; on: boolean }
+  /** The Challenge withdrawn, taking back its Challenge reasons and deleting its Challenge statements, or reinstated as it was before. */
+  | { kind: "challengeWithdraw" | "challengeReinstate" }
   /**
    * Empty: the Note or Challenge statement cleared. `laterDeleted`: the entry ended deleted, so its text is not here either.
    * `entry` is the Text entry's place among the Phase's entries of its field.
@@ -44,7 +46,7 @@ export const END_OF_LOG = Number.POSITIVE_INFINITY;
  * Collects the Answering timeline of each Question from the answering Phase of the timing walk. Steps are ordered by the
  * `seq` of the event behind each, so a Visit, known to be one only when it ends, still opens before what was done in it.
  * An action that changed nothing (taking back a mark never made, a Hint out of order, a stored `appeal` event without a reason,
- * raising a Challenge already on) is no step, as it changes nothing in the Attempt. A stored `appeal` event is a Challenge statement step.
+ * raising a Challenge already on, withdrawing one that is not on, reinstating with nothing to bring back) is no step, as it changes nothing in the Attempt. A stored `appeal` event is a Challenge statement step.
  */
 export function answeringTimelines(rules: Rules, hintCount: (questionId: string) => number) {
   const steps = new Map<string, { seq: number; step: TimelineStep }[]>();
@@ -80,11 +82,34 @@ export function answeringTimelines(rules: Rules, hintCount: (questionId: string)
     list.push({ seq, step });
   };
 
-  /** Turns the Challenge on, a step only when it was off. */
+  /** What the latest withdrawal took away, by Question id, until it is reinstated or a new Challenge is raised. */
+  const withdrawals = new Map<string, { reasons: Set<ChallengeReason>; entries: string[] }>();
+  /** Turns the Challenge on, a step only when it was off. A new Challenge can no longer be reinstated. */
   const raise = (questionId: string, seq: number, atMs: number) => {
     if (challenged.has(questionId)) return;
     challenged.add(questionId);
+    withdrawals.delete(questionId);
     add(questionId, seq, { atMs, kind: "challenge" });
+  };
+  /** Deletes a Text entry that holds text; false when it held none. */
+  const deleteEntry = (key: string, field: TextField) => {
+    const text = savedText.get(key) ?? "";
+    if (!holdsText(field, text)) return false;
+    deleted.set(key, { text, writers: writers.get(key) ?? [] });
+    deletedSaves.set(key, [...(savedSteps.get(key) ?? [])]);
+    savedText.set(key, "");
+    writers.set(key, []);
+    return true;
+  };
+  /** Brings back what a deleted Text entry held; false when it was not deleted. */
+  const restoreEntry = (key: string) => {
+    const before = deleted.get(key);
+    if (!before) return false;
+    deleted.delete(key);
+    deletedSaves.delete(key);
+    savedText.set(key, before.text);
+    writers.set(key, before.writers);
+    return true;
   };
   /** A Note or Challenge statement saved. Writing in an entry deleted earlier makes it a new entry again. */
   const saved = (questionId: string, seq: number, atMs: number, field: TextField, entry: number, text: string) => {
@@ -126,6 +151,21 @@ export function answeringTimelines(rules: Rules, hintCount: (questionId: string)
         if (setOf(flags, questionId).delete(event.flag)) add(questionId, seq, { atMs, kind: "unflag", flag: event.flag });
       } else if (event.type === "challengeRaise") {
         raise(questionId, seq, atMs);
+      } else if (event.type === "challengeWithdraw") {
+        if (!challenged.delete(questionId)) return;
+        const prefix = `${questionId} challenge `;
+        const entries = [...savedText.keys()].filter((key) => key.startsWith(prefix) && deleteEntry(key, "challenge"));
+        withdrawals.set(questionId, { reasons: setOf(reasons, questionId), entries });
+        reasons.set(questionId, new Set());
+        add(questionId, seq, { atMs, kind: "challengeWithdraw" });
+      } else if (event.type === "challengeReinstate") {
+        const withdrawal = withdrawals.get(questionId);
+        if (!withdrawal) return;
+        withdrawals.delete(questionId);
+        challenged.add(questionId);
+        reasons.set(questionId, withdrawal.reasons);
+        for (const key of withdrawal.entries) restoreEntry(key);
+        add(questionId, seq, { atMs, kind: "challengeReinstate" });
       } else if (event.type === "challengeReason") {
         const set = setOf(reasons, questionId);
         if (event.on) {
@@ -150,22 +190,12 @@ export function answeringTimelines(rules: Rules, hintCount: (questionId: string)
       } else if (event.type === "textSave") {
         saved(questionId, seq, atMs, event.field, event.entry, event.text);
       } else if (event.type === "textDelete") {
-        const key = `${questionId} ${event.field} ${event.entry}`;
-        const text = savedText.get(key) ?? "";
-        if (!holdsText(event.field, text)) return;
-        deleted.set(key, { text, writers: writers.get(key) ?? [] });
-        deletedSaves.set(key, [...(savedSteps.get(key) ?? [])]);
-        savedText.set(key, "");
-        writers.set(key, []);
+        if (!deleteEntry(`${questionId} ${event.field} ${event.entry}`, event.field)) return;
         add(questionId, seq, { atMs, kind: "textDelete", field: event.field, entry: event.entry });
       } else if (event.type === "textRestore") {
-        const key = `${questionId} ${event.field} ${event.entry}`;
-        const before = deleted.get(key);
-        if (!before) return;
-        deleted.delete(key);
-        deletedSaves.delete(key);
-        savedText.set(key, before.text);
-        writers.set(key, before.writers);
+        if (!restoreEntry(`${questionId} ${event.field} ${event.entry}`)) return;
+        // Restoring a Challenge statement after a withdrawal raises a new Challenge.
+        if (event.field === "challenge") raise(questionId, seq, atMs);
         add(questionId, seq, { atMs, kind: "textRestore", field: event.field, entry: event.entry });
       } else if (event.type === "textInput") {
         const entry = `${questionId} ${event.field} ${event.entry}`;

@@ -1,4 +1,4 @@
-import type { ChallengeReason, Confidence, Flag, ItemFlag, Phase } from "../domain/types";
+import { PHASES, type ChallengeReason, type Confidence, type Flag, type ItemFlag, type Phase } from "../domain/types";
 import type { Rules } from "../domain/settings";
 import type { RecordedChunk } from "../recorder/recorder";
 import { holdsText as holds, type TextField } from "../recorder/textEntry";
@@ -9,11 +9,15 @@ import { holdsText as holds, type TextField } from "../recorder/textEntry";
 /** `at` is when the Flag was last added: wall-clock UTC epoch ms. */
 export type FlagMark = { flag: Flag; phase: Phase; at: number };
 
+/** When something was done: its Phase and wall-clock UTC epoch ms. */
+export type PhaseTime = { phase: Phase; at: number };
+
 /**
- * The Challenge of an Attempt: `on`, or turned off by a stored `bad_question` removal. `phase` and `at` (wall-clock UTC epoch ms)
- * are when it was last turned on. Null when the Question was never Challenged.
+ * The Challenge of an Attempt: `on`, or off: withdrawn (`withdrawn`, and no `reinstated`), or turned off by a stored `bad_question`
+ * removal. `phase` and `at` (wall-clock UTC epoch ms) are when it was raised. `withdrawn` is its latest withdrawal, and `reinstated`
+ * when that withdrawal was reinstated. Null when the Question was never Challenged.
  */
-export type ChallengeMark = { on: boolean; phase: Phase; at: number };
+export type ChallengeMark = { on: boolean; phase: Phase; at: number; withdrawn?: PhaseTime; reinstated?: PhaseTime };
 
 /** `at` is when the Challenge reason was last picked: wall-clock UTC epoch ms. */
 export type ChallengeReasonMark = { reason: ChallengeReason; phase: Phase; at: number };
@@ -100,9 +104,15 @@ export function walkMarks(rawLog: RecordedChunk[], rules: Rules): { marks: Map<s
    */
   const raise = (questionId: string, at: number, always = false) => {
     const m = marksOf(questionId);
-    if (always || !m.challenge?.on) m.challenge = { on: true, phase, at };
+    if (!always && m.challenge?.on) return;
+    m.challenge = { on: true, phase, at };
+    withdrawals.delete(questionId);
   };
-  /** Any Challenge statement holding text turns the Challenge on (`always`: see `raise`). */
+  /** What the latest withdrawal took away, by Question id, while it can still be reinstated: until a new Challenge is raised. */
+  const withdrawals = new Map<string, { reasons: Map<ChallengeReason, ChallengeReasonMark>; entries: { e: Replayed; text: string }[] }>();
+  /** Every Challenge statement entry of the Question, in either Phase. */
+  const statementsOf = (questionId: string) => PHASES.flatMap((p) => [...(replayed.get(`${questionId} challenge ${p}`)?.values() ?? [])]);
+  /** Any Challenge statement holding text, written or restored, turns the Challenge on (`always`: see `raise`). */
   const saveText = (questionId: string, field: TextField, entry: number, text: string, at: number, always = false) => {
     const e = entryOf(questionId, field, entry);
     e.text = text;
@@ -125,6 +135,24 @@ export function walkMarks(rawLog: RecordedChunk[], rules: Rules): { marks: Map<s
         if (m.challenge?.on) m.challenge = { ...m.challenge, on: false };
       } else if (event.type === "challengeRaise") {
         raise(event.questionId, at);
+      } else if (event.type === "challengeWithdraw") {
+        const m = marksOf(event.questionId);
+        if (!m.challenge?.on) continue;
+        const taken = reasons.get(event.questionId) ?? new Map();
+        const entries = statementsOf(event.questionId).filter((e) => holds("challenge", e.text));
+        withdrawals.set(event.questionId, { reasons: taken, entries: entries.map((e) => ({ e, text: e.text })) });
+        reasons.set(event.questionId, new Map());
+        for (const e of entries) Object.assign(e, { before: e.text, text: "", deleted: true });
+        m.challenge = { on: false, phase: m.challenge.phase, at: m.challenge.at, withdrawn: { phase, at } };
+      } else if (event.type === "challengeReinstate") {
+        const withdrawal = withdrawals.get(event.questionId);
+        if (!withdrawal) continue;
+        withdrawals.delete(event.questionId);
+        const m = marksOf(event.questionId);
+        // Picking a reason or writing a statement raises a new Challenge, so nothing taken away came back meanwhile.
+        reasons.set(event.questionId, withdrawal.reasons);
+        for (const { e, text } of withdrawal.entries) Object.assign(e, { text, deleted: false });
+        m.challenge = { ...m.challenge!, on: true, reinstated: { phase, at } };
       } else if (event.type === "challengeReason") {
         let r = reasons.get(event.questionId);
         if (!r) reasons.set(event.questionId, (r = new Map()));
@@ -160,7 +188,9 @@ export function walkMarks(rawLog: RecordedChunk[], rules: Rules): { marks: Map<s
         if (holds(event.field, e.text)) Object.assign(e, { before: e.text, text: "", deleted: true });
       } else if (event.type === "textRestore") {
         const e = entryOf(event.questionId, event.field, event.entry);
-        if (e.deleted) Object.assign(e, { text: e.before, deleted: false });
+        if (!e.deleted) continue;
+        Object.assign(e, { text: e.before, deleted: false });
+        if (event.field === "challenge" && holds("challenge", e.text)) raise(event.questionId, at);
       }
     }
   }
