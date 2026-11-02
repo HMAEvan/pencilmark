@@ -13,4 +13,4 @@ Checked on 2026-10-30 by an independent agent (read-only, at an introductory lev
 
 Q2, Q5, Q6 and Q7 had no problems. All `{{opt:...}}` references point at the intended Options.
 
-The Showcase script uses issue 5 as the learner's Challenge on q9.
+The Showcase script uses issue 5 as the learner's Challenge on q9, with the Challenge reason "The answer is wrong" picked before the Challenge statement is written.

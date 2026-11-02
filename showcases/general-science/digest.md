@@ -202,7 +202,7 @@ A sore arm or mild fever after a vaccination is generally a sign of the immune s
 - Confidence: sure
 - Flags: none
 - Challenge: on (reviewing)
-- Challenge reasons: none
+- Challenge reasons: The answer is wrong (reviewing)
 - Challenge statement (reviewing) 1: "The Explanation says most vaccines contain no live virus, but the vaccine question before it lists the live weakened MMR vaccine. 'Most' looks wrong: with a live vaccine a mild fever can come from the weakened virus itself."
 - Note (answering) 1: "The weakened virus in the last question is live, so is a fever really never the virus? Anyway, True fits better."
 - Answering timeline (time spent on this Question so far):
