@@ -18,11 +18,11 @@ export { finalAnsweringActiveMs, finalValues, type FinalValues, type OverriddenV
  * 2: timing and trajectories. 3: unreleased; issues #5, #7 and #8 each used it on their own branch.
  * 4: multiple-answer Questions and partial scores; Confidence, Flags and Notes; reviewing time.
  * 5: the Digest shows every time to the millisecond.
- * 6: Item flags, Hints used and appeals.
+ * 6: Item flags, Hints used and Challenge statements (then stored as `appeal` events).
  * 7: the Answering timeline, in the Attempt and the Digest; the Misconception line in the Digest.
  * 8: the Digest writes a partial score to at most two decimal places.
- * 9: Writing spans and Challenge statements saved, in the Answering timeline and the Digest; one Appeal per Phase; the learner's text in quotation marks in the Digest.
- * 10: several Notes and Challenge statements per Phase, each with its place; a deleted one without its text, deleted and restored in the Answering timeline; the Appeal line is gone from the Digest.
+ * 9: Writing spans and Challenge statements saved, in the Answering timeline and the Digest; one Challenge statement per Phase; the learner's text in quotation marks in the Digest.
+ * 10: several Notes and Challenge statements per Phase, each with its place; a deleted one without its text, deleted and restored in the Answering timeline; the `Appeal:` line is gone from the Digest.
  * 11: the Digest writes the Flags under their plain names (Couldn't recall, Careless slip…); two new Flag types.
  */
 export const ALGORITHM_VERSION = 11;

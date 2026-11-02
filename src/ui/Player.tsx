@@ -10,7 +10,7 @@ import { DEFAULT_PREFERENCES, type Display, type Rules } from "../domain/setting
 import { walkMarks, type TextEntryMark } from "../derivation/marks";
 import { answeringTimesSoFar, finalAnsweringActiveMs } from "../derivation/derivation";
 import { AnsweringTime, TimeOverrideField } from "./AnsweringTime";
-import { AppealForm, ConfidenceButtons, HintPanel, ItemFlagMarks, ItemFlagMenu, MarksArea, NoteField, useLongPress } from "./Marks";
+import { ChallengeForm, ConfidenceButtons, HintPanel, ItemFlagMarks, ItemFlagMenu, MarksArea, NoteField, useLongPress } from "./Marks";
 import { storage } from "./appStorage";
 import { navigate } from "./App";
 import { displayOf, formatDuration } from "./format";
@@ -347,7 +347,7 @@ export function Player({ sessionId }: { sessionId: string }) {
         </button>
       </div>
       <MarksArea key={`marks-${questionId}`} phase="answering" flags={flags[questionId] ?? []} onToggle={toggleFlag}>
-        <AppealForm key={`appeal-${questionId}`} entries={statements[questionId] ?? []} questionId={questionId} onRecord={recordText} />
+        <ChallengeForm key={`challenge-${questionId}`} entries={statements[questionId] ?? []} questionId={questionId} onRecord={recordText} />
         <NoteField key={questionId} entries={notes[questionId] ?? []} questionId={questionId} onRecord={recordText} />
       </MarksArea>
         </div>

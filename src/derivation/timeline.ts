@@ -42,7 +42,7 @@ export const END_OF_LOG = Number.POSITIVE_INFINITY;
 /**
  * Collects the Answering timeline of each Question from the answering Phase of the timing walk. Steps are ordered by the
  * `seq` of the event behind each, so a Visit, known to be one only when it ends, still opens before what was done in it.
- * An action that changed nothing (taking back a mark never made, a Hint out of order, an Appeal without a reason) is no step,
+ * An action that changed nothing (taking back a mark never made, a Hint out of order, a stored `appeal` event without a reason) is no step,
  * as it changes nothing in the Attempt.
  */
 export function answeringTimelines(rules: Rules, hintCount: (questionId: string) => number) {

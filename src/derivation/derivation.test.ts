@@ -915,7 +915,7 @@ describe("derive: Hints", () => {
   });
 });
 
-describe("derive: appeals", () => {
+describe("derive: stored `appeal` events", () => {
   const appeal = (q: Question, reason: string) => ({ type: "appeal", questionId: q.id, reason }) as const;
 
   it("adds the bad-question Flag and keeps the reason, with its Phase and time", () => {
@@ -931,7 +931,7 @@ describe("derive: appeals", () => {
     expect(attemptOf(result, second).challengeStatements).toEqual({ reviewing: texts("Both answers are right") });
   });
 
-  it("ignores an appeal without a reason", () => {
+  it("ignores a stored appeal event without a reason", () => {
     const result = derive(sitting([{ activeMs: 10_000, events: [[0, open(question)], [3_000, appeal(question, "  \n ")], [10_000, submit]] }]));
     expect(attemptOf(result, question).flags).toEqual([]);
     expect(attemptOf(result, question).challengeStatements).toEqual({});
@@ -1018,7 +1018,7 @@ describe("derive: Answering timeline", () => {
     ]);
   });
 
-  it("includes deselections, Item flags and Flags taken back, Confidence cleared, Appeals and Notes saved, but not actions that changed nothing", () => {
+  it("includes deselections, Item flags and Flags taken back, Confidence cleared, stored appeal events and Notes saved, but not actions that changed nothing", () => {
     const result = derive(
       sitting(
         [
@@ -1083,7 +1083,7 @@ describe("derive: Answering timeline", () => {
     );
   });
 
-  it("writes taken-back marks, Appeals and Notes into the Digest", () => {
+  it("writes taken-back marks, stored appeal events and Notes into the Digest", () => {
     const { digest } = derive(
       sitting([
         {
@@ -1281,7 +1281,7 @@ describe("derive: Writing spans", () => {
     expect(attemptOf(result, question).notes).toEqual({ reviewing: texts("Later") });
   });
 
-  it("records a saved Challenge statement as the Phase's Appeal, which adds the bad-question Flag; emptying it keeps the Flag", () => {
+  it("records a saved Challenge statement as the Phase's first Challenge statement entry, which adds the bad-question Flag; emptying it keeps the Flag", () => {
     const challenge = (position: number, inserted: string) => ({ type: "textInput", questionId: question.id, field: "challenge", entry: 0, position, removed: "", inserted, kind: "typing" }) as const;
     const result = derive(
       sitting([
@@ -1306,7 +1306,7 @@ describe("derive: Writing spans", () => {
     expect(result.digest).toContain('- Challenge statement (answering) 1: "Two fit"\n');
   });
 
-  it("reads a stored Raw log with only `note` and `appeal` events as before, the last appeal of a Phase winning", () => {
+  it("reads a stored Raw log with only `note` and `appeal` events as before, the last of a Phase winning", () => {
     const result = derive(
       sitting([
         {
