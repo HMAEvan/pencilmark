@@ -1,6 +1,6 @@
 import { PHASES, type Flag, type Question } from "../domain/types";
 import { blocksToText, letterAt, letterOf } from "../domain/display";
-import { FLAG_TYPE, ITEM_FLAG_TYPE } from "../domain/schemaDocument";
+import { CHALLENGE_REASON_NAME, FLAG_TYPE, ITEM_FLAG_TYPE } from "../domain/schemaDocument";
 import type { DerivedAttempt } from "./derivation";
 import type { FlagMark, PhaseTextEntries, RemovedFlags } from "./marks";
 import { finalValues, type FinalValues, type OverrideValues } from "./overrides";
@@ -39,15 +39,27 @@ function entryLines(label: string, entries: PhaseTextEntries): string[] {
   );
 }
 
-/** Removed Flags are listed too: taking a Flag back is evidence of hesitation. The Challenge statements follow the Flags. */
-function markLines({ confidence, flags, challengeStatements, notes }: DerivedAttempt, removed: FlagMark[], collectConfidence: boolean): string[] {
-  const lines = [
+/**
+ * The Challenge, for every Question, so the grading Skill can find each one; once raised, its Challenge reasons, each with its
+ * Phase. A Challenge turned off is one a stored `bad_question` removal turned off.
+ */
+function challengeLines({ challenge, challengeReasons }: DerivedAttempt): string[] {
+  if (!challenge && !challengeReasons.length) return ["- Challenge: none"];
+  const state = !challenge ? "none" : challenge.on ? `on (${challenge.phase})` : `off (raised in ${challenge.phase}, later turned off)`;
+  const reasons = challengeReasons.map((r) => `${CHALLENGE_REASON_NAME[r.reason]} (${r.phase})`).join(", ");
+  return [`- Challenge: ${state}`, `- Challenge reasons: ${reasons || "none"}`];
+}
+
+/** Removed Flags are listed too: taking a Flag back is evidence of hesitation. The Challenge, with its reasons and statements, follows the Flags. */
+function markLines(attempt: DerivedAttempt, removed: FlagMark[], collectConfidence: boolean): string[] {
+  const { confidence, flags, challengeStatements, notes } = attempt;
+  return [
     `- Confidence: ${collectConfidence ? (confidence ?? "none") : "not collected"}`,
     `- Flags: ${flags.length ? flagList(flags) : "none"}${removed.length ? `; removed: ${flagList(removed)}` : ""}`,
+    ...challengeLines(attempt),
     ...entryLines("Challenge statement", challengeStatements),
     ...entryLines("Note", notes),
   ];
-  return lines;
 }
 
 /** The final Item flags by displayed letter, as pencil marks on the Options. */
@@ -103,8 +115,12 @@ function timelineLines({ timeline, optionOrder }: DerivedAttempt): string[] {
         return `Flag added: ${FLAG_TYPE[step.flag].name}`;
       case "unflag":
         return `Flag removed: ${FLAG_TYPE[step.flag].name}`;
-      case "appeal":
-        return `Appeal: ${quoted(step.reason)}`;
+      case "challenge":
+        return "Challenge raised";
+      case "challengeOff":
+        return "Challenge turned off";
+      case "challengeReason":
+        return `Challenge reason ${step.on ? "picked" : "taken back"}: ${CHALLENGE_REASON_NAME[step.reason]}`;
       case "note":
       case "challengeStatement": {
         const name = entryName(step.kind === "note" ? "note" : "challenge", step.entry);

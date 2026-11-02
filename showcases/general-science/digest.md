@@ -22,6 +22,7 @@ A runner completes one full lap of a 400 m track in 80 seconds, finishing where 
 - Hints used while answering: none of 2
 - Confidence: sure
 - Flags: Mixed up concepts (reviewing)
+- Challenge: none
 - Note (reviewing) 1: "I divided distance by time. A full lap ends where it started, so displacement and average velocity are zero."
 - Answering timeline (time spent on this Question so far):
   - 0.000 s: Visit 1 opened
@@ -49,6 +50,7 @@ Why is ice less dense than liquid water?
   - Level 1, after 37.243 s: Think about how the molecules are arranged, not what is mixed in with them.
 - Confidence: probably
 - Flags: none
+- Challenge: none
 - Answering timeline (time spent on this Question so far):
   - 0.000 s: Visit 1 opened
   - 8.969 s: Item flag on C: eliminated
@@ -78,6 +80,7 @@ What is the main reason a vaccine protects you months or years after you receive
 - Hints used while answering: none of 2
 - Confidence: sure
 - Flags: none
+- Challenge: none
 - Answering timeline (time spent on this Question so far):
   - 0.000 s: Visit 1 opened
   - 13.374 s: selected B; answer now B
@@ -101,6 +104,7 @@ Liquid water is at its densest at 0 °C, just before it freezes.
 - Hints used while answering: none of 1
 - Confidence: guessed
 - Flags: Couldn't recall (answering)
+- Challenge: none
 - Answering timeline (time spent on this Question so far):
   - 0.000 s: Visit 1 opened
   - 7.766 s: selected B; answer now B
@@ -129,6 +133,7 @@ In which of these situations is the car accelerating? Select all that apply.
 - Hints used while answering: none of 2
 - Confidence: probably
 - Flags: Review this again (answering)
+- Challenge: none
 - Note (answering) 1: "Does turning at a steady speed count as accelerating? Come back to this."
 - Answering timeline (time spent on this Question so far):
   - 0.000 s: Visit 1 opened
@@ -168,6 +173,7 @@ Which of these can a vaccine use to present an antigen to the immune system? Sel
   - Level 1, after 24.538 s: Each correct option provides the antigen without the ability to cause serious disease.
 - Confidence: probably
 - Flags: none
+- Challenge: none
 - Answering timeline (time spent on this Question so far):
   - 0.000 s: Visit 1 opened
   - 11.501 s: selected E; answer now E
@@ -194,7 +200,9 @@ A sore arm or mild fever after a vaccination is generally a sign of the immune s
 - Item flags: none
 - Hints used while answering: none of 1
 - Confidence: sure
-- Flags: bad question (reviewing)
+- Flags: none
+- Challenge: on (reviewing)
+- Challenge reasons: none
 - Challenge statement (reviewing) 1: "The Explanation says most vaccines contain no live virus, but the vaccine question before it lists the live weakened MMR vaccine. 'Most' looks wrong: with a live vaccine a mild fever can come from the weakened virus itself."
 - Note (answering) 1: "The weakened virus in the last question is live, so is a fever really never the virus? Anyway, True fits better."
 - Answering timeline (time spent on this Question so far):
@@ -226,6 +234,7 @@ Which of these are consequences of ice being less dense than liquid water? Selec
 - Hints used while answering: none of 2
 - Confidence: sure
 - Flags: none
+- Challenge: none
 - Answering timeline (time spent on this Question so far):
   - 0.000 s: Visit 1 opened
   - 9.311 s: selected C; answer now C
@@ -257,6 +266,7 @@ Why does the flu vaccine need updating most years?
 - Hints used while answering: none of 2
 - Confidence: probably
 - Flags: none
+- Challenge: none
 - Answering timeline (time spent on this Question so far):
   - 0.000 s: Visit 1 opened
   - 11.304 s: selected B; answer now B
@@ -284,6 +294,7 @@ Two objects moving at the same speed must have the same velocity.
 - Hints used while answering: none of 1
 - Confidence: none
 - Flags: Careless slip (reviewing)
+- Challenge: none
 - Note (reviewing) 1: "I meant to pick False. I clicked True by mistake."
 - Answering timeline (time spent on this Question so far):
   - 0.000 s: Visit 1 opened

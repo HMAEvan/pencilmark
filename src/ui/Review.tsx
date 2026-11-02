@@ -7,7 +7,7 @@ import { t, type TranslationKey } from "../i18n/i18n";
 import { useNavDropdown } from "./useNavDropdown";
 import { openRecorder, type RawEventBody, type Recorder } from "../recorder/recorder";
 import { loadDerivedSession, recordReviewMark, setOverride, type Attempt, type Derivation, type Override } from "../session/sessions";
-import { ChallengeForm, HintPanel, ItemFlagMarks, MarksArea, NoteField } from "./Marks";
+import { ChallengeArea, ChallengeStatementField, HintPanel, ItemFlagMarks, MarksArea, NoteField, challengeStateOf } from "./Marks";
 import { TextEntriesRead } from "./TextEntries";
 import { digestWithOverrides, finalValues, type FinalValues, type OverrideValues } from "../derivation/derivation";
 import { buildAnswerPack } from "../exports/answerPack";
@@ -310,8 +310,8 @@ export function ReviewPage({ shown, recording, banner, actions, feedbackLink, ch
                 const question = questions.get(attempt.questionId)!;
                 const final = finalValues(attempt, overrides.get(attempt.questionId));
                 const result = navResult(attempt, final, isGraded(question), questionTypeOf(question) === multipleAnswer);
-                const challenged = attempt.flags.some((f) => f.flag === "bad_question");
-                const flagged = attempt.flags.some((f) => f.flag !== "bad_question");
+                const challenged = attempt.challenge?.on === true;
+                const flagged = attempt.flags.length > 0;
                 const label = t(NAV_LABEL[result], { n: attempt.displayedNumber }) + (flagged ? t("player.navFlagged") : "") + (challenged ? t("player.navChallenged") : "");
                 return (
                   <button
@@ -424,13 +424,6 @@ export function ReviewPage({ shown, recording, banner, actions, feedbackLink, ch
               disabled={marking}
               onToggle={recording && ((flag: Flag, on) => recording.mark({ type: on ? "flag" : "unflag", questionId: attempt.questionId, flag }))}
             >
-              <TextEntriesRead entries={attempt.challengeStatements.answering} label="review.answeringStatement" />
-              {/* Written after the reveal, so it is the reviewing Challenge statement. */}
-              {recording ? (
-                <ChallengeForm entries={attempt.challengeStatements.reviewing ?? []} questionId={attempt.questionId} disabled={marking} onRecord={recording.recordText} />
-              ) : (
-                <TextEntriesRead entries={attempt.challengeStatements.reviewing} label="review.reviewingStatementRead" />
-              )}
               <TextEntriesRead entries={attempt.notes.answering} label="review.answeringNote" />
               {/* Recorded after the reveal, so it is the reviewing Note; the answering Note is never changed here. */}
               {recording ? (
@@ -445,6 +438,28 @@ export function ReviewPage({ shown, recording, banner, actions, feedbackLink, ch
                 <TextEntriesRead entries={attempt.notes.reviewing} label="review.reviewingNoteRead" />
               )}
             </MarksArea>
+            <ChallengeArea
+              state={challengeStateOf(attempt)}
+              reasons={attempt.challengeReasons.map((r) => r.reason)}
+              aiWritten={question.model !== undefined}
+              disabled={marking}
+              onRaise={recording && (() => recording.mark({ type: "challengeRaise", questionId: attempt.questionId }))}
+              onReason={recording && ((reason, on) => recording.mark({ type: "challengeReason", questionId: attempt.questionId, reason, on }))}
+            >
+              <TextEntriesRead entries={attempt.challengeStatements.answering} label="review.answeringStatement" />
+              {/* Written after the reveal, so it is the reviewing Challenge statement. */}
+              {recording ? (
+                <ChallengeStatementField
+                  label="review.reviewingStatement"
+                  entries={attempt.challengeStatements.reviewing ?? []}
+                  questionId={attempt.questionId}
+                  disabled={marking}
+                  onRecord={recording.recordText}
+                />
+              ) : (
+                <TextEntriesRead entries={attempt.challengeStatements.reviewing} label="review.reviewingStatementRead" />
+              )}
+            </ChallengeArea>
           </section>
         );
       })}

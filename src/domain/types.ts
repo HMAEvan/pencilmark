@@ -107,7 +107,10 @@ export const PHASES: Phase[] = ["answering", "reviewing", "revisit"];
 
 export type Confidence = "sure" | "probably" | "guessed";
 
-/** Couldn't recall, didn't understand the question, didn't know where to start, review this again, mixed up concepts, careless slip, bad question. */
+/**
+ * Couldn't recall, didn't understand the question, didn't know where to start, review this again, mixed up concepts, careless slip.
+ * `bad_question` is retired (ADR-0012): stored Raw logs hold it, and Derivation reads it as the Challenge turned on or off, never as a Flag.
+ */
 export type Flag = "memory" | "not_understood" | "no_approach" | "focus" | "concept" | "careless" | "bad_question";
 
 export const FLAGS: Flag[] = ["memory", "not_understood", "no_approach", "focus", "concept", "careless", "bad_question"];
@@ -115,10 +118,18 @@ export const FLAGS: Flag[] = ["memory", "not_understood", "no_approach", "focus"
 /** The Flags about the learner that are offered while answering; mixed up concepts and careless slip are judgements made after the reveal (ADR-0012). */
 const ANSWERING_FLAGS: Flag[] = ["memory", "not_understood", "no_approach", "focus"];
 
-/** The Flags offered in a Phase, in display order. Follows the Phase, not the page, so Practice mode needs no change. Not the bad-question Flag, which #64 turns into the Challenge. */
+/** The Flags offered in a Phase, in display order. Follows the Phase, not the page, so Practice mode needs no change. Never the retired bad_question. */
 export function flagsOfferedIn(phase: Phase): Flag[] {
   return phase === "answering" ? ANSWERING_FLAGS : FLAGS.filter((f) => f !== "bad_question");
 }
+
+/**
+ * The Challenge reasons, in display order: the answer is wrong, the wording is unclear or ambiguous, the Options are faulty
+ * (none or more than one correct), out of scope or not matching the material. Stored in Raw log events, so the values never change.
+ */
+export type ChallengeReason = "answer_wrong" | "wording_unclear" | "options_faulty" | "out_of_scope";
+
+export const CHALLENGE_REASONS: ChallengeReason[] = ["answer_wrong", "wording_unclear", "options_faulty", "out_of_scope"];
 
 /** Eliminated, eliminated but unsure, sure right, unknown term. */
 export type ItemFlag = "eliminated" | "eliminated_unsure" | "sure_right" | "unknown_term";

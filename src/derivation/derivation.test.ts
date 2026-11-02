@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { answeringTimesSoFar, derive, digestWithOverrides, finalValues, type DerivationInput } from "./derivation";
-import { flagsOfferedIn, type Confidence, type Flag, type ItemFlag, type Question } from "../domain/types";
+import { flagsOfferedIn, type ChallengeReason, type Confidence, type Flag, type ItemFlag, type Question } from "../domain/types";
 import { schemaDocument } from "../domain/schemaDocument";
 import type { RawEvent, RawEventBody, RawLogChunk } from "../recorder/recorder";
 import { DEFAULT_PREFERENCES } from "../domain/settings";
@@ -156,6 +156,7 @@ describe("derive", () => {
         "- Item flags: none",
         "- Confidence: none",
         "- Flags: none",
+        "- Challenge: none",
         "- Answering timeline (time spent on this Question so far):",
         "  - 0.000 s: Visit 1 opened",
         "  - 1.000 s: selected C; answer now C",
@@ -403,7 +404,7 @@ describe("derive: provenance", () => {
         { rules: strict },
       ),
     );
-    expect(result.algorithmVersion).toBe(11);
+    expect(result.algorithmVersion).toBe(12);
     expect(result.parameters).toEqual({ idleThresholdMs: 30_000, writingPauseMs: 20_000, flickThresholdMs: 1_000, shuffleQuestions: true, shuffleOptions: true, collectConfidence: true });
     expect(result.chunks).toEqual([
       { id: `${SESSION}_0`, hash: "hash0" },
@@ -668,15 +669,15 @@ describe("derive: Flags", () => {
   });
 
   it("gives a Flag added after the answers were revealed the Phase reviewing", () => {
-    // Submitted in chunk 0; on the review page an hour later, Q2 is flagged as a bad question.
+    // Submitted in chunk 0; on the review page an hour later, Q2 is flagged as careless.
     const result = derive(
       sitting([
         { startedAt: 0, activeMs: 10_000, events: [[0, open(question)], [2_000, flag(question, "concept")], [10_000, submit]] },
-        { startedAt: 3_600_000, activeMs: 5_000, events: [[5_000, flag(second, "bad_question")]] },
+        { startedAt: 3_600_000, activeMs: 5_000, events: [[5_000, flag(second, "careless")]] },
       ]),
     );
     expect(attemptOf(result, question).flags).toEqual([{ flag: "concept", phase: "answering", at: 2_000 }]);
-    expect(attemptOf(result, second).flags).toEqual([{ flag: "bad_question", phase: "reviewing", at: 3_605_000 }]);
+    expect(attemptOf(result, second).flags).toEqual([{ flag: "careless", phase: "reviewing", at: 3_605_000 }]);
   });
 
   it("derives the Flags offered while answering and writes their plain names in the Digest", () => {
@@ -723,6 +724,12 @@ describe("Flags offered by Phase", () => {
     expect(ids).toContain("not_understood");
     expect(ids).toContain("no_approach");
   });
+
+  it("keeps the retired bad_question Flag type in the Schema document, marked deprecated", () => {
+    const types = schemaDocument(0).flagTypes;
+    expect(types.find((f) => f.id === "bad_question")).toMatchObject({ level: "question", deprecated: true });
+    expect(types.filter((f) => f.deprecated).map((f) => f.id)).toEqual(["bad_question"]);
+  });
 });
 
 describe("derive: Note", () => {
@@ -764,14 +771,24 @@ describe("derive: Digest marks", () => {
   it("shows Confidence and Flags with their Phase for every Question, and each Phase's Note where there is one", () => {
     const { digest } = derive(marked(true));
     expect(digest).toContain(
-      ["- Answer changes: none", "- Item flags: none", "- Confidence: probably", "- Flags: Mixed up concepts (answering), bad question (reviewing)", "- Note (answering) 1: \"Mixed up ATP and GTP\"", "- Note (reviewing) 1: \"It was the cristae\"", ""].join("\n"),
+      [
+        "- Answer changes: none",
+        "- Item flags: none",
+        "- Confidence: probably",
+        "- Flags: Mixed up concepts (answering)",
+        "- Challenge: on (reviewing)",
+        "- Challenge reasons: none",
+        "- Note (answering) 1: \"Mixed up ATP and GTP\"",
+        "- Note (reviewing) 1: \"It was the cristae\"",
+        "",
+      ].join("\n"),
     );
-    expect(digest).toContain(["- Answer changes: none", "- Item flags: none", "- Confidence: none", "- Flags: none", ""].join("\n"));
+    expect(digest).toContain(["- Answer changes: none", "- Item flags: none", "- Confidence: none", "- Flags: none", "- Challenge: none", ""].join("\n"));
   });
 
   it("says Confidence was not collected when collection was off", () => {
     const { digest } = derive(marked(false));
-    expect(digest).toContain("- Confidence: not collected\n- Flags: Mixed up concepts (answering), bad question (reviewing)\n");
+    expect(digest).toContain("- Confidence: not collected\n- Flags: Mixed up concepts (answering)\n- Challenge: on (reviewing)\n");
   });
 });
 
@@ -915,31 +932,136 @@ describe("derive: Hints", () => {
   });
 });
 
-describe("derive: stored `appeal` events", () => {
-  const appeal = (q: Question, reason: string) => ({ type: "appeal", questionId: q.id, reason }) as const;
+describe("derive: Challenge", () => {
+  const raise = (q: Question) => ({ type: "challengeRaise", questionId: q.id }) as const;
+  const reason = (q: Question, r: ChallengeReason, on = true) => ({ type: "challengeReason", questionId: q.id, reason: r, on }) as const;
+  const statement = (q: Question, text: string) => ({ type: "textSave", questionId: q.id, field: "challenge", entry: 0, text }) as const;
 
-  it("adds the bad-question Flag and keeps the reason, with its Phase and time", () => {
+  // Q1: the Challenge area opened at 2 s, "wording unclear" picked at 3 s, a statement saved at 5 s, submitted at 10 s.
+  // On the review page: "wording unclear" taken back, "answer wrong" picked; Q2, never Challenged while answering, gets "options faulty".
+  const challenged = () =>
+    sitting([
+      {
+        startedAt: 1_000_000,
+        activeMs: 10_000,
+        events: [[0, open(question)], [2_000, raise(question)], [3_000, reason(question, "wording_unclear")], [5_000, statement(question, "Two answers fit")], [10_000, submit]],
+      },
+      { startedAt: 2_000_000, activeMs: 5_000, events: [[1_000, reason(question, "wording_unclear", false)], [2_000, reason(question, "answer_wrong")], [3_000, reason(second, "options_faulty")]] },
+    ]);
+
+  it("turns the Challenge on when raised, with its Phase and wall-clock time, and keeps the final Challenge reasons with theirs", () => {
+    const result = derive(challenged());
+    const attempt = attemptOf(result, question);
+    expect(attempt.challenge).toEqual({ on: true, phase: "answering", at: 1_002_000 });
+    expect(attempt.challengeReasons).toEqual([{ reason: "answer_wrong", phase: "reviewing", at: 2_002_000 }]);
+    expect(attempt.challengeStatements).toEqual({ answering: texts("Two answers fit") });
+    expect(attempt.flags).toEqual([]);
+  });
+
+  it("turns the Challenge on when a Challenge reason is picked on a Question never Challenged, in the Phase of the pick", () => {
+    const attempt = attemptOf(derive(challenged()), second);
+    expect(attempt.challenge).toEqual({ on: true, phase: "reviewing", at: 2_003_000 });
+    expect(attempt.challengeReasons).toEqual([{ reason: "options_faulty", phase: "reviewing", at: 2_003_000 }]);
+  });
+
+  it("makes raising the Challenge and each Challenge reason change Timeline steps while answering", () => {
+    expect(attemptOf(derive(challenged()), question).timeline).toEqual([
+      { atMs: 0, kind: "open" },
+      { atMs: 2_000, kind: "challenge" },
+      { atMs: 3_000, kind: "challengeReason", reason: "wording_unclear", on: true },
+      { atMs: 5_000, kind: "challengeStatement", entry: 0, text: "Two answers fit", laterDeleted: false },
+      { atMs: 10_000, kind: "leave" },
+    ]);
+  });
+
+  it("puts a raise before the Challenge reason or statement that turns the Challenge on", () => {
+    const result = derive(sitting([{ activeMs: 10_000, events: [[0, open(question)], [1_000, reason(question, "out_of_scope")], [10_000, submit]] }]));
+    expect(attemptOf(result, question).timeline.map((s) => s.kind)).toEqual(["open", "challenge", "challengeReason", "leave"]);
+    const written = derive(sitting([{ activeMs: 10_000, events: [[0, open(question)], [1_000, statement(question, "Unclear")], [10_000, submit]] }]));
+    expect(attemptOf(written, question).timeline.map((s) => s.kind)).toEqual(["open", "challenge", "challengeStatement", "leave"]);
+  });
+
+  it("makes no step of raising a Challenge already on, or of taking back a Challenge reason never picked", () => {
+    const result = derive(
+      sitting([
+        { startedAt: 1_000_000, activeMs: 10_000, events: [[0, open(question)], [1_000, raise(question)], [2_000, raise(question)], [3_000, reason(question, "answer_wrong", false)], [10_000, submit]] },
+        { startedAt: 2_000_000, activeMs: 2_000, events: [[1_000, raise(question)]] },
+      ]),
+    );
+    const attempt = attemptOf(result, question);
+    expect(attempt.challenge).toEqual({ on: true, phase: "answering", at: 1_001_000 });
+    expect(attempt.challengeReasons).toEqual([]);
+    expect(attempt.timeline.map((s) => s.kind)).toEqual(["open", "challenge", "leave"]);
+  });
+
+  it("keeps several Challenge reasons in the order last picked", () => {
+    const result = derive(
+      sitting([{ activeMs: 10_000, events: [[0, open(question)], [1_000, reason(question, "answer_wrong")], [2_000, reason(question, "options_faulty")], [3_000, reason(question, "answer_wrong", false)], [4_000, reason(question, "answer_wrong")], [10_000, submit]] }]),
+    );
+    expect(attemptOf(result, question).challengeReasons.map((r) => r.reason)).toEqual(["options_faulty", "answer_wrong"]);
+  });
+
+  it("writes the Challenge with its Challenge reasons and statement and their Phase in the Digest, and its steps in the Answering timeline", () => {
+    const { digest } = derive(challenged());
+    expect(digest).toContain(
+      ["- Flags: none", "- Challenge: on (answering)", "- Challenge reasons: The answer is wrong (reviewing)", '- Challenge statement (answering) 1: "Two answers fit"', ""].join("\n"),
+    );
+    expect(digest).toContain(["  - 2.000 s: Challenge raised", "  - 3.000 s: Challenge reason picked: The wording is unclear or ambiguous", '  - 5.000 s: Challenge statement saved: "Two answers fit"', ""].join("\n"));
+    expect(digest).toContain("- Challenge: on (reviewing)\n- Challenge reasons: The Options are faulty (none or more than one correct) (reviewing)\n");
+  });
+
+  it("writes a Challenge reason taken back while answering in the Answering timeline", () => {
+    const { digest } = derive(sitting([{ activeMs: 10_000, events: [[0, open(question)], [1_000, reason(question, "out_of_scope")], [2_000, reason(question, "out_of_scope", false)], [10_000, submit]] }]));
+    expect(digest).toContain("  - 1.000 s: Challenge reason picked: Out of scope or not matching the material\n  - 2.000 s: Challenge reason taken back: Out of scope or not matching the material\n");
+    expect(digest).toContain("- Challenge: on (answering)\n- Challenge reasons: none\n");
+  });
+});
+
+describe("derive: stored `bad_question` Flags and `appeal` events", () => {
+  const appeal = (q: Question, reason: string) => ({ type: "appeal", questionId: q.id, reason }) as const;
+  const flag = (q: Question, f: Flag) => ({ type: "flag", questionId: q.id, flag: f }) as const;
+  const unflag = (q: Question, f: Flag) => ({ type: "unflag", questionId: q.id, flag: f }) as const;
+
+  it("reads an `appeal` event as a Challenge statement that turns the Challenge on, with its Phase and time", () => {
     const result = derive(
       sitting([
         { startedAt: 1_000_000, activeMs: 10_000, events: [[0, open(question)], [3_000, appeal(question, "Ribosomes make no ATP, but neither does Golgi")], [10_000, submit]] },
         { startedAt: 2_000_000, activeMs: 2_000, events: [[2_000, appeal(second, "Both answers are right")]] },
       ]),
     );
-    expect(attemptOf(result, question).flags).toEqual([{ flag: "bad_question", phase: "answering", at: 1_003_000 }]);
+    expect(attemptOf(result, question).challenge).toEqual({ on: true, phase: "answering", at: 1_003_000 });
     expect(attemptOf(result, question).challengeStatements).toEqual({ answering: texts("Ribosomes make no ATP, but neither does Golgi") });
-    expect(attemptOf(result, second).flags).toEqual([{ flag: "bad_question", phase: "reviewing", at: 2_002_000 }]);
+    expect(attemptOf(result, second).challenge).toEqual({ on: true, phase: "reviewing", at: 2_002_000 });
     expect(attemptOf(result, second).challengeStatements).toEqual({ reviewing: texts("Both answers are right") });
+    expect(result.attempts.flatMap((a) => a.flags)).toEqual([]);
   });
 
   it("ignores a stored appeal event without a reason", () => {
     const result = derive(sitting([{ activeMs: 10_000, events: [[0, open(question)], [3_000, appeal(question, "  \n ")], [10_000, submit]] }]));
-    expect(attemptOf(result, question).flags).toEqual([]);
+    expect(attemptOf(result, question).challenge).toBeNull();
     expect(attemptOf(result, question).challengeStatements).toEqual({});
   });
 
-  it("gives the reason in the Digest beside the bad-question Flag", () => {
+  it("reads a `bad_question` Flag as the Challenge turned on and its removal as turned off, never as a Flag", () => {
+    const result = derive(
+      sitting([
+        { startedAt: 1_000_000, activeMs: 10_000, events: [[0, open(question)], [1_000, flag(question, "bad_question")], [2_000, flag(question, "memory")], [10_000, submit]] },
+        { startedAt: 2_000_000, activeMs: 3_000, events: [[1_000, flag(second, "bad_question")], [2_000, unflag(second, "bad_question")]] },
+      ]),
+    );
+    expect(attemptOf(result, question).challenge).toEqual({ on: true, phase: "answering", at: 1_001_000 });
+    expect(attemptOf(result, question).flags.map((f) => f.flag)).toEqual(["memory"]);
+    expect(attemptOf(result, second).challenge).toEqual({ on: false, phase: "reviewing", at: 2_001_000 });
+    expect(result.removedFlags).toEqual({});
+    expect(result.digest).toContain("- Flags: Couldn't recall (answering)\n- Challenge: on (answering)\n");
+    expect(result.digest).toContain("- Flags: none\n- Challenge: off (raised in reviewing, later turned off)\n");
+  });
+
+  it("writes an `appeal` event in the Digest as a Challenge statement, never as an Appeal", () => {
     const { digest } = derive(sitting([{ activeMs: 10_000, events: [[0, open(question)], [3_000, appeal(question, "The stem is ambiguous")], [10_000, submit]] }]));
-    expect(digest).toContain("- Flags: bad question (answering)\n- Challenge statement (answering) 1: \"The stem is ambiguous\"\n");
+    expect(digest).toContain('- Flags: none\n- Challenge: on (answering)\n- Challenge reasons: none\n- Challenge statement (answering) 1: "The stem is ambiguous"\n');
+    expect(digest).toContain('  - 3.000 s: Challenge raised\n  - 3.000 s: Challenge statement saved: "The stem is ambiguous"\n');
+    expect(digest).not.toContain("Appeal");
   });
 });
 
@@ -1018,7 +1140,7 @@ describe("derive: Answering timeline", () => {
     ]);
   });
 
-  it("includes deselections, Item flags and Flags taken back, Confidence cleared, stored appeal events and Notes saved, but not actions that changed nothing", () => {
+  it("includes deselections, Item flags and Flags taken back, Confidence cleared, stored appeal events as Challenge statements, a stored bad_question removal as the Challenge turned off, and Notes saved, but not actions that changed nothing", () => {
     const result = derive(
       sitting(
         [
@@ -1049,10 +1171,10 @@ describe("derive: Answering timeline", () => {
       ),
     );
     const { timeline } = attemptOf(result, question);
-    expect(timeline.map((s) => s.kind)).toEqual(["open", "select", "deselect", "itemFlag", "itemUnflag", "confidence", "confidence", "appeal", "unflag", "note", "note", "leave"]);
+    expect(timeline.map((s) => s.kind)).toEqual(["open", "select", "deselect", "itemFlag", "itemUnflag", "confidence", "confidence", "challenge", "challengeStatement", "challengeOff", "note", "note", "leave"]);
     expect(timeline).toContainEqual({ atMs: 2_000, kind: "deselect", optionId: "opt_a", answer: [] });
     expect(timeline).toContainEqual({ atMs: 4_500, kind: "confidence", confidence: null });
-    expect(timeline).toContainEqual({ atMs: 5_500, kind: "appeal", reason: "Two answers fit" });
+    expect(timeline).toContainEqual({ atMs: 5_500, kind: "challengeStatement", entry: 0, text: "Two answers fit", laterDeleted: false });
     expect(timeline).toContainEqual({ atMs: 7_500, kind: "note", entry: 0, text: "", laterDeleted: false });
   });
 
@@ -1083,7 +1205,7 @@ describe("derive: Answering timeline", () => {
     );
   });
 
-  it("writes taken-back marks, stored appeal events and Notes into the Digest", () => {
+  it("writes taken-back marks, stored appeal events as Challenge statements and Notes into the Digest", () => {
     const { digest } = derive(
       sitting([
         {
@@ -1111,8 +1233,9 @@ describe("derive: Answering timeline", () => {
         "  - 3.000 s: Item flag on C: unknown term",
         "  - 3.500 s: Item flag removed from C: unknown term",
         "  - 4.000 s: Confidence cleared",
-        "  - 5.000 s: Appeal: \"Two answers fit\"",
-        "  - 6.000 s: Flag removed: bad question",
+        "  - 5.000 s: Challenge raised",
+        "  - 5.000 s: Challenge statement saved: \"Two answers fit\"",
+        "  - 6.000 s: Challenge turned off",
         "  - 7.000 s: Note saved: \"Not sure\"",
         "  - 7.500 s: Note cleared",
       ].join("\n"),
@@ -1281,7 +1404,7 @@ describe("derive: Writing spans", () => {
     expect(attemptOf(result, question).notes).toEqual({ reviewing: texts("Later") });
   });
 
-  it("records a saved Challenge statement as the Phase's first Challenge statement entry, which adds the bad-question Flag; emptying it keeps the Flag", () => {
+  it("records a saved Challenge statement as the Phase's first Challenge statement entry, which turns the Challenge on; emptying it keeps it on", () => {
     const challenge = (position: number, inserted: string) => ({ type: "textInput", questionId: question.id, field: "challenge", entry: 0, position, removed: "", inserted, kind: "typing" }) as const;
     const result = derive(
       sitting([
@@ -1295,14 +1418,15 @@ describe("derive: Writing spans", () => {
     );
     const attempt = attemptOf(result, question);
     expect(attempt.challengeStatements).toEqual({ answering: texts("Two fit") });
-    expect(attempt.flags).toEqual([{ flag: "bad_question", phase: "answering", at: 1_002_000 }]);
+    expect(attempt.challenge).toEqual({ on: true, phase: "answering", at: 1_002_000 });
     expect(attempt.timeline).toEqual([
       { atMs: 0, kind: "open" },
       { atMs: 1_000, endMs: 1_000, kind: "writing", field: "challenge", entry: 0, pastes: 0, laterDeleted: false },
+      { atMs: 2_000, kind: "challenge" },
       { atMs: 2_000, kind: "challengeStatement", entry: 0, text: "Two fit", laterDeleted: false },
       { atMs: 10_000, kind: "leave" },
     ]);
-    expect(result.digest).toContain('  - 1.000 s–1.000 s: writing a Challenge statement\n  - 2.000 s: Challenge statement saved: "Two fit"\n');
+    expect(result.digest).toContain('  - 1.000 s–1.000 s: writing a Challenge statement\n  - 2.000 s: Challenge raised\n  - 2.000 s: Challenge statement saved: "Two fit"\n');
     expect(result.digest).toContain('- Challenge statement (answering) 1: "Two fit"\n');
   });
 
@@ -1324,12 +1448,14 @@ describe("derive: Writing spans", () => {
     );
     const attempt = attemptOf(result, question);
     expect(attempt.challengeStatements).toEqual({ answering: texts("Two answers fit") });
-    expect(attempt.flags).toEqual([{ flag: "bad_question", phase: "answering", at: 1_002_000 }]);
+    // As the bad-question Flag was before: each stored `appeal` event turns the Challenge on again at its own time.
+    expect(attempt.challenge).toEqual({ on: true, phase: "answering", at: 1_002_000 });
     expect(attempt.notes).toEqual({ answering: texts("Unsure") });
     expect(attempt.timeline).toEqual([
       { atMs: 0, kind: "open" },
-      { atMs: 1_000, kind: "appeal", reason: "Two fit" },
-      { atMs: 2_000, kind: "appeal", reason: "Two answers fit" },
+      { atMs: 1_000, kind: "challenge" },
+      { atMs: 1_000, kind: "challengeStatement", entry: 0, text: "Two fit", laterDeleted: false },
+      { atMs: 2_000, kind: "challengeStatement", entry: 0, text: "Two answers fit", laterDeleted: false },
       { atMs: 3_000, kind: "note", entry: 0, text: "Unsure", laterDeleted: false },
       { atMs: 10_000, kind: "leave" },
     ]);
@@ -1407,16 +1533,16 @@ describe("derive: Text entries", () => {
     expect(attemptOf(result, question).notes).toEqual({ answering: texts("Before"), reviewing: texts("After", "After too") });
   });
 
-  it("sets the bad-question Flag when a Challenge statement entry first holds text, whichever entry it is", () => {
+  it("turns the Challenge on when a Challenge statement entry first holds text, whichever entry it is", () => {
     const result = derive(
       sitting([{ startedAt: 1_000_000, activeMs: 10_000, events: [[0, open(question)], [1_000, act("textAdd", question, "challenge", 1)], [2_000, save(question, "challenge", 1, "Two fit")], [10_000, submit]] }]),
     );
     const attempt = attemptOf(result, question);
-    expect(attempt.flags).toEqual([{ flag: "bad_question", phase: "answering", at: 1_002_000 }]);
+    expect(attempt.challenge).toEqual({ on: true, phase: "answering", at: 1_002_000 });
     expect(attempt.challengeStatements).toEqual({ answering: [{ entry: 1, deleted: false, text: "Two fit" }] });
   });
 
-  it("does not set the Flag for an empty Challenge statement entry, and deleting one clears nothing", () => {
+  it("does not turn the Challenge on for an empty Challenge statement entry, and deleting one turns nothing off", () => {
     const result = derive(
       sitting([
         {
@@ -1426,9 +1552,9 @@ describe("derive: Text entries", () => {
       ]),
     );
     const attempt = attemptOf(result, question);
-    expect(attempt.flags.map((f) => f.flag)).toEqual(["bad_question"]);
+    expect(attempt.challenge?.on).toBe(true);
     expect(attempt.challengeStatements).toEqual({ answering: [deletedEntry(0)] });
-    expect(derive(sitting([{ activeMs: 10_000, events: [[0, open(question)], [1_000, save(question, "challenge", 0, "  ")], [10_000, submit]] }])).attempts[0]!.flags).toEqual([]);
+    expect(derive(sitting([{ activeMs: 10_000, events: [[0, open(question)], [1_000, save(question, "challenge", 0, "  ")], [10_000, submit]] }])).attempts[0]!.challenge).toBeNull();
   });
 
   it("keeps an entry over 2000 characters whole", () => {

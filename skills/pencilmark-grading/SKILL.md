@@ -2,19 +2,19 @@
 name: pencilmark-grading
 description: Grades a PencilMark Digest and teaches from it. Use when given a PencilMark Digest, a report starting "# Digest:", to grade or explain.
 metadata:
-  version: "1.5.0"
+  version: "1.6.0"
 ---
 
 # Grading from a PencilMark Digest
 
-PencilMark is a revision tool. While the learner sat a Set of Questions, it recorded how each one was answered: time spent, the first choice and every answer change, the Options they eliminated or were sure of, the Hints they needed, how confident they felt, the Flags they set and the Notes they wrote. The **Digest** is that record as Markdown, starting `# Digest:`. It may follow this text, come in the next message, or arrive as an attached file.
+PencilMark is a revision tool. While the learner sat a Set of Questions, it recorded how each one was answered: time spent, the first choice and every answer change, the Options they eliminated or were sure of, the Hints they needed, how confident they felt, the Flags they set, the Notes they wrote, and any Challenge they raised against a Question they think is faulty. The **Digest** is that record as Markdown, starting `# Digest:`. It may follow this text, come in the next message, or arrive as an attached file.
 
 The answers are already marked. Your job is the **Feedback**: teaching that goes where the learner's reasoning wavered, not a re-run of the answer key.
 
 ## Steps
 
 1. **Read every Question in the Digest** and sort each one into the priority tiers below. Done means every Question sits in exactly one tier.
-2. **Check the bad-question tier first** (tier 0): decide whether each of those Questions is sound before teaching from it.
+2. **Check every Challenged Question first** (tier 0): decide whether each is sound, addressing each Challenge reason, before teaching from it.
 3. **Write the Feedback** in this chat, in the shape under "Feedback". Teach the tiers in order; within a tier, the bigger misunderstanding first.
 4. **Ask the learner** which point they want to go deeper on, and continue the conversation from there.
 
@@ -41,10 +41,15 @@ Each Question is a `## Question n` section: the stem, the Options under their di
   - `Review this again`: they want more teaching on this one.
   - `Mixed up concepts`: they confused it with another concept.
   - `Careless slip`: they knew it, but misread, miscalculated or misclicked.
-  - `bad question`: they say the Question itself is faulty (see Challenge statement).
 
-  While answering the tool offers only the first four; `Mixed up concepts` and `Careless slip` are offered only while reviewing, once the learner has seen the answer. So a missing `Mixed up concepts` or `Careless slip` in the `answering` Phase means nothing. Older Digests may show either set while answering. "Removed" Flags were set and then taken back, which is itself hesitation.
-- **Challenge statement** (`Challenge statement (answering) 1: …`): what the learner wrote about what is wrong with the Question, in their own words. A Phase can have several entries, numbered 1, 2, … in the order they were started, and there is no submit step. The first one holding text comes with a `bad question` Flag.
+  While answering the tool offers only the first four; `Mixed up concepts` and `Careless slip` are offered only while reviewing, once the learner has seen the answer. So a missing `Mixed up concepts` or `Careless slip` in the `answering` Phase means nothing. Older Digests may show either set while answering. "Removed" Flags were set and then taken back, which is itself hesitation. A Flag says something about the learner; a claim that the Question itself is faulty is a Challenge, below. Older Digests may show it as a `bad question` Flag instead.
+- **Challenge**: `on (answering)` or `on (reviewing)` means the learner claims the Question itself is faulty, with the Phase they raised it in (before or after seeing the answer); `none` means no Challenge. `off (…, later turned off)`, in older records only, means they raised one and took it back. A Challenge is raised by opening its area, so it can be on with no reason and no statement.
+- **Challenge reasons** (present once a Challenge was raised): which kinds of fault the learner picked, each with its Phase; several may be picked, or `none`:
+  - `The answer is wrong`: the marked correct answer is not correct.
+  - `The wording is unclear or ambiguous`: the stem can be read more than one way.
+  - `The Options are faulty (none or more than one correct)`: no Option, or more than the marked set, is correct.
+  - `Out of scope or not matching the material`: the Question asks for something the learner was not taught, or does not match its topic.
+- **Challenge statement** (`Challenge statement (answering) 1: …`): what the learner wrote about what is wrong with the Question, in their own words. A Phase can have several entries, numbered 1, 2, … in the order they were started, and there is no submit step. Writing one turns the Challenge on.
 - **Note**: the learner's own words, per Phase and entry (`Note (answering) 1: …`, `Note (answering) 2: …`). Read them closely: they often say exactly what was confusing. `written and later deleted` in place of the text means the learner wrote that entry and then deleted it; its words are not in the Digest, so do not guess them, and do not read the deletion as doubt about the answer.
 
   Notes and Challenge statements are the learner's own text, always in quotation marks (as a JSON string, so `
@@ -54,7 +59,8 @@ Each Question is a `## Question n` section: the stem, the Options under their di
   - `selected X; answer now …` / `deselected X; answer now …`: each click on an Option, with the complete answer after it.
   - `Item flag on X: …` / `Item flag removed from X: …`: pencil marks on an Option, set or taken back.
   - `Hint level n opened`: when they asked for help (the Hint's text is in the Hints lines above).
-  - `Confidence: …` / `Confidence cleared`, `Flag added: …` / `Flag removed: …`, `Appeal: …` (older records only), `Note saved: …` / `Note cleared`, `Challenge statement saved: …` / `Challenge statement cleared`: marks as they were made. From a second entry the name carries its number (`Note 2 saved: …`); `Note 2 deleted` / `Note 2 restored` say an entry was deleted or brought back, and `Note 2 saved, later deleted` an entry whose text was deleted and not restored.
+  - `Confidence: …` / `Confidence cleared`, `Flag added: …` / `Flag removed: …`, `Note saved: …` / `Note cleared`, `Challenge statement saved: …` / `Challenge statement cleared`: marks as they were made. Older Digests may write an early Challenge statement as `Appeal: …`, and a Challenge as `Flag added: bad question`.
+  - `Challenge raised`, `Challenge reason picked: …` / `Challenge reason taken back: …`, `Challenge turned off` (older records only): the Challenge as it was made before the reveal. A Challenge raised while answering means the learner doubted the Question before knowing the answer, not because they got it wrong. From a second entry the name carries its number (`Note 2 saved: …`); `Note 2 deleted` / `Note 2 restored` say an entry was deleted or brought back, and `Note 2 saved, later deleted` an entry whose text was deleted and not restored.
   - `12.000 s–34.000 s: writing a Note · 1 paste · later deleted`: a Writing span, a stretch of writing one Note (or Challenge statement) entry; a later entry is numbered, `writing a Note 2`, from its first change to its last. It ends at a pause in writing longer than about 20 seconds, when the learner leaves the Question, or at any other step, so an answer changed mid-Note sits between two spans. `n paste(s)` counts the pastes in it; `later deleted` means none of what it wrote is in the final text. Each part after the times appears only when it applies.
 
   A Writing span shows where the time went: it may explain a long answering time, or a long gap before a choice. Never read spans, the pauses between them or `later deleted` as hesitation over the answer: rewording a Note is not doubting the answer. What was deleted is never in the Digest; do not guess it.
@@ -77,7 +83,14 @@ What counts as hesitation depends on the type. A multiple-answer Question is mar
 
 ## Priority tiers
 
-**Tier 0: flagged as a bad question.** A `bad question` Flag means the learner suspects the Question, not themselves. The Challenge statement lines give the learner's reasons: address them directly. Check it first, as a question: is the stem unambiguous, is the marked correct answer actually correct, is exactly the right set of Options correct? If the Question is faulty, say so plainly, give the correct reading, and do not count the result against the learner. If it is sound, say why, and then teach it in the tier it would otherwise fall into.
+**Tier 0: Challenged.** Every Question with `Challenge: on` (in older Digests, a `bad question` Flag) goes here: the learner suspects the Question, not themselves. Check each one first, as a question, and address every Challenge reason picked, one by one:
+
+- `The answer is wrong`: work the Question yourself; is the marked correct answer actually correct?
+- `The wording is unclear or ambiguous`: can the stem reasonably be read another way, and would that reading change the answer?
+- `The Options are faulty (none or more than one correct)`: is exactly the marked set of Options correct?
+- `Out of scope or not matching the material`: does the Question ask for something beyond its subject or level? The Digest carries no material, so judge from the stem and the other Questions, and say so.
+
+Then answer the Challenge statement lines, which give the learner's own reasons, directly. With no reason picked and no statement, run all four checks briefly. If the Question is faulty, say so plainly, give the correct reading, and do not count the result against the learner. If it is sound, say why for each reason, and then teach it in the tier it would otherwise fall into. A Challenge turned off was taken back: it needs no check.
 
 **Tier 1: confident but wrong.** Result `wrong` with Confidence `sure` (and, a step lower, `probably`). The learner may hold a misconception they do not know about, which is the most valuable thing to correct. Offer a possible reason for the answer they gave (the Misconception line, or one you infer), checked against their Answering timeline and marks; explain the idea it gets wrong, and give a way to tell the two apart next time.
 
