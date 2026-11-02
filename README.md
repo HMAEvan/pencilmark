@@ -63,7 +63,7 @@ Domain terms are defined in [`GLOSSARY.md`](GLOSSARY.md); every design decision 
 
 ## How this was built
 
-Built with AI coding agents (Claude Code) under my direction. I set the goals and the working rules (a written spec, a domain glossary, decision records, test-first development at agreed seams, one issue per change with review) and chose between the alternatives the agents proposed. The agents drafted the documents and wrote the code.
+Built with AI coding agents (Claude Code) under my direction. Each feature began as a grilling session: using the `grill-with-docs` and `domain-modeling` skills from Matt Pocock's open-source [skills](https://github.com/mattpocock/skills), an agent questioned me about the design until every open decision was settled, and by me. It then wrote the result down — the [spec](https://github.com/HMAEvan/pencilmark/issues/1), GitHub issues, glossary entries and decision records — and I confirmed each one before it was saved. Implementation agents then took one issue at a time, test-first at the agreed seams; a supervising agent reviewed and merged each change, and I checked the result in the running app.
 
 The working rules are in [`CLAUDE.md`](CLAUDE.md); changes are listed in [`CHANGELOG.md`](CHANGELOG.md).
 
