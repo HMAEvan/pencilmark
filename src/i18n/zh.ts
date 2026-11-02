@@ -126,6 +126,7 @@ export const zh = {
   "challengeArea.title": "题目有问题",
   "challengeArea.on": "已报错",
   "challengeArea.reasons": "哪里有问题？可多选。",
+  "challengeArea.reasonsRead": "报错原因",
   "challengeArea.noReasons": "未选报错原因。",
   "challengeArea.aiLine": "AI 出的题可能有错。觉得哪里不对，就在这里说明。",
   "challengeReason.answer_wrong": "答案错了",

@@ -298,7 +298,7 @@ export function ChallengeArea({
       </button>
       {open && (
         <div class="challenge-area-body">
-          <p class="muted challenge-reasons-label">{t("challengeArea.reasons")}</p>
+          <p class="muted challenge-reasons-label">{t(onReason ? "challengeArea.reasons" : "challengeArea.reasonsRead")}</p>
           {onReason ? (
             <div class="flags challenge-reasons" role="group" aria-label={t("challengeArea.reasons")}>
               {CHALLENGE_REASONS.map((r) => {
@@ -311,7 +311,7 @@ export function ChallengeArea({
               })}
             </div>
           ) : (
-            <div class="flags challenge-reasons" role="group" aria-label={t("challengeArea.reasons")}>
+            <div class="flags challenge-reasons" role="group" aria-label={t("challengeArea.reasonsRead")}>
               {picked.length ? picked.map((r) => <span key={r} class="flag-read challenge-read">{t(`challengeReason.${r}`)}</span>) : <span class="muted">{t("challengeArea.noReasons")}</span>}
             </div>
           )}

@@ -128,6 +128,7 @@ export const en = {
   "challengeArea.title": "Something's wrong with this question",
   "challengeArea.on": "Challenge on",
   "challengeArea.reasons": "What is wrong? Pick any that apply.",
+  "challengeArea.reasonsRead": "Challenge reasons",
   "challengeArea.noReasons": "No Challenge reasons picked.",
   "challengeArea.aiLine": "Questions written by AI can be wrong. If something looks off, say what here.",
   "challengeReason.answer_wrong": "The answer is wrong",
