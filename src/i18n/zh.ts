@@ -55,7 +55,7 @@ export const zh = {
   "session.status.reviewed": "已回顾",
   "session.status.abandoned": "已放弃",
   "player.questionNumber": "第 {n} / {total} 题",
-  "player.questionNumberShort": "{n} / {total}",
+  "player.questionNumberShort": "Q{n}/{total}",
   "player.previous": "上一题",
   "player.next": "下一题",
   "player.submit": "提交",

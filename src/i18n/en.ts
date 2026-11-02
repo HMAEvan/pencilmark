@@ -57,7 +57,7 @@ export const en = {
   "session.status.reviewed": "reviewed",
   "session.status.abandoned": "abandoned",
   "player.questionNumber": "Question {n} of {total}",
-  "player.questionNumberShort": "{n} / {total}",
+  "player.questionNumberShort": "Q{n}/{total}",
   "player.previous": "Previous",
   "player.next": "Next",
   "player.submit": "Submit",
