@@ -1,4 +1,4 @@
-import { FLAGS, ITEM_FLAGS, type Flag, type ItemFlag } from "./types";
+import { FLAGS, ITEM_FLAGS, type ChallengeReason, type Flag, type ItemFlag } from "./types";
 import type { Storage } from "../storage/storage";
 import { DEFAULT_PREFERENCES, SCHEMA_VERSION } from "./settings";
 
@@ -23,7 +23,16 @@ export const FLAG_TYPE: Record<Flag, Omit<FlagType, "id">> = {
   focus: { name: "Review this again", colour: "#1565c0", level: "question" },
   concept: { name: "Mixed up concepts", colour: "#7b1fa2", level: "question" },
   careless: { name: "Careless slip", colour: "#ef6c00", level: "question" },
-  bad_question: { name: "bad question", colour: "#c62828", level: "question" },
+  // Retired (ADR-0012): a faulty Question is a Challenge. Stored Raw logs still hold it, read as the Challenge turned on or off.
+  bad_question: { name: "bad question", colour: "#c62828", level: "question", deprecated: true },
+};
+
+/** The English name of each Challenge reason, as the Digest writes it; the interface shows its own translation. */
+export const CHALLENGE_REASON_NAME: Record<ChallengeReason, string> = {
+  answer_wrong: "The answer is wrong",
+  wording_unclear: "The wording is unclear or ambiguous",
+  options_faulty: "The Options are faulty (none or more than one correct)",
+  out_of_scope: "Out of scope or not matching the material",
 };
 
 /** Keyed by Item flag, so every Item flag has exactly one entry. */

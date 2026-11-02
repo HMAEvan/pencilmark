@@ -1,6 +1,6 @@
 import { Fragment } from "preact";
 import { useEffect, useState } from "preact/hooks";
-import type { Confidence, Flag, ItemFlag, Question, QuestionSet, Session } from "../domain/types";
+import type { ChallengeReason, Confidence, Flag, ItemFlag, Question, QuestionSet, Session } from "../domain/types";
 import { blocksToText, letterAt } from "../domain/display";
 import { RichText } from "./RichText";
 import { t } from "../i18n/i18n";
@@ -10,7 +10,7 @@ import { DEFAULT_PREFERENCES, type Display, type Rules } from "../domain/setting
 import { walkMarks, type TextEntryMark } from "../derivation/marks";
 import { answeringTimesSoFar, finalAnsweringActiveMs } from "../derivation/derivation";
 import { AnsweringTime, TimeOverrideField } from "./AnsweringTime";
-import { ChallengeForm, ConfidenceButtons, HintPanel, ItemFlagMarks, ItemFlagMenu, MarksArea, NoteField, useLongPress } from "./Marks";
+import { ChallengeArea, ChallengeStatementField, ConfidenceButtons, HintPanel, ItemFlagMarks, ItemFlagMenu, MarksArea, NoteField, challengeStateOf, useLongPress, type ChallengeState } from "./Marks";
 import { storage } from "./appStorage";
 import { navigate } from "./App";
 import { displayOf, formatDuration } from "./format";
@@ -33,9 +33,12 @@ type Marked = {
   /** The Notes and Challenge statements written while answering, by Question id. */
   notes: Record<string, TextEntryMark[]>;
   statements: Record<string, TextEntryMark[]>;
+  /** Whether each Question's Challenge is on; a Question never Challenged is absent. */
+  challenge: Record<string, ChallengeState>;
+  challengeReasons: Record<string, ChallengeReason[]>;
 };
 
-const NOTHING_MARKED: Marked = { answers: {}, confidence: {}, flags: {}, itemFlags: {}, hintsOpened: {}, notes: {}, statements: {} };
+const NOTHING_MARKED: Marked = { answers: {}, confidence: {}, flags: {}, itemFlags: {}, hintsOpened: {}, notes: {}, statements: {}, challenge: {}, challengeReasons: {} };
 
 /** A judgement on an Option: an Option is eliminated, eliminated but unsure, or sure right, never two of these at once. */
 const JUDGEMENTS: ItemFlag[] = ["eliminated", "eliminated_unsure", "sure_right"];
@@ -69,6 +72,8 @@ async function load(sessionId: string): Promise<(Loaded & { marked: Marked }) | 
     hintsOpened: Object.fromEntries(attempts.map((a) => [a.questionId, a.hintsUsed.length])),
     notes: Object.fromEntries(attempts.map((a) => [a.questionId, a.notes.answering ?? []])),
     statements: Object.fromEntries(attempts.map((a) => [a.questionId, a.challengeStatements.answering ?? []])),
+    challenge: Object.fromEntries(attempts.map((a) => [a.questionId, challengeStateOf(a)])),
+    challengeReasons: Object.fromEntries(attempts.map((a) => [a.questionId, a.challengeReasons.map((r) => r.reason)])),
   };
   return { session, set, questions, overrides: await loadOverrides(storage, session.id), marked, recorder };
 }
@@ -167,7 +172,7 @@ export function Player({ sessionId }: { sessionId: string }) {
   const question = questions.get(questionId)!;
   const optionOrder = session.optionOrders[questionId] ?? question.options.map((o) => o.id);
   const type = questionTypeOf(question);
-  const { answers, confidence, flags, itemFlags, hintsOpened, notes, statements } = marked;
+  const { answers, confidence, flags, itemFlags, hintsOpened, notes, statements, challenge, challengeReasons } = marked;
   const answer = answers[questionId] ?? [];
   // Sessions from before settings snapshots were kept all ran with the defaults.
   const rules = session.settings?.rules ?? DEFAULT_PREFERENCES.rules;
@@ -212,18 +217,31 @@ export function Player({ sessionId }: { sessionId: string }) {
     setMarked((m) => ({ ...m, hintsOpened: { ...m.hintsOpened, [questionId]: level + 1 } }));
     recorder.append({ type: "openHint", questionId, level });
   };
-  // A Note or Challenge statement records each change. Its saves, deletes and restores are marks: the entries are worked
-  // out again from the Raw log so far, by the same rules as Derivation, and so is the bad-question Flag a statement sets.
-  const recordText = (event: RawEventBody) => {
-    recorder.append(event);
-    if (event.type !== "textSave" && event.type !== "textDelete" && event.type !== "textRestore") return;
-    const derived = walkMarks(recorder.rawLog(), rules).marks.get(event.questionId);
+  // The Challenge, its reasons and its statements are worked out again from the Raw log so far, by the same rules as Derivation.
+  const rederiveChallenge = (id: string) => {
+    const derived = walkMarks(recorder.rawLog(), rules).marks.get(id);
     setMarked((m) => ({
       ...m,
-      flags: { ...m.flags, [event.questionId]: (derived?.flags ?? []).map((f) => f.flag) },
-      notes: { ...m.notes, [event.questionId]: derived?.notes.answering ?? [] },
-      statements: { ...m.statements, [event.questionId]: derived?.challengeStatements.answering ?? [] },
+      notes: { ...m.notes, [id]: derived?.notes.answering ?? [] },
+      statements: { ...m.statements, [id]: derived?.challengeStatements.answering ?? [] },
+      challenge: { ...m.challenge, [id]: derived ? challengeStateOf(derived) : "none" },
+      challengeReasons: { ...m.challengeReasons, [id]: (derived?.challengeReasons ?? []).map((r) => r.reason) },
     }));
+  };
+  // A Note or Challenge statement records each change. Its saves, deletes and restores are marks: the entries are worked
+  // out again, and so is the Challenge a statement turns on.
+  const recordText = (event: RawEventBody) => {
+    recorder.append(event);
+    if (event.type === "textSave" || event.type === "textDelete" || event.type === "textRestore") rederiveChallenge(event.questionId);
+  };
+  // Opening the Challenge area the first time raises the Challenge; picking a Challenge reason turns it on too.
+  const raiseChallenge = () => {
+    recorder.append({ type: "challengeRaise", questionId });
+    rederiveChallenge(questionId);
+  };
+  const toggleChallengeReason = (reason: ChallengeReason, on: boolean) => {
+    recorder.append({ type: "challengeReason", questionId, reason, on });
+    rederiveChallenge(questionId);
   };
   // An Override beside the derived time, which keeps counting: time spent on the Question afterwards is added on top.
   const overrideTime = async (ms: number | undefined) => {
@@ -269,8 +287,8 @@ export function Player({ sessionId }: { sessionId: string }) {
             <nav class="question-nav" aria-label={t("player.navigation")}>
               {session.questionOrder.map((id, i) => {
                 const answered = (answers[id]?.length ?? 0) > 0;
-                const challenged = (flags[id] ?? []).includes("bad_question");
-                const flagged = (flags[id] ?? []).some((f) => f !== "bad_question");
+                const challenged = challenge[id] === "on";
+                const flagged = (flags[id] ?? []).length > 0;
                 const label = t(answered ? "player.navAnswered" : "player.navUnanswered", { n: i + 1 }) + (flagged ? t("player.navFlagged") : "") + (challenged ? t("player.navChallenged") : "");
                 return (
                   <button
@@ -347,9 +365,18 @@ export function Player({ sessionId }: { sessionId: string }) {
         </button>
       </div>
       <MarksArea key={`marks-${questionId}`} phase="answering" flags={flags[questionId] ?? []} onToggle={toggleFlag}>
-        <ChallengeForm key={`challenge-${questionId}`} entries={statements[questionId] ?? []} questionId={questionId} onRecord={recordText} />
         <NoteField key={questionId} entries={notes[questionId] ?? []} questionId={questionId} onRecord={recordText} />
       </MarksArea>
+      <ChallengeArea
+        key={`challenge-${questionId}`}
+        state={challenge[questionId] ?? "none"}
+        reasons={challengeReasons[questionId] ?? []}
+        aiWritten={question.model !== undefined}
+        onRaise={raiseChallenge}
+        onReason={toggleChallengeReason}
+      >
+        <ChallengeStatementField key={questionId} entries={statements[questionId] ?? []} questionId={questionId} onRecord={recordText} />
+      </ChallengeArea>
         </div>
       </div>
       {confirming && (

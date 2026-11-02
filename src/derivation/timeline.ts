@@ -1,4 +1,4 @@
-import type { Confidence, Flag, ItemFlag } from "../domain/types";
+import type { ChallengeReason, Confidence, Flag, ItemFlag } from "../domain/types";
 import type { Rules } from "../domain/settings";
 import type { RawEvent } from "../recorder/recorder";
 import { holdsText, type TextField } from "../recorder/textEntry";
@@ -18,8 +18,9 @@ export type TimelineStep = { atMs: number } & (
   /** Null: Confidence cleared. */
   | { kind: "confidence"; confidence: Confidence | null }
   | { kind: "flag" | "unflag"; flag: Flag }
-  /** Raw logs before ADR-0010. */
-  | { kind: "appeal"; reason: string }
+  /** The Challenge turned on: raised, or by the first Challenge reason or statement. `challengeOff`: a stored `bad_question` removal turned it off. */
+  | { kind: "challenge" | "challengeOff" }
+  | { kind: "challengeReason"; reason: ChallengeReason; on: boolean }
   /**
    * Empty: the Note or Challenge statement cleared. `laterDeleted`: the entry ended deleted, so its text is not here either.
    * `entry` is the Text entry's place among the Phase's entries of its field.
@@ -42,12 +43,14 @@ export const END_OF_LOG = Number.POSITIVE_INFINITY;
 /**
  * Collects the Answering timeline of each Question from the answering Phase of the timing walk. Steps are ordered by the
  * `seq` of the event behind each, so a Visit, known to be one only when it ends, still opens before what was done in it.
- * An action that changed nothing (taking back a mark never made, a Hint out of order, a stored `appeal` event without a reason) is no step,
- * as it changes nothing in the Attempt.
+ * An action that changed nothing (taking back a mark never made, a Hint out of order, a stored `appeal` event without a reason,
+ * raising a Challenge already on) is no step, as it changes nothing in the Attempt. A stored `appeal` event is a Challenge statement step.
  */
 export function answeringTimelines(rules: Rules, hintCount: (questionId: string) => number) {
   const steps = new Map<string, { seq: number; step: TimelineStep }[]>();
   const flags = new Map<string, Set<Flag>>();
+  const challenged = new Set<string>();
+  const reasons = new Map<string, Set<ChallengeReason>>();
   const itemFlags = new Map<string, Set<string>>();
   const hintsOpened = new Map<string, number>();
   const setOf = <T>(sets: Map<string, Set<T>>, questionId: string) => {
@@ -77,12 +80,18 @@ export function answeringTimelines(rules: Rules, hintCount: (questionId: string)
     list.push({ seq, step });
   };
 
+  /** Turns the Challenge on, a step only when it was off. */
+  const raise = (questionId: string, seq: number, atMs: number) => {
+    if (challenged.has(questionId)) return;
+    challenged.add(questionId);
+    add(questionId, seq, { atMs, kind: "challenge" });
+  };
   /** A Note or Challenge statement saved. Writing in an entry deleted earlier makes it a new entry again. */
   const saved = (questionId: string, seq: number, atMs: number, field: TextField, entry: number, text: string) => {
     const key = `${questionId} ${field} ${entry}`;
     savedText.set(key, text);
     if (holdsText(field, text)) deleted.delete(key);
-    if (field === "challenge" && holdsText(field, text)) setOf(flags, questionId).add("bad_question");
+    if (field === "challenge" && holdsText(field, text)) raise(questionId, seq, atMs);
     const step = { atMs, kind: field === "note" ? "note" : "challengeStatement", entry, text, laterDeleted: false } as const;
     add(questionId, seq, step);
     savedSteps.set(key, [...(savedSteps.get(key) ?? []), step]);
@@ -106,16 +115,29 @@ export function answeringTimelines(rules: Rules, hintCount: (questionId: string)
         if (event.type === "itemFlag") set.add(key);
         else if (!set.delete(key)) return;
         add(questionId, seq, { atMs, kind: event.type, optionId: event.optionId, itemFlag: event.itemFlag });
+      } else if (event.type === "flag" && event.flag === "bad_question") {
+        raise(questionId, seq, atMs);
+      } else if (event.type === "unflag" && event.flag === "bad_question") {
+        if (challenged.delete(questionId)) add(questionId, seq, { atMs, kind: "challengeOff" });
       } else if (event.type === "flag") {
         setOf(flags, questionId).add(event.flag);
         add(questionId, seq, { atMs, kind: "flag", flag: event.flag });
       } else if (event.type === "unflag") {
         if (setOf(flags, questionId).delete(event.flag)) add(questionId, seq, { atMs, kind: "unflag", flag: event.flag });
+      } else if (event.type === "challengeRaise") {
+        raise(questionId, seq, atMs);
+      } else if (event.type === "challengeReason") {
+        const set = setOf(reasons, questionId);
+        if (event.on) {
+          if (set.has(event.reason)) return;
+          raise(questionId, seq, atMs);
+          set.add(event.reason);
+        } else if (!set.delete(event.reason)) return;
+        add(questionId, seq, { atMs, kind: "challengeReason", reason: event.reason, on: event.on });
       } else if (event.type === "appeal") {
+        // Raw logs before ADR-0010: the first Challenge statement entry of its Phase, saved.
         const reason = event.reason.trim();
-        if (!reason) return;
-        setOf(flags, questionId).add("bad_question");
-        add(questionId, seq, { atMs, kind: "appeal", reason });
+        if (reason) saved(questionId, seq, atMs, "challenge", 0, reason);
       } else if (event.type === "openHint") {
         const opened = hintsOpened.get(questionId) ?? 0;
         if (event.level !== opened || event.level >= hintCount(questionId)) return;

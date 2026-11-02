@@ -106,7 +106,14 @@ button.small { padding: 4px 10px; font-size: 0.9rem; }
 .marks-area-header { display: flex; justify-content: space-between; align-items: center; gap: 8px; width: 100%; padding: 8px 10px; background: none; border: 0; color: var(--fg); font: inherit; text-align: left; cursor: pointer; }
 .marks-area-body { padding: 0 10px 10px; }
 .marks-area-body .flags:first-child { margin-top: 0; }
-.challenge-flag { border-top: 1px dashed var(--border); padding-top: 8px; }
+.challenge-area { border: 1px solid var(--challenge-mark); border-left-width: 4px; border-radius: 6px; margin-top: 12px; background: color-mix(in srgb, var(--challenge-mark) 8%, var(--card)); }
+.challenge-area-header { display: flex; justify-content: space-between; align-items: center; gap: 8px; width: 100%; padding: 8px 10px; background: none; border: 0; color: var(--fg); font: inherit; text-align: left; cursor: pointer; }
+.challenge-area.challenged .challenge-area-header { font-weight: 600; }
+.challenge-area-body { padding: 0 10px 10px; }
+.challenge-reasons-label { margin: 0; font-size: 0.9rem; }
+.challenge-reasons { margin-top: 6px; }
+.challenge-read { border-color: var(--challenge-mark); }
+.ai-line { margin: 10px 0 0; font-size: 0.9rem; }
 .flag-read { border: 1px solid var(--flag-mark); border-radius: 12px; padding: 1px 10px; font-size: 0.85rem; }
 .flag-meanings { margin-top: 10px; font-size: 0.9rem; }
 .flag-meanings summary { cursor: pointer; color: var(--flag-mark); }
@@ -133,7 +140,6 @@ button.small { padding: 4px 10px; font-size: 0.9rem; }
 .hint { border-left: 3px solid var(--border); padding-left: 8px; }
 .hint.used { border-left-color: var(--accent); }
 .hint .rich { margin: 4px 0 0; }
-.challenge { margin-top: 12px; }
 .dialog-backdrop {
   position: fixed; inset: 0; z-index: 10; display: flex; align-items: center; justify-content: center;
   padding: 16px; background: rgb(0 0 0 / 0.4);

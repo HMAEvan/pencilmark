@@ -1,5 +1,5 @@
 import type { Storage } from "../storage/storage";
-import type { Confidence, Flag, ItemFlag } from "../domain/types";
+import type { ChallengeReason, Confidence, Flag, ItemFlag } from "../domain/types";
 import type { TextChangeKind, TextEntryAction, TextEntryTarget } from "./textEntry";
 
 // ADR-0001: one append-only, time-ordered stream per Session, chunked only by saving.
@@ -10,13 +10,18 @@ export type RawEventBody =
   | { type: "deselect"; questionId: string; optionId: string }
   /** Sets or changes the Confidence; `null` clears it. */
   | { type: "confidence"; questionId: string; confidence: Confidence | null }
+  /** A `bad_question` Flag in a stored Raw log is the Challenge turned on (`flag`) or off (`unflag`); it is no longer recorded. */
   | { type: "flag"; questionId: string; flag: Flag }
   | { type: "unflag"; questionId: string; flag: Flag }
+  /** The Challenge area opened on the Question for the first time: the Challenge is raised (turned on). */
+  | { type: "challengeRaise"; questionId: string }
+  /** A Challenge reason picked (`on`) or taken back. Picking one also turns the Challenge on. */
+  | { type: "challengeReason"; questionId: string; reason: ChallengeReason; on: boolean }
   | { type: "itemFlag"; questionId: string; optionId: string; itemFlag: ItemFlag }
   | { type: "itemUnflag"; questionId: string; optionId: string; itemFlag: ItemFlag }
   /** Hints open one level at a time, lightest (0) first. */
   | { type: "openHint"; questionId: string; level: number }
-  /** Raw logs before ADR-0010: "I think the answer is wrong", with the user's reason; the first Challenge statement entry of its Phase. */
+  /** Raw logs before ADR-0010: "I think the answer is wrong", with the user's reason; the first Challenge statement entry of its Phase, which turns the Challenge on. */
   | { type: "appeal"; questionId: string; reason: string }
   /** Raw logs before ADR-0010: the whole Note as saved, the first Note entry of its Phase; an empty `text` removes it. */
   | { type: "note"; questionId: string; text: string }

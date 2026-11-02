@@ -24,8 +24,10 @@ export { finalAnsweringActiveMs, finalValues, type FinalValues, type OverriddenV
  * 9: Writing spans and Challenge statements saved, in the Answering timeline and the Digest; one Challenge statement per Phase; the learner's text in quotation marks in the Digest.
  * 10: several Notes and Challenge statements per Phase, each with its place; a deleted one without its text, deleted and restored in the Answering timeline; the `Appeal:` line is gone from the Digest.
  * 11: the Digest writes the Flags under their plain names (Couldn't recall, Careless slip…); two new Flag types.
+ * 12: the Challenge, no longer a Flag: on or off with its Phase, its Challenge reasons, raising and reason changes as Timeline steps,
+ *     in the Attempt and the Digest; a stored `appeal` event is a Challenge statement step, a stored `bad_question` Flag the Challenge.
  */
-export const ALGORITHM_VERSION = 11;
+export const ALGORITHM_VERSION = 12;
 
 export type DerivationInput = {
   title: string;

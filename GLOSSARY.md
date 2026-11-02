@@ -113,7 +113,7 @@ A Question-level mark the learner sets about themselves: what to come back to, o
 _Avoid_: Tag, label, bookmark, bad-question Flag (that is a Challenge)
 
 **Challenge** (报错):
-The learner's claim that a Question itself is faulty, made while answering or reviewing. It is on or off; while on, it carries the Challenge reasons picked and the Challenge statement. Opening the Challenge area turns it on, and so do picking a Challenge reason or writing a Challenge statement. Withdrawing it (撤回报错) clears its Challenge reasons and deletes its Challenge statement, which can be restored; until a new Challenge is raised, reinstating it (恢复报错) brings back the Challenge, its reasons and its statement as they were before withdrawing, in any Phase: a Challenge withdrawn while answering can be reinstated on the Review page. Not "undo": Reinstate restores the whole Challenge, Restore only one deleted Text entry. Only the first opening on a Question turns it on, whatever the Phase; opening the area after withdrawing changes nothing. The grading Skill checks a Challenged Question first. In code until #64 renames them: the `bad_question` Flag type with `flag`/`unflag` events for on and off, `appeal` events (Raw logs before ADR-0010), `Appeal`, `AppealForm`; stored events keep their names and are always read.
+The learner's claim that a Question itself is faulty, made while answering or reviewing. It is on or off; while on, it carries the Challenge reasons picked and the Challenge statement. Opening the Challenge area turns it on, and so do picking a Challenge reason or writing a Challenge statement. Withdrawing it (撤回报错) clears its Challenge reasons and deletes its Challenge statement, which can be restored; until a new Challenge is raised, reinstating it (恢复报错) brings back the Challenge, its reasons and its statement as they were before withdrawing, in any Phase: a Challenge withdrawn while answering can be reinstated on the Review page. Not "undo": Reinstate restores the whole Challenge, Restore only one deleted Text entry. Only the first opening on a Question turns it on, whatever the Phase; opening the area after withdrawing changes nothing. The grading Skill checks a Challenged Question first. In code: `challengeRaise` and `challengeReason` events, Challenge statements as Text entries with the field `"challenge"`, `ChallengeMark`. Stored Raw logs are always read: a `bad_question` `flag`/`unflag` event (the retired Flag type) is the Challenge turned on or off, and an `appeal` event (Raw logs before ADR-0010) a Challenge statement entry that turns it on.
 _Avoid_: Appeal, 申诉 (the old name: an appeal asks to reverse a judgement, which fits only a wrong answer and not answering before the reveal), bad-question Flag, report, complaint, dispute
 
 **Challenge reason** (报错原因):
@@ -292,4 +292,10 @@ Working name introduced while building issue #71, not yet agreed with /domain-mo
 
 **Marks and Notes area** (标记与备注):
 The blue collapsible section on the Answering page and on each Review page card holding the Flags of the current Phase, their explanations and the Notes; the Challenge area (#64) sits below it. In code: `MarksArea`.
+_Status_: provisional, not yet agreed
+
+Working name introduced while building issue #75, not yet agreed with /domain-modeling.
+
+**Challenge area** (报错区):
+The orange collapsible section (⚠) directly below the Marks and Notes area, on the Answering page and on each Review page card, opened by "Something's wrong with this question" (「题目有问题」): its header shows whether a Challenge is on; inside are the Challenge reasons and the Challenge statement. Read-only on the Showcase page. In code: `ChallengeArea`.
 _Status_: provisional, not yet agreed

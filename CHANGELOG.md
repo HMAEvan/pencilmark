@@ -5,6 +5,7 @@ Each merged change worth mentioning adds a line under Unreleased. At a milestone
 ## Unreleased
 
 - On a phone held upright, the top bar's text and buttons are as large as the rest of the page.
+- Saying a Question is faulty is now a Challenge in its own orange area below Marks and Notes, "Something's wrong with this question", with four Challenge reasons and the Challenge statement, on the Answering page and each Review page card; the Digest and grading Skill (1.6.0) check every Challenged Question first.
 
 ## v0.1.0
 

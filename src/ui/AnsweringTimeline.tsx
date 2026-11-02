@@ -29,8 +29,12 @@ export function AnsweringTimeline({ timeline, optionOrder, precision }: { timeli
       case "flag":
       case "unflag":
         return t(step.kind === "flag" ? "timeline.flag" : "timeline.unflag", { flag: t(`flag.${step.flag}`) });
-      case "appeal":
-        return t("timeline.appeal", { reason: step.reason });
+      case "challenge":
+        return t("timeline.challenge");
+      case "challengeOff":
+        return t("timeline.challengeOff");
+      case "challengeReason":
+        return t(step.on ? "timeline.challengeReasonOn" : "timeline.challengeReasonOff", { reason: t(`challengeReason.${step.reason}`) });
       case "note":
       case "challengeStatement": {
         const text = step.kind === "note" ? "note" : "challengeStatement";

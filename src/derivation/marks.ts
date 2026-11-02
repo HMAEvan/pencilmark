@@ -1,4 +1,4 @@
-import type { Confidence, Flag, ItemFlag, Phase } from "../domain/types";
+import type { ChallengeReason, Confidence, Flag, ItemFlag, Phase } from "../domain/types";
 import type { Rules } from "../domain/settings";
 import type { RecordedChunk } from "../recorder/recorder";
 import { holdsText as holds, type TextField } from "../recorder/textEntry";
@@ -8,6 +8,15 @@ import { holdsText as holds, type TextField } from "../recorder/textEntry";
 
 /** `at` is when the Flag was last added: wall-clock UTC epoch ms. */
 export type FlagMark = { flag: Flag; phase: Phase; at: number };
+
+/**
+ * The Challenge of an Attempt: `on`, or turned off by a stored `bad_question` removal. `phase` and `at` (wall-clock UTC epoch ms)
+ * are when it was last turned on. Null when the Question was never Challenged.
+ */
+export type ChallengeMark = { on: boolean; phase: Phase; at: number };
+
+/** `at` is when the Challenge reason was last picked: wall-clock UTC epoch ms. */
+export type ChallengeReasonMark = { reason: ChallengeReason; phase: Phase; at: number };
 
 /** `at` is when the Item flag was last added: wall-clock UTC epoch ms. */
 export type ItemFlagMark = { itemFlag: ItemFlag; phase: Phase; at: number };
@@ -24,12 +33,21 @@ export type TextEntryMark = { entry: number; deleted: false; text: string } | { 
 /** The Text entries of one field by Phase, so what is written after seeing the answer is kept apart; a Phase without any is absent. */
 export type PhaseTextEntries = Partial<Record<Phase, TextEntryMark[]>>;
 
-export type QuestionMarks = { confidence: Confidence | null; flags: FlagMark[]; itemFlags: ItemFlags; notes: PhaseTextEntries; challengeStatements: PhaseTextEntries };
+export type QuestionMarks = {
+  confidence: Confidence | null;
+  flags: FlagMark[];
+  itemFlags: ItemFlags;
+  notes: PhaseTextEntries;
+  challenge: ChallengeMark | null;
+  /** The Challenge reasons picked and not taken back, in the order picked. */
+  challengeReasons: ChallengeReasonMark[];
+  challengeStatements: PhaseTextEntries;
+};
 
 /** Every removal of a Flag, in order, as the Flag was before removal. Keyed by Question id; stored, so a plain record. */
 export type RemovedFlags = Record<string, FlagMark[]>;
 
-export const emptyMarks = (): QuestionMarks => ({ confidence: null, flags: [], itemFlags: {}, notes: {}, challengeStatements: {} });
+export const emptyMarks = (): QuestionMarks => ({ confidence: null, flags: [], itemFlags: {}, notes: {}, challenge: null, challengeReasons: [], challengeStatements: {} });
 
 export function walkMarks(rawLog: RecordedChunk[], rules: Rules): { marks: Map<string, QuestionMarks>; removedFlags: RemovedFlags } {
   const marks = new Map<string, QuestionMarks>();
@@ -37,6 +55,8 @@ export function walkMarks(rawLog: RecordedChunk[], rules: Rules): { marks: Map<s
   const flags = new Map<string, Map<Flag, FlagMark>>();
   const itemFlags = new Map<string, Map<string, Map<ItemFlag, ItemFlagMark>>>();
   const removedFlags: RemovedFlags = {};
+  // Kept in the order picked; one taken back and picked again moves to the end.
+  const reasons = new Map<string, Map<ChallengeReason, ChallengeReasonMark>>();
   const marksOf = (questionId: string) => {
     let m = marks.get(questionId);
     if (!m) marks.set(questionId, (m = emptyMarks()));
@@ -74,13 +94,21 @@ export function walkMarks(rawLog: RecordedChunk[], rules: Rules): { marks: Map<s
     if (!e) entries.set(entry, (e = { text: "", deleted: false, before: "" }));
     return e;
   };
-  /** Any Challenge statement adds the bad-question Flag, unless it is already on (`always`: a stored `appeal` event from before ADR-0010 added it again). */
+  /**
+   * Turns the Challenge on, unless it is already on. `always`: a stored `bad_question` Flag or `appeal` event turned it on again
+   * at its own time, as the bad-question Flag was re-added before the Challenge (#75), so stored Raw logs derive as before.
+   */
+  const raise = (questionId: string, at: number, always = false) => {
+    const m = marksOf(questionId);
+    if (always || !m.challenge?.on) m.challenge = { on: true, phase, at };
+  };
+  /** Any Challenge statement holding text turns the Challenge on (`always`: see `raise`). */
   const saveText = (questionId: string, field: TextField, entry: number, text: string, at: number, always = false) => {
     const e = entryOf(questionId, field, entry);
     e.text = text;
     if (!holds(field, text)) return;
     e.deleted = false;
-    if (field === "challenge" && (always || !flagsOf(questionId).has("bad_question"))) addFlag(questionId, "bad_question", phase, at);
+    if (field === "challenge") raise(questionId, at, always);
   };
 
   for (const chunk of rawLog) {
@@ -90,6 +118,22 @@ export function walkMarks(rawLog: RecordedChunk[], rules: Rules): { marks: Map<s
         phase = "reviewing";
       } else if (event.type === "confidence") {
         if (rules.collectConfidence) marksOf(event.questionId).confidence = event.confidence;
+      } else if (event.type === "flag" && event.flag === "bad_question") {
+        raise(event.questionId, at, true);
+      } else if (event.type === "unflag" && event.flag === "bad_question") {
+        const m = marksOf(event.questionId);
+        if (m.challenge?.on) m.challenge = { ...m.challenge, on: false };
+      } else if (event.type === "challengeRaise") {
+        raise(event.questionId, at);
+      } else if (event.type === "challengeReason") {
+        let r = reasons.get(event.questionId);
+        if (!r) reasons.set(event.questionId, (r = new Map()));
+        // Picking a Challenge reason already picked changes nothing.
+        if (!event.on) r.delete(event.reason);
+        else if (!r.has(event.reason)) {
+          raise(event.questionId, at);
+          r.set(event.reason, { reason: event.reason, phase, at });
+        }
       } else if (event.type === "flag") {
         addFlag(event.questionId, event.flag, phase, at);
       } else if (event.type === "unflag") {
@@ -131,6 +175,7 @@ export function walkMarks(rawLog: RecordedChunk[], rules: Rules): { marks: Map<s
     (field === "note" ? m.notes : m.challengeStatements)[entryPhase] = list;
   }
   for (const [questionId, f] of flags) marksOf(questionId).flags = [...f.values()];
+  for (const [questionId, r] of reasons) marksOf(questionId).challengeReasons = [...r.values()];
   for (const [questionId, options] of itemFlags) {
     for (const [optionId, f] of options) if (f.size > 0) marksOf(questionId).itemFlags[optionId] = [...f.values()];
   }

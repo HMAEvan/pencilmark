@@ -342,6 +342,36 @@ describe.each(adapters)("Recorder with the %s Storage adapter", (_name, makeStor
     expect((await openRecorder(storage, "ss_20261026_abcdef", clock)).integrity).toEqual({ ok: false, chunkId: "ss_20261026_abcdef_1" });
   });
 
+  it("records raising a Challenge and picking and taking back a Challenge reason, on either side of submission, so each has its Phase", async () => {
+    const storage = makeStorage();
+    const { clock, advance } = fakeClock(0);
+    const recorder = await openRecorder(storage, "ss_20261026_abcdef", clock);
+
+    recorder.append({ type: "navigate", questionId: "q_x" });
+    advance(1000);
+    recorder.append({ type: "challengeRaise", questionId: "q_x" });
+    advance(1000);
+    recorder.append({ type: "challengeReason", questionId: "q_x", reason: "wording_unclear", on: true });
+    advance(1000);
+    recorder.append({ type: "submit" });
+    advance(1000);
+    recorder.append({ type: "challengeReason", questionId: "q_x", reason: "wording_unclear", on: false });
+    advance(1000);
+    recorder.append({ type: "challengeReason", questionId: "q_x", reason: "answer_wrong", on: true });
+    await recorder.seal();
+
+    // ADR-0008: what comes before `submit` is answering, what comes after it reviewing.
+    const chunks = await readRawLog(storage, "ss_20261026_abcdef");
+    expect(chunks.flatMap((c) => c.events)).toEqual([
+      { seq: 1, at: 0, type: "navigate", questionId: "q_x" },
+      { seq: 2, at: 1000, type: "challengeRaise", questionId: "q_x" },
+      { seq: 3, at: 2000, type: "challengeReason", questionId: "q_x", reason: "wording_unclear", on: true },
+      { seq: 4, at: 3000, type: "submit" },
+      { seq: 5, at: 4000, type: "challengeReason", questionId: "q_x", reason: "wording_unclear", on: false },
+      { seq: 6, at: 5000, type: "challengeReason", questionId: "q_x", reason: "answer_wrong", on: true },
+    ]);
+  });
+
   it("keeps the Raw logs of different Sessions apart", async () => {
     const storage = makeStorage();
     const { clock } = fakeClock(0);

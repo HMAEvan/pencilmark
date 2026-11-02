@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from "preact/hooks";
 import type { RawEventBody } from "../recorder/recorder";
-import type { TextEntryMark } from "../derivation/marks";
+import type { QuestionMarks, TextEntryMark } from "../derivation/marks";
 import { TextEntries } from "./TextEntries";
 import type { ComponentChildren } from "preact";
-import { FLAGS, ITEM_FLAGS, flagsOfferedIn, type Confidence, type ContentBlock, type Flag, type ItemFlag, type Phase } from "../domain/types";
+import { CHALLENGE_REASONS, FLAGS, ITEM_FLAGS, flagsOfferedIn, type ChallengeReason, type Confidence, type ContentBlock, type Flag, type ItemFlag, type Phase } from "../domain/types";
 import { blocksToText } from "../domain/display";
 import { RichText } from "./RichText";
 import { t, type TranslationKey } from "../i18n/i18n";
@@ -26,7 +26,7 @@ export function ConfidenceButtons({ value, onChange }: { value: Confidence | nul
   );
 }
 
-/** The Flags the Phase offers, as toggle buttons. The bad-question Flag is not among them: #64 turns it into the Challenge. */
+/** The Flags the Phase offers, as toggle buttons. Never the retired bad_question: a faulty Question is a Challenge. */
 export function FlagButtons({ phase, flags, disabled, onToggle }: { phase: Phase; flags: Flag[]; disabled?: boolean; onToggle: (flag: Flag, on: boolean) => void }) {
   return (
     <div class="flags" role="group" aria-label={t("marks.flags")}>
@@ -42,12 +42,12 @@ export function FlagButtons({ phase, flags, disabled, onToggle }: { phase: Phase
   );
 }
 
-/** One line per Flag type that can be set, then the closing line. */
+/** The Flag types that can be set: every one but the retired bad_question. */
 const MEANT_FLAGS = FLAGS.filter((f): f is Exclude<Flag, "bad_question"> => f !== "bad_question");
 
 /**
  * The blue "Marks and Notes" area: closed by default, its header listing the Flags set. Inside: the Flags of the Phase, a collapsed
- * explanation of each, the bad-question Flag set apart (until #64), then `children` (Challenge statements and Notes).
+ * explanation of each, then `children` (the Notes). The Challenge area sits below it.
  * Without `onToggle` it is read-only: the Flags set are shown without controls.
  */
 export function MarksArea({
@@ -66,7 +66,6 @@ export function MarksArea({
 }) {
   const [open, setOpen] = useState(false);
   const set = MEANT_FLAGS.filter((f) => flags.includes(f));
-  const badQuestion = flags.includes("bad_question");
   return (
     <div class="marks-area">
       <button class="marks-area-header" aria-expanded={open} onClick={() => setOpen(!open)}>
@@ -94,13 +93,6 @@ export function MarksArea({
               </ul>
               <p class="muted">{t("marksArea.digestNote")}</p>
             </details>
-          )}
-          {onToggle && (
-            <div class="flags challenge-flag">
-              <button class={`small${badQuestion ? "" : " secondary"}`} aria-pressed={badQuestion} disabled={disabled} onClick={() => onToggle("bad_question", !badQuestion)}>
-                {t("flag.bad_question")}
-              </button>
-            </div>
           )}
           {children}
         </div>
@@ -252,35 +244,103 @@ export function HintPanel({
   );
 }
 
+/** Whether a Question's Challenge is on, turned off (by a stored `bad_question` removal), or was never raised. */
+export type ChallengeState = "on" | "off" | "none";
+
+export const challengeStateOf = ({ challenge }: Pick<QuestionMarks, "challenge">): ChallengeState => (!challenge ? "none" : challenge.on ? "on" : "off");
+
 /**
- * "I think the answer is wrong": the Phase's Challenge statement entries, recorded like Notes (ADR-0010). There is no
- * submit: the first entry holding text sets the bad-question Flag, which Derivation adds. `entries` are this Phase's as derived.
+ * The orange Challenge area (⚠), below the Marks and Notes area and opening independently of it: closed by default, its header
+ * saying whether a Challenge is on and listing the Challenge reasons picked. Only the first opening on a Question that was never
+ * Challenged raises the Challenge (`onRaise`), whatever the Phase; after that the header only opens and closes it. Inside: the
+ * Challenge reasons as toggles, then `children` (the Challenge statements), with the AI line beside them when `aiWritten`.
+ * Without `onReason` it is read-only: what was set is shown without controls.
  */
-export function ChallengeForm({
-  entries,
-  questionId,
+export function ChallengeArea({
+  state,
+  reasons,
+  aiWritten,
   disabled,
-  onRecord,
+  onRaise,
+  onReason,
+  children,
 }: {
-  entries: TextEntryMark[];
-  questionId: string;
+  state: ChallengeState;
+  reasons: ChallengeReason[];
+  /** The Question's provenance names a model. */
+  aiWritten?: boolean;
   disabled?: boolean;
-  onRecord: (event: RawEventBody) => void;
+  /** Both absent where nothing is recorded, as in a Showcase. */
+  onRaise?: () => void;
+  onReason?: (reason: ChallengeReason, on: boolean) => void;
+  children?: ComponentChildren;
 }) {
   const [open, setOpen] = useState(false);
+  const picked = CHALLENGE_REASONS.filter((r) => reasons.includes(r));
+  const toggle = () => {
+    if (!open && state === "none" && !disabled) onRaise?.();
+    setOpen(!open);
+  };
+  const summary = [
+    ...(state === "on" ? [t("challengeArea.on")] : []),
+    ...(picked.length ? [picked.map((r) => t(`challengeReason.${r}`)).join(t("marksArea.separator"))] : []),
+  ];
   return (
-    <div class="challenge">
-      {open || entries.length > 0 ? (
-        <div class="note">
-          {t("challenge.reasonLabel")}
-          <TextEntries field="challenge" questionId={questionId} entries={entries} label={t("challenge.reasonLabel")} placeholder="challenge.reasonPlaceholder" disabled={disabled} onRecord={onRecord} />
+    <div class={`challenge-area${state === "on" ? " challenged" : ""}`}>
+      <button class="challenge-area-header" aria-expanded={open} onClick={toggle}>
+        <span>
+          <span class="mark-challenge" aria-hidden="true">
+            ⚠{" "}
+          </span>
+          {t("challengeArea.title") + summary.map((part) => ` · ${part}`).join("")}
+        </span>
+        <span aria-hidden="true">{open ? "▴" : "▾"}</span>
+      </button>
+      {open && (
+        <div class="challenge-area-body">
+          <p class="muted challenge-reasons-label">{t("challengeArea.reasons")}</p>
+          {onReason ? (
+            <div class="flags challenge-reasons" role="group" aria-label={t("challengeArea.reasons")}>
+              {CHALLENGE_REASONS.map((r) => {
+                const on = reasons.includes(r);
+                return (
+                  <button key={r} class={`small${on ? "" : " secondary"}`} aria-pressed={on} disabled={disabled} onClick={() => onReason(r, !on)}>
+                    {t(`challengeReason.${r}`)}
+                  </button>
+                );
+              })}
+            </div>
+          ) : (
+            <div class="flags challenge-reasons" role="group" aria-label={t("challengeArea.reasons")}>
+              {picked.length ? picked.map((r) => <span key={r} class="flag-read challenge-read">{t(`challengeReason.${r}`)}</span>) : <span class="muted">{t("challengeArea.noReasons")}</span>}
+            </div>
+          )}
+          {onReason && aiWritten && <p class="muted ai-line">{t("challengeArea.aiLine")}</p>}
+          {children}
         </div>
-      ) : (
-        <button class="small secondary" disabled={disabled} onClick={() => setOpen(true)}>
-          {t("challenge.open")}
-        </button>
       )}
     </div>
   );
 }
 
+/** The Challenge statement of the Phase: several entries, recorded like Notes (ADR-0010); the first holding text turns the Challenge on, which Derivation works out. */
+export function ChallengeStatementField({
+  entries,
+  questionId,
+  label = "challenge.statementLabel",
+  disabled,
+  onRecord,
+}: {
+  entries: TextEntryMark[];
+  questionId: string;
+  label?: TranslationKey;
+  disabled?: boolean;
+  onRecord: (event: RawEventBody) => void;
+}) {
+  return (
+    <div class="note">
+      {t(label)}
+      <TextEntries field="challenge" questionId={questionId} entries={entries} label={t(label)} placeholder="challenge.statementPlaceholder" disabled={disabled} onRecord={onRecord} />
+    </div>
+  );
+}
