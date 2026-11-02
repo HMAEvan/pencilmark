@@ -14,6 +14,8 @@ Every file carries `kind` and `schemaVersion`.
 
 The JSON Schemas are the machine standard: the importer validates against them. The human and AI guide to writing a Question pack is the question-writing Skill, [`skills/pencilmark-question-writing/SKILL.md`](../skills/pencilmark-question-writing/SKILL.md); its example pack is checked against the schema by the tests, so the two cannot drift apart. The sample packs in [`samples/`](../samples/) are checked the same way.
 
+Every Question pack declares its Question language once, in the required top-level `language` (beside `batch`, which is provenance): a BCP 47 language tag such as `en`, `zh-CN` or `zh-TW`. A pack without it, or with a value that is not a language tag, is refused with an error naming the field. On import each Question stores the pack's language in its own `language`, so it is known without the pack. A content block (stem, Option, Rationale, Misconception, Hint, Explanation) written in another language carries its own optional `language`; a block without one is in the Question's language. The interface shows each Question's content under its `lang`, so screen readers use the right voice whatever the Interface language.
+
 The importer also checks what a JSON Schema cannot express: labels unique in the pack, Option ids unique in their Question, every `answer` id naming an Option, exactly one answer for `single_answer`, and the true/false convention (single-answer, two Options, `optionOrder: "fixed"`, the tag `true_false`). It warns, without refusing the pack, when text names an Option by its letter instead of `{{opt:<optionId>}}`, and when an unpinned Option refers to the others ("All of the above").
 
 ## Database
@@ -35,7 +37,7 @@ Conventions for every document:
 | `tracks` | Tracks: `kind` (`course` or `domain`), `title`, and course details where known. |
 | `topics` | Topics: `trackId`, `parentId` (absent at the top level), `title`, `order`. |
 | `batches` | Batches: `title`, `material`, the source Topic and which attempt at it this was. |
-| `questions` | Questions: type, stem, Options (with Rationale, Misconception, pin), `optionOrder`, answer, Explanation, Topics and Tracks, tags, `deprecated`. |
+| `questions` | Questions: type, `language` (the Question language), stem, Options (with Rationale, Misconception, pin), `optionOrder`, answer, Explanation, Topics and Tracks, tags, `deprecated`. |
 | `sets` | Sets: `title`, ordered `entries`, `archived`. |
 | `sessions` | Sessions: Set, Mode, status, displayed Question and Option orders, the settings snapshot, `currentDerivationId`. |
 | `rawLogBuffers` | The Raw log chunk still being recorded, one per Session, overwritten every few seconds. |

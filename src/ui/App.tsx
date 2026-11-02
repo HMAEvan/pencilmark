@@ -5,7 +5,7 @@ import { Review } from "./Review";
 import { ShowcaseReview } from "./ShowcaseReview";
 import { storage, storageMode, type StorageMode } from "./appStorage";
 import { applyLanguage, t } from "../i18n/i18n";
-import { DEFAULT_PREFERENCES, LANGUAGES, loadPreferences, saveDisplayPreferences, type LanguagePreference } from "../domain/settings";
+import { DEFAULT_PREFERENCES, LANGUAGES, saveDisplayPreferences, type LanguagePreference } from "../domain/settings";
 
 // Hash routes keep the single-file build working under /pencilmark/ on GitHub Pages.
 function currentRoute(): string[] {
@@ -16,7 +16,7 @@ export function navigate(...parts: string[]) {
   location.hash = `#/${parts.join("/")}`;
 }
 
-export function App() {
+export function App({ initialLanguage = DEFAULT_PREFERENCES.display.language }: { initialLanguage?: LanguagePreference }) {
   const [route, setRoute] = useState(currentRoute);
   useEffect(() => {
     const onChange = () => setRoute(currentRoute());
@@ -27,9 +27,8 @@ export function App() {
   const [mode, setMode] = useState<StorageMode>();
   useEffect(() => void storageMode.then(setMode), []);
 
-  // The browser's language shows until the stored preference loads. Changing it re-renders every screen.
-  const [language, setLanguage] = useState<LanguagePreference>(DEFAULT_PREFERENCES.display.language);
-  useEffect(() => void loadPreferences(storage).then((preferences) => setLanguage(preferences.display.language)), []);
+  // `main` reads the stored preference before the first render, so no screen is shown in the wrong language. Changing it re-renders every screen.
+  const [language, setLanguage] = useState<LanguagePreference>(initialLanguage);
   applyLanguage(language);
   const chooseLanguage = (preference: LanguagePreference) => {
     setLanguage(preference);

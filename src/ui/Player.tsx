@@ -1,8 +1,8 @@
 import { Fragment } from "preact";
 import { useEffect, useState } from "preact/hooks";
-import type { ChallengeReason, Confidence, Flag, ItemFlag, Question, QuestionSet, Session } from "../domain/types";
-import { blocksToText, letterAt } from "../domain/display";
-import { RichText } from "./RichText";
+import type { ChallengeReason, ContentBlock, Confidence, Flag, ItemFlag, Question, QuestionSet, Session } from "../domain/types";
+import { letterAt } from "../domain/display";
+import { QuestionText } from "./RichText";
 import { t } from "../i18n/i18n";
 import { openRecorder, type RawEventBody, type Recorder } from "../recorder/recorder";
 import { abandonSession, currentAttempts, loadOverrides, loadQuestions, setOverride, submitSession, type Override } from "../session/sessions";
@@ -44,13 +44,13 @@ const NOTHING_MARKED: Marked = { answers: {}, confidence: {}, flags: {}, itemFla
 const JUDGEMENTS: ItemFlag[] = ["eliminated", "eliminated_unsure", "sure_right"];
 
 /** An Option: a tap selects it, a long press opens its Item flag menu. */
-function OptionButton({ letter, text, selected, itemFlags, onSelect, onMenu }: { letter: string; text: string; selected: boolean; itemFlags: ItemFlag[]; onSelect: () => void; onMenu: () => void }) {
+function OptionButton({ letter, content, optionOrder, language, selected, itemFlags, onSelect, onMenu }: { letter: string; content: ContentBlock[]; optionOrder: string[]; language: string; selected: boolean; itemFlags: ItemFlag[]; onSelect: () => void; onMenu: () => void }) {
   const press = useLongPress(onMenu, onSelect);
   const judgement = JUDGEMENTS.find((f) => itemFlags.includes(f));
   return (
     <button class={`option${selected ? " selected" : ""}${judgement ? ` ${judgement}` : ""}`} aria-pressed={selected} {...press}>
       <span class="letter">{letter}</span>
-      <span><RichText source={text} inline /></span>
+      <span><QuestionText blocks={content} optionOrder={optionOrder} language={language} inline /></span>
       <ItemFlagMarks flags={itemFlags} />
     </button>
   );
@@ -330,7 +330,7 @@ export function Player({ sessionId }: { sessionId: string }) {
       <div class="card">
         {type === multipleAnswer && <p class="muted">{t("player.multipleAnswerInstruction")}</p>}
         {!isGraded(question) && <p class="muted">{t("player.unsupportedType")}</p>}
-        <RichText source={blocksToText(question.stem, optionOrder)} />
+        <QuestionText blocks={question.stem} optionOrder={optionOrder} language={question.language} />
         {/* A type shown read-only offers nothing to answer. */}
         {isGraded(question) && (
           <div class="options">
@@ -342,7 +342,9 @@ export function Player({ sessionId }: { sessionId: string }) {
                 <Fragment key={optionId}>
                   <OptionButton
                     letter={letterAt(i)}
-                    text={blocksToText(option.content, optionOrder)}
+                    content={option.content}
+                    optionOrder={optionOrder}
+                    language={question.language}
                     selected={answer.includes(optionId)}
                     itemFlags={optionFlags}
                     onSelect={() => toggle(optionId)}
@@ -361,6 +363,7 @@ export function Player({ sessionId }: { sessionId: string }) {
           hints={question.hints ?? []}
           opened={Array.from({ length: hintsOpened[questionId] ?? 0 }, (_, level) => ({ level, phase: "answering" as const }))}
           optionOrder={optionOrder}
+          language={question.language}
           onOpen={openHint}
         />
         {isGraded(question) && rules.collectConfidence && <ConfidenceButtons value={confidence[questionId] ?? null} onChange={setConfidence} />}

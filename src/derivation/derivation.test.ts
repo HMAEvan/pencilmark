@@ -10,6 +10,7 @@ const question: Question = {
   revision: 1,
   type: "single_answer",
   typeVersion: 1,
+  language: "en",
   stem: [{ type: "text", text: "Which organelle makes ATP? Not {{opt:opt_b}}." }],
   options: [
     { id: "opt_a", content: [{ type: "text", text: "Mitochondrion" }], rationale: [] },

@@ -2,7 +2,7 @@
 name: pencilmark-question-writing
 description: Writes revision questions as a PencilMark Question pack (JSON) for import. Use when asked to write, generate or turn study material into PencilMark questions.
 metadata:
-  version: "1.3.0"
+  version: "1.4.0"
 ---
 
 # Writing a PencilMark Question pack
@@ -23,10 +23,15 @@ PencilMark is a revision tool. The learner imports your Question pack (a file yo
 {
   "kind": "question_pack",          always this value
   "schemaVersion": 1,               always this value
+  "language": "en",                 the language the Questions are written in
   "batch": { ... },                 where these Questions came from
   "questions": [ ... ]              at least one Question
 }
 ```
+
+**`language`** (required): the language the Questions are written in, as a BCP 47 language tag: `"en"`, `"zh-CN"` (Simplified Chinese), `"zh-TW"` (Traditional Chinese). It is the language of the stems, Options, Hints, Explanations, Rationales and Misconceptions you write. The tool gives it to every Question so that a screen reader reads each Question in its own language, whatever language the learner's interface is in. A pack without it is refused.
+
+If the learner asks for part of a Question in another language (for example English stems and Options with Chinese Explanations), keep `language` as the language of most of the text and give each content block written in another language its own `"language"`, such as `{ "type": "text", "text": "冰的密度更小是因为……", "language": "zh-CN" }`. A block without `language` is in the pack's language. Do not mark a block just because it contains a few words or a term from another language.
 
 **`batch`**
 
@@ -82,6 +87,7 @@ A complete pack with one Question of each type. Its Topic paths are illustrative
 {
   "kind": "question_pack",
   "schemaVersion": 1,
+  "language": "en",
   "batch": {
     "title": "Forces and energy: warm-up",
     "model": "example-model",
@@ -183,6 +189,7 @@ In JSON strings a LaTeX backslash is written twice (`\\times`).
 ## Checklist
 
 - `kind` is `"question_pack"` and `schemaVersion` is `1`.
+- `language` is a language tag such as `"en"` or `"zh-CN"`; a content block written in another language carries its own `"language"`.
 - Every `label` is unique in the pack; every Option `id` is unique in its Question.
 - Every id in `answer` names an Option of that Question; `single_answer` has exactly one.
 - Every true/false Question is `single_answer` with two Options, `"optionOrder": "fixed"` and the tag `"true_false"`.

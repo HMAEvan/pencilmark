@@ -1,6 +1,7 @@
 {
   "kind": "question_pack",
   "schemaVersion": 1,
+  "language": "en",
   "batch": {
     "title": "Science mix: ice, motion and vaccines",
     "model": "Claude Opus 5.5",

@@ -2,7 +2,8 @@
 
 import type { SettingsSnapshot } from "./settings";
 
-export type ContentBlock = { type: "text"; text: string };
+/** A block written in a language other than its Question's carries its own `language`, a BCP 47 tag. */
+export type ContentBlock = { type: "text"; text: string; language?: string };
 
 export type Provenance = {
   source: "user" | "ai";
@@ -23,6 +24,8 @@ export type Question = Provenance & {
   revision: number;
   type: string;
   typeVersion: number;
+  /** The Question language: a BCP 47 tag, the HTML `lang` of everything shown for the Question except blocks with their own `language`. */
+  language: string;
   stem: ContentBlock[];
   options: Option[];
   optionOrder: "shuffle" | "fixed";

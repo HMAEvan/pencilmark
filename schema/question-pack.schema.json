@@ -4,11 +4,12 @@
   "title": "PencilMark Question pack",
   "description": "Questions written by an AI for import. Carries pack-local labels only; the tool assigns real IDs on import.",
   "type": "object",
-  "required": ["kind", "schemaVersion", "batch", "questions"],
+  "required": ["kind", "schemaVersion", "language", "batch", "questions"],
   "additionalProperties": false,
   "properties": {
     "kind": { "const": "question_pack" },
     "schemaVersion": { "const": 1 },
+    "language": { "$ref": "#/definitions/languageTag", "description": "The Question language: the language the Questions are written in, as a BCP 47 language tag such as \"en\", \"zh-CN\" or \"zh-TW\". Used as the HTML lang value so screen readers read the Questions in their own language." },
     "batch": {
       "type": "object",
       "required": ["title"],
@@ -23,13 +24,22 @@
     "questions": { "type": "array", "minItems": 1, "items": { "$ref": "#/definitions/question" } }
   },
   "definitions": {
+    "languageTag": {
+      "type": "string",
+      "description": "A BCP 47 language tag: a 2 or 3 letter language, then optional subtags, such as \"en\", \"zh-CN\", \"zh-Hant-TW\".",
+      "pattern": "^[A-Za-z]{2,3}(-[A-Za-z0-9]{2,8})*$"
+    },
     "blocks": {
       "type": "array",
       "items": {
         "type": "object",
         "required": ["type", "text"],
         "additionalProperties": false,
-        "properties": { "type": { "const": "text" }, "text": { "type": "string" } }
+        "properties": {
+          "type": { "const": "text" },
+          "text": { "type": "string" },
+          "language": { "$ref": "#/definitions/languageTag", "description": "Only when this block is written in a language other than the Question's, such as a Chinese Explanation on an English Question." }
+        }
       }
     },
     "topicPath": {

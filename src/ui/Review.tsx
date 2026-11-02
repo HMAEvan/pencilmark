@@ -1,8 +1,8 @@
 import type { ComponentChildren } from "preact";
 import { useEffect, useRef, useState } from "preact/hooks";
 import type { Flag, Question, QuestionSet, Session } from "../domain/types";
-import { blocksToText, letterAt, letterOf } from "../domain/display";
-import { RichText } from "./RichText";
+import { letterAt, letterOf } from "../domain/display";
+import { QuestionText } from "./RichText";
 import { t, type TranslationKey } from "../i18n/i18n";
 import { useNavDropdown } from "./useNavDropdown";
 import { openRecorder, type RawEventBody, type Recorder } from "../recorder/recorder";
@@ -373,7 +373,7 @@ export function ReviewPage({ shown, recording, banner, actions, feedbackLink, ch
               onSave={recording && ((values) => recording.saveOverride(attempt.questionId, values))}
             />
             {!graded && <p class="muted">{t("player.unsupportedType")}</p>}
-            <RichText source={blocksToText(question.stem, order)} />
+            <QuestionText blocks={question.stem} optionOrder={order} language={question.language} />
             {graded && (
               <div class="options">
                 {order.map((optionId, i) => {
@@ -384,11 +384,11 @@ export function ReviewPage({ shown, recording, banner, actions, feedbackLink, ch
                     <div key={optionId} class={`option${isAnswer ? " answer" : ""}${isChosen && !isAnswer ? " chosen-wrong" : ""}`}>
                       <span class="letter">{letterAt(i)}</span>
                       <div>
-                        <span><RichText source={blocksToText(option.content, order)} inline /></span> <ItemFlagMarks flags={(attempt.itemFlags[optionId] ?? []).map((m) => m.itemFlag)} />
+                        <span><QuestionText blocks={option.content} optionOrder={order} language={question.language} inline /></span> <ItemFlagMarks flags={(attempt.itemFlags[optionId] ?? []).map((m) => m.itemFlag)} />
                         {option.rationale.length > 0 && (
                           <details class="rationale" onToggle={(e) => recording?.toggleRationale(attempt.questionId, optionId, e.currentTarget.open)}>
                             <summary>{t("review.rationale")}</summary>
-                            <RichText source={blocksToText(option.rationale, order)} />
+                            <QuestionText blocks={option.rationale} optionOrder={order} language={question.language} />
                           </details>
                         )}
                       </div>
@@ -405,6 +405,7 @@ export function ReviewPage({ shown, recording, banner, actions, feedbackLink, ch
               hints={question.hints ?? []}
               opened={attempt.hintsUsed}
               optionOrder={order}
+              language={question.language}
               showPhase
               disabled={marking}
               onOpen={recording && ((level) => recording.mark({ type: "openHint", questionId: attempt.questionId, level }))}
@@ -412,7 +413,7 @@ export function ReviewPage({ shown, recording, banner, actions, feedbackLink, ch
             {question.explanation.length > 0 && (
               <div class="explanation">
                 <h4>{t("review.explanation")}</h4>
-                <RichText source={blocksToText(question.explanation, order)} />
+                <QuestionText blocks={question.explanation} optionOrder={order} language={question.language} />
               </div>
             )}
             {derivation.parameters.collectConfidence && (
