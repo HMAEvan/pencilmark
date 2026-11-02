@@ -107,7 +107,10 @@ button.small { padding: 4px 10px; font-size: 0.9rem; }
 .marks-area-body { padding: 0 10px 10px; }
 .marks-area-body .flags:first-child { margin-top: 0; }
 .challenge-area { border: 1px solid var(--challenge-mark); border-left-width: 4px; border-radius: 6px; margin-top: 12px; background: color-mix(in srgb, var(--challenge-mark) 8%, var(--card)); }
-.challenge-area-header { display: flex; justify-content: space-between; align-items: center; gap: 8px; width: 100%; padding: 8px 10px; background: none; border: 0; color: var(--fg); font: inherit; text-align: left; cursor: pointer; }
+.challenge-area-head { display: flex; align-items: center; gap: 8px; }
+.challenge-reinstate { flex: none; margin-right: 10px; }
+.challenge-withdraw { display: block; margin-top: 10px; color: var(--ok); }
+.challenge-area-header { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex: 1; min-width: 0; width: 100%; padding: 8px 10px; background: none; border: 0; color: var(--fg); font: inherit; text-align: left; cursor: pointer; }
 .challenge-area.challenged .challenge-area-header { font-weight: 600; }
 .challenge-area-body { padding: 0 10px 10px; }
 .challenge-reasons-label { margin: 0; font-size: 0.9rem; }

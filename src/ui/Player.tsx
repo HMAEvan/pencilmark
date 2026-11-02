@@ -243,6 +243,15 @@ export function Player({ sessionId }: { sessionId: string }) {
     recorder.append({ type: "challengeReason", questionId, reason, on });
     rederiveChallenge(questionId);
   };
+  // "Not a problem after all" withdraws the Challenge; Reinstate brings it back as it was. Derivation works out what each takes or restores.
+  const withdrawChallenge = () => {
+    recorder.append({ type: "challengeWithdraw", questionId });
+    rederiveChallenge(questionId);
+  };
+  const reinstateChallenge = () => {
+    recorder.append({ type: "challengeReinstate", questionId });
+    rederiveChallenge(questionId);
+  };
   // An Override beside the derived time, which keeps counting: time spent on the Question afterwards is added on top.
   const overrideTime = async (ms: number | undefined) => {
     const values = ms === undefined ? { answeringActiveMs: undefined, answeringActiveMsAtOverride: undefined } : { answeringActiveMs: ms, answeringActiveMsAtOverride: answeringTimeSoFar(recorder, rules, questionId) };
@@ -374,6 +383,8 @@ export function Player({ sessionId }: { sessionId: string }) {
         aiWritten={question.model !== undefined}
         onRaise={raiseChallenge}
         onReason={toggleChallengeReason}
+        onWithdraw={withdrawChallenge}
+        onReinstate={reinstateChallenge}
       >
         <ChallengeStatementField key={questionId} entries={statements[questionId] ?? []} questionId={questionId} onRecord={recordText} />
       </ChallengeArea>

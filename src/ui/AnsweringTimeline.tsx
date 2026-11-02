@@ -33,6 +33,10 @@ export function AnsweringTimeline({ timeline, optionOrder, precision }: { timeli
         return t("timeline.challenge");
       case "challengeOff":
         return t("timeline.challengeOff");
+      case "challengeWithdraw":
+        return t("timeline.challengeWithdraw");
+      case "challengeReinstate":
+        return t("timeline.challengeReinstate");
       case "challengeReason":
         return t(step.on ? "timeline.challengeReasonOn" : "timeline.challengeReasonOff", { reason: t(`challengeReason.${step.reason}`) });
       case "note":
