@@ -255,8 +255,13 @@ export function Player({ sessionId }: { sessionId: string }) {
       {!recorder.integrity.ok && <p class="bad">{t("player.integrityFailed", { chunk: recorder.integrity.chunkId })}</p>}
       <div class="player">
         <aside class={`answer-panel${navOpen ? " nav-open" : ""}`}>
-          <button class="question-number question-toggle" aria-expanded={navOpen} onClick={() => setNavOpen(!navOpen)}>
-            {t("player.questionNumber", { n: index + 1, total })} ▾
+          <button
+            class="question-number question-toggle"
+            aria-expanded={navOpen}
+            aria-label={t("player.questionNumber", { n: index + 1, total })}
+            onClick={() => setNavOpen(!navOpen)}
+          >
+            {t("player.questionNumberShort", { n: index + 1, total })} ▾
           </button>
           <p class="question-number question-label">{t("player.questionNumber", { n: index + 1, total })}</p>
           <Timers recorder={recorder} rules={rules} display={displayOf(session)} questionId={questionId} override={overrides.get(questionId)} onOverride={(ms) => void overrideTime(ms)} />

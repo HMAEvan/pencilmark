@@ -10,7 +10,7 @@
   --flag-mark: #1e6fd9;
   --challenge-mark: #c25e00;
   --partial: #b58900;
-  --bar-h: 44px;
+  --bar-h: 56px;
   color-scheme: light dark;
 }
 @media (prefers-color-scheme: dark) {
@@ -146,16 +146,16 @@ button.small { padding: 4px 10px; font-size: 0.9rem; }
 main.player-page { max-width: 960px; padding-top: calc(var(--bar-h) + 12px); }
 .answer-panel {
   position: fixed; top: 0; left: 0; right: 0; height: var(--bar-h); z-index: 5; display: flex; align-items: center; gap: 4px 8px;
-  padding: 6px 8px; background: var(--card); border-bottom: 1px solid var(--border); font-size: 0.72rem; white-space: nowrap;
+  padding: 6px 8px; background: var(--card); border-bottom: 1px solid var(--border); white-space: nowrap;
 }
 .answer-panel .timers { margin: 0; flex: 1; min-width: 0; flex-wrap: nowrap; gap: 4px 6px; align-items: center; }
-.answer-panel .panel-leave { padding: 3px 8px; font-size: inherit; }
+.answer-panel .panel-leave { padding: 8px 10px; font-size: inherit; }
 .timer-short { display: inline; }
 .timer-full { display: none; }
 .question-label { display: none; }
 .answer-panel .question-timer { flex: none; }
 .answer-panel .answering-time { flex-direction: row; gap: 6px; }
-.question-number { padding: 3px 6px; font-size: inherit; background: transparent; color: var(--fg); border-color: var(--border); }
+.question-number { padding: 8px 10px; font-size: inherit; background: transparent; color: var(--fg); border-color: var(--border); }
 .question-timer { display: inline-flex; align-items: center; gap: 4px; }
 .edit-time { text-decoration: none; font-size: 1rem; }
 .time-popover { position: fixed; top: var(--bar-h); left: 12px; right: 12px; margin: 0; z-index: 6; white-space: normal; border-color: var(--accent); }
