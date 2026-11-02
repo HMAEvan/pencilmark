@@ -17,6 +17,10 @@ export type RawEventBody =
   | { type: "challengeRaise"; questionId: string }
   /** A Challenge reason picked (`on`) or taken back. Picking one also turns the Challenge on. */
   | { type: "challengeReason"; questionId: string; reason: ChallengeReason; on: boolean }
+  /** "Not a problem after all": the Challenge withdrawn, its Challenge reasons taken back and its Challenge statement entries deleted. */
+  | { type: "challengeWithdraw"; questionId: string }
+  /** The Challenge brought back as it was before the latest withdrawal, until a new Challenge is raised; in any Phase. */
+  | { type: "challengeReinstate"; questionId: string }
   | { type: "itemFlag"; questionId: string; optionId: string; itemFlag: ItemFlag }
   | { type: "itemUnflag"; questionId: string; optionId: string; itemFlag: ItemFlag }
   /** Hints open one level at a time, lightest (0) first. */

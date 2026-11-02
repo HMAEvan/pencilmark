@@ -244,16 +244,22 @@ export function HintPanel({
   );
 }
 
-/** Whether a Question's Challenge is on, turned off (by a stored `bad_question` removal), or was never raised. */
-export type ChallengeState = "on" | "off" | "none";
+/**
+ * Whether a Question's Challenge is on, withdrawn (and so can be reinstated: a new Challenge replaces the withdrawn one), turned off
+ * (by a stored `bad_question` removal), or was never raised.
+ */
+export type ChallengeState = "on" | "withdrawn" | "off" | "none";
 
-export const challengeStateOf = ({ challenge }: Pick<QuestionMarks, "challenge">): ChallengeState => (!challenge ? "none" : challenge.on ? "on" : "off");
+export const challengeStateOf = ({ challenge }: Pick<QuestionMarks, "challenge">): ChallengeState =>
+  !challenge ? "none" : challenge.on ? "on" : challenge.withdrawn ? "withdrawn" : "off";
 
 /**
  * The orange Challenge area (⚠), below the Marks and Notes area and opening independently of it: closed by default, its header
  * saying whether a Challenge is on and listing the Challenge reasons picked. Only the first opening on a Question that was never
  * Challenged raises the Challenge (`onRaise`), whatever the Phase; after that the header only opens and closes it. Inside: the
- * Challenge reasons as toggles, then `children` (the Challenge statements), with the AI line beside them when `aiWritten`.
+ * Challenge reasons as toggles, then `children` (the Challenge statements), with the AI line beside them when `aiWritten`, and
+ * last "Not a problem after all", which withdraws the Challenge (`onWithdraw`). Once withdrawn the header says so, with Reinstate
+ * beside it (`onReinstate`), open or closed; opening the area then only shows it.
  * Without `onReason` it is read-only: what was set is shown without controls.
  */
 export function ChallengeArea({
@@ -263,6 +269,8 @@ export function ChallengeArea({
   disabled,
   onRaise,
   onReason,
+  onWithdraw,
+  onReinstate,
   children,
 }: {
   state: ChallengeState;
@@ -273,9 +281,33 @@ export function ChallengeArea({
   /** Both absent where nothing is recorded, as in a Showcase. */
   onRaise?: () => void;
   onReason?: (reason: ChallengeReason, on: boolean) => void;
+  onWithdraw?: () => void;
+  onReinstate?: () => void;
   children?: ComponentChildren;
 }) {
   const [open, setOpen] = useState(false);
+  // "Not a problem after all" and Reinstate each remove themselves, so focus moves on rather than falling to the page: after
+  // withdrawing to Reinstate, once it is shown (on the Review page, after the mark is recorded); after reinstating to the header.
+  const header = useRef<HTMLButtonElement>(null);
+  const reinstateButton = useRef<HTMLButtonElement>(null);
+  const focusReinstate = useRef(false);
+  useEffect(() => {
+    if (focusReinstate.current && reinstateButton.current) {
+      focusReinstate.current = false;
+      reinstateButton.current.focus();
+    }
+  });
+  const withdraw = () => {
+    if (disabled || !onWithdraw) return;
+    focusReinstate.current = true;
+    onWithdraw();
+  };
+  const reinstate = () => {
+    if (disabled || !onReinstate) return;
+    focusReinstate.current = false;
+    onReinstate();
+    header.current?.focus();
+  };
   const picked = CHALLENGE_REASONS.filter((r) => reasons.includes(r));
   // While a mark is being recorded (`disabled`), presses that would record are ignored, but no control is `disabled`: that
   // would drop the focus of the control just pressed to the page (#75, accessibility). They carry `aria-disabled` instead.
@@ -286,20 +318,27 @@ export function ChallengeArea({
     setOpen(!open);
   };
   const summary = [
-    ...(state === "on" ? [t("challengeArea.on")] : []),
+    ...(state === "on" ? [t("challengeArea.on")] : state === "withdrawn" ? [t("challengeArea.withdrawn")] : []),
     ...(picked.length ? [picked.map((r) => t(`challengeReason.${r}`)).join(t("marksArea.separator"))] : []),
   ];
   return (
     <div class={`challenge-area${state === "on" ? " challenged" : ""}`}>
-      <button class="challenge-area-header" aria-expanded={open} aria-disabled={raises && disabled ? true : undefined} onClick={toggle}>
-        <span>
-          <span class="mark-challenge" aria-hidden="true">
-            ⚠{" "}
+      <div class="challenge-area-head">
+        <button ref={header} class="challenge-area-header" aria-expanded={open} aria-disabled={raises && disabled ? true : undefined} onClick={toggle}>
+          <span>
+            <span class="mark-challenge" aria-hidden="true">
+              ⚠{" "}
+            </span>
+            {t("challengeArea.title") + summary.map((part) => ` · ${part}`).join("")}
           </span>
-          {t("challengeArea.title") + summary.map((part) => ` · ${part}`).join("")}
-        </span>
-        <span aria-hidden="true">{open ? "▴" : "▾"}</span>
-      </button>
+          <span aria-hidden="true">{open ? "▴" : "▾"}</span>
+        </button>
+        {state === "withdrawn" && onReinstate && (
+          <button ref={reinstateButton} class="small secondary challenge-reinstate" aria-disabled={disabled ? true : undefined} onClick={reinstate}>
+            {t("challengeArea.reinstate")}
+          </button>
+        )}
+      </div>
       {open && (
         <div class="challenge-area-body">
           <p class="muted challenge-reasons-label">{t(onReason ? "challengeArea.reasons" : "challengeArea.reasonsRead")}</p>
@@ -321,6 +360,11 @@ export function ChallengeArea({
           )}
           {onReason && aiWritten && <p class="muted ai-line">{t("challengeArea.aiLine")}</p>}
           {children}
+          {state === "on" && onWithdraw && (
+            <button class="link challenge-withdraw" aria-disabled={disabled ? true : undefined} onClick={withdraw}>
+              {t("challengeArea.withdraw")}
+            </button>
+          )}
         </div>
       )}
     </div>

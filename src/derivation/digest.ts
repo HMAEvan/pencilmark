@@ -2,7 +2,7 @@ import { PHASES, type Flag, type Question } from "../domain/types";
 import { blocksToText, letterAt, letterOf } from "../domain/display";
 import { CHALLENGE_REASON_NAME, FLAG_TYPE, ITEM_FLAG_TYPE } from "../domain/schemaDocument";
 import type { DerivedAttempt } from "./derivation";
-import type { FlagMark, PhaseTextEntries, RemovedFlags } from "./marks";
+import type { ChallengeMark, FlagMark, PhaseTextEntries, RemovedFlags } from "./marks";
 import { finalValues, type FinalValues, type OverrideValues } from "./overrides";
 import { excludedIdleMs } from "./timing";
 import type { TimelineStep } from "./timeline";
@@ -39,13 +39,20 @@ function entryLines(label: string, entries: PhaseTextEntries): string[] {
   );
 }
 
+/** Whether the Challenge is on, withdrawn or turned off, with the Phase it was raised in and of its latest withdrawal and reinstating. */
+function challengeState(challenge: ChallengeMark): string {
+  const { phase, withdrawn, reinstated } = challenge;
+  if (challenge.on) return reinstated && withdrawn ? `on (${phase}; withdrawn in ${withdrawn.phase}, reinstated in ${reinstated.phase})` : `on (${phase})`;
+  return withdrawn ? `withdrawn (raised in ${phase}, withdrawn in ${withdrawn.phase})` : `off (raised in ${phase}, later turned off)`;
+}
+
 /**
  * The Challenge, for every Question, so the grading Skill can find each one; once raised, its Challenge reasons, each with its
- * Phase. A Challenge turned off is one a stored `bad_question` removal turned off.
+ * Phase. A Challenge turned off is one a stored `bad_question` removal turned off; a withdrawn one has no reasons left.
  */
 function challengeLines({ challenge, challengeReasons }: DerivedAttempt): string[] {
   if (!challenge && !challengeReasons.length) return ["- Challenge: none"];
-  const state = !challenge ? "none" : challenge.on ? `on (${challenge.phase})` : `off (raised in ${challenge.phase}, later turned off)`;
+  const state = challenge ? challengeState(challenge) : "none";
   const reasons = challengeReasons.map((r) => `${CHALLENGE_REASON_NAME[r.reason]} (${r.phase})`).join(", ");
   return [`- Challenge: ${state}`, `- Challenge reasons: ${reasons || "none"}`];
 }
@@ -119,6 +126,10 @@ function timelineLines({ timeline, optionOrder }: DerivedAttempt): string[] {
         return "Challenge raised";
       case "challengeOff":
         return "Challenge turned off";
+      case "challengeWithdraw":
+        return "Challenge withdrawn: its Challenge reasons taken back and its Challenge statements deleted";
+      case "challengeReinstate":
+        return "Challenge reinstated: its Challenge reasons and statements as before";
       case "challengeReason":
         return `Challenge reason ${step.on ? "picked" : "taken back"}: ${CHALLENGE_REASON_NAME[step.reason]}`;
       case "note":

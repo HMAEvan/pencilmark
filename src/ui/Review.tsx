@@ -445,6 +445,8 @@ export function ReviewPage({ shown, recording, banner, actions, feedbackLink, ch
               disabled={marking}
               onRaise={recording && (() => recording.mark({ type: "challengeRaise", questionId: attempt.questionId }))}
               onReason={recording && ((reason, on) => recording.mark({ type: "challengeReason", questionId: attempt.questionId, reason, on }))}
+              onWithdraw={recording && (() => recording.mark({ type: "challengeWithdraw", questionId: attempt.questionId }))}
+              onReinstate={recording && (() => recording.mark({ type: "challengeReinstate", questionId: attempt.questionId }))}
             >
               <TextEntriesRead entries={attempt.challengeStatements.answering} label="review.answeringStatement" />
               {/* Written after the reveal, so it is the reviewing Challenge statement. */}

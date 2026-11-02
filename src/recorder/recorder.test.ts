@@ -372,6 +372,33 @@ describe.each(adapters)("Recorder with the %s Storage adapter", (_name, makeStor
     ]);
   });
 
+  it("records withdrawing and reinstating a Challenge, on either side of submission, so each has its Phase", async () => {
+    const storage = makeStorage();
+    const { clock, advance } = fakeClock(0);
+    const recorder = await openRecorder(storage, "ss_20261026_abcdef", clock);
+
+    recorder.append({ type: "challengeRaise", questionId: "q_x" });
+    advance(1000);
+    recorder.append({ type: "challengeWithdraw", questionId: "q_x" });
+    advance(1000);
+    recorder.append({ type: "submit" });
+    advance(1000);
+    recorder.append({ type: "challengeReinstate", questionId: "q_x" });
+    advance(1000);
+    recorder.append({ type: "challengeWithdraw", questionId: "q_x" });
+    await recorder.seal();
+
+    // ADR-0008: what comes before `submit` is answering, what comes after it reviewing.
+    const chunks = await readRawLog(storage, "ss_20261026_abcdef");
+    expect(chunks.flatMap((c) => c.events)).toEqual([
+      { seq: 1, at: 0, type: "challengeRaise", questionId: "q_x" },
+      { seq: 2, at: 1000, type: "challengeWithdraw", questionId: "q_x" },
+      { seq: 3, at: 2000, type: "submit" },
+      { seq: 4, at: 3000, type: "challengeReinstate", questionId: "q_x" },
+      { seq: 5, at: 4000, type: "challengeWithdraw", questionId: "q_x" },
+    ]);
+  });
+
   it("keeps the Raw logs of different Sessions apart", async () => {
     const storage = makeStorage();
     const { clock } = fakeClock(0);
