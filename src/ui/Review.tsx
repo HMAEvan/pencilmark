@@ -7,7 +7,7 @@ import { t, type TranslationKey } from "../i18n/i18n";
 import { useNavDropdown } from "./useNavDropdown";
 import { openRecorder, type RawEventBody, type Recorder } from "../recorder/recorder";
 import { loadDerivedSession, recordReviewMark, setOverride, type Attempt, type Derivation, type Override } from "../session/sessions";
-import { AppealForm, HintPanel, ItemFlagMarks, MarksArea, NoteField } from "./Marks";
+import { ChallengeForm, HintPanel, ItemFlagMarks, MarksArea, NoteField } from "./Marks";
 import { TextEntriesRead } from "./TextEntries";
 import { digestWithOverrides, finalValues, type FinalValues, type OverrideValues } from "../derivation/derivation";
 import { buildAnswerPack } from "../exports/answerPack";
@@ -237,7 +237,7 @@ type Recording = {
 /**
  * The review page itself. `banner` follows the heading, `actions` the page's own downloads, and `children` the Questions.
  * `feedbackLink` adds a link that jumps to the Feedback (`FEEDBACK_ID`) among `children`.
- * Without `recording` nothing on it records: marks, Notes and Appeals are shown as they are, and there are no Overrides.
+ * Without `recording` nothing on it records: marks, Notes and Challenges are shown as they are, and there are no Overrides.
  */
 export function ReviewPage({ shown, recording, banner, actions, feedbackLink, children }: { shown: Shown; recording?: Recording; banner?: ComponentChildren; actions?: ComponentChildren; feedbackLink?: boolean; children?: ComponentChildren }) {
   const { session, set, derivation, attempts, questions, overrides } = shown;
@@ -427,7 +427,7 @@ export function ReviewPage({ shown, recording, banner, actions, feedbackLink, ch
               <TextEntriesRead entries={attempt.challengeStatements.answering} label="review.answeringStatement" />
               {/* Written after the reveal, so it is the reviewing Challenge statement. */}
               {recording ? (
-                <AppealForm entries={attempt.challengeStatements.reviewing ?? []} questionId={attempt.questionId} disabled={marking} onRecord={recording.recordText} />
+                <ChallengeForm entries={attempt.challengeStatements.reviewing ?? []} questionId={attempt.questionId} disabled={marking} onRecord={recording.recordText} />
               ) : (
                 <TextEntriesRead entries={attempt.challengeStatements.reviewing} label="review.reviewingStatementRead" />
               )}

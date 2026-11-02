@@ -256,7 +256,7 @@ export function HintPanel({
  * "I think the answer is wrong": the Phase's Challenge statement entries, recorded like Notes (ADR-0010). There is no
  * submit: the first entry holding text sets the bad-question Flag, which Derivation adds. `entries` are this Phase's as derived.
  */
-export function AppealForm({
+export function ChallengeForm({
   entries,
   questionId,
   disabled,
@@ -269,15 +269,15 @@ export function AppealForm({
 }) {
   const [open, setOpen] = useState(false);
   return (
-    <div class="appeal">
+    <div class="challenge">
       {open || entries.length > 0 ? (
         <div class="note">
-          {t("appeal.reasonLabel")}
-          <TextEntries field="challenge" questionId={questionId} entries={entries} label={t("appeal.reasonLabel")} placeholder="appeal.reasonPlaceholder" disabled={disabled} onRecord={onRecord} />
+          {t("challenge.reasonLabel")}
+          <TextEntries field="challenge" questionId={questionId} entries={entries} label={t("challenge.reasonLabel")} placeholder="challenge.reasonPlaceholder" disabled={disabled} onRecord={onRecord} />
         </div>
       ) : (
         <button class="small secondary" disabled={disabled} onClick={() => setOpen(true)}>
-          {t("appeal.open")}
+          {t("challenge.open")}
         </button>
       )}
     </div>

@@ -74,7 +74,7 @@ export function walkMarks(rawLog: RecordedChunk[], rules: Rules): { marks: Map<s
     if (!e) entries.set(entry, (e = { text: "", deleted: false, before: "" }));
     return e;
   };
-  /** Any Challenge statement adds the bad-question Flag, unless it is already on (`always`: an Appeal from before ADR-0010 added it again). */
+  /** Any Challenge statement adds the bad-question Flag, unless it is already on (`always`: a stored `appeal` event from before ADR-0010 added it again). */
   const saveText = (questionId: string, field: TextField, entry: number, text: string, at: number, always = false) => {
     const e = entryOf(questionId, field, entry);
     e.text = text;
@@ -104,7 +104,7 @@ export function walkMarks(rawLog: RecordedChunk[], rules: Rules): { marks: Map<s
       } else if (event.type === "itemUnflag") {
         itemFlagsOf(event.questionId, event.optionId).delete(event.itemFlag);
       } else if (event.type === "appeal") {
-        // An appeal must give a reason; one without is not an appeal. It is the first Challenge statement entry of its Phase (ADR-0010), so a later one replaces it.
+        // A stored `appeal` event must give a reason; one without is ignored. It is the first Challenge statement entry of its Phase (ADR-0010), so a later one replaces it.
         const reason = event.reason.trim();
         if (reason) saveText(event.questionId, "challenge", 0, reason, at, true);
       } else if (event.type === "note") {
