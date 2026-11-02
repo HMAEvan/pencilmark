@@ -40,6 +40,14 @@ _Avoid_: Rationale, solution
 The typical misunderstanding a wrong Option is designed to catch.
 _Avoid_: Distractor reason, trap
 
+**Question language** (题目语言):
+The language a Question's text is written in. The Question pack declares it and each Question keeps it, so screen readers read the Question in its own language, whatever the Interface language.
+_Avoid_: locale, pack language
+
+**Interface language** (界面语言):
+The language of PencilMark's own words (buttons, labels, messages), chosen by the learner or following the browser. Never the language of a Question.
+_Avoid_: locale, app language
+
 ## Organisation
 
 **Track** (学习线):
