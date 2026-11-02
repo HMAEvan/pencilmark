@@ -1,6 +1,6 @@
 # Fact-check of `samples/general-science.json`
 
-Checked on 2026-10-30 by an independent agent (read-only, at an introductory level): the marked answer, each Rationale, Misconception, Hint and Explanation of all 10 Questions. The Question pack is kept exactly as Claude Opus 5.5 generated it.
+Checked on 2026-10-30 by an independent agent (read-only, at an introductory level): the marked answer, each Rationale, Misconception, Hint and Explanation of all 10 Questions. The Question pack is kept exactly as Claude Opus 5.5 generated it, except that the top-level field `"language": "en"` was added by hand afterwards, so the pack in the shared claude.ai chat has no `language`.
 
 **Result: no wrong answers. Six minor wording or accuracy issues.**
 

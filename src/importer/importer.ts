@@ -34,6 +34,8 @@ export type PackQuestion = {
 export type QuestionPack = {
   kind: "question_pack";
   schemaVersion: 1;
+  /** The Question language of every Question in the pack: a BCP 47 tag, used as the HTML `lang` value. */
+  language: string;
   batch: { title: string; model?: string; material?: string; topic?: string };
   questions: PackQuestion[];
 };
@@ -66,6 +68,7 @@ function locate(error: ErrorObject, data: unknown): PackError {
   if (error.keyword === "required") message = "is missing";
   else if (error.keyword === "additionalProperties") message = "is not a field of the Question pack format; remove it";
   else if (error.keyword === "enum") message = `must be one of ${(error.params.allowedValues as unknown[]).map((v) => JSON.stringify(v)).join(", ")}`;
+  else if (error.keyword === "pattern" && field.endsWith("language")) message = 'must be a BCP 47 language tag such as "en", "zh-CN" or "zh-TW"';
   else if (error.keyword === "const") message = `must be ${JSON.stringify(error.params.allowedValue)}`;
   else message = error.message ?? "is invalid";
   return question === undefined ? { field, message } : { question, field, message };
@@ -259,7 +262,7 @@ export async function commitImport(
       if (!deprecated && !questionIds.includes(id)) questionIds.push(id);
       continue;
     }
-    const fromPack = questionFromPack(q, { ...provenance, batchId: batch.id, resolved, now });
+    const fromPack = questionFromPack(q, pack.language, { ...provenance, batchId: batch.id, resolved, now });
     if (choice === "update") {
       const existing = updating.get(shown.existingId!)!;
       const next: Question = {
@@ -295,6 +298,7 @@ export async function commitImport(
 /** A pack Question as revision 1 of a new Question, with a real ID (ADR-0003) and its Topic paths resolved. */
 function questionFromPack(
   q: PackQuestion,
+  language: string,
   { batchId, resolved, now, ...provenance }: Provenance & { batchId: string; resolved: Map<string, { trackId: string; topicId?: string }>; now: Date },
 ): Question {
   return {
@@ -303,6 +307,7 @@ function questionFromPack(
     revision: 1,
     type: q.type,
     typeVersion: 1,
+    language,
     stem: q.stem,
     options: q.options.map((o) => ({ ...o, rationale: o.rationale ?? [] })),
     optionOrder: q.optionOrder ?? (isTrueFalse(q) ? "fixed" : "shuffle"),

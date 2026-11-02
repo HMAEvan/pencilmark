@@ -14,6 +14,7 @@ import questionWritingSkill from "../../skills/pencilmark-question-writing/SKILL
 const onePack = {
   kind: "question_pack",
   schemaVersion: 1,
+  language: "en",
   batch: { title: "Cell biology warm-up", model: "claude-opus-5-5", material: "Lecture 1 notes" },
   questions: [
     {
@@ -42,6 +43,7 @@ const question = (label: string, stem: string, options: string[], overrides: Rec
 const threePack = {
   kind: "question_pack",
   schemaVersion: 1,
+  language: "en",
   batch: { title: "Genetics", model: "claude-opus-5-5" },
   questions: [
     question("q1", "What carries genetic information?", ["DNA", "Lipid", "Starch"], { topics: ["BIOL101 / Genetics / Lecture 1"] }),
@@ -538,6 +540,65 @@ const typesCovered = (pack: QuestionPack) => [...new Set(pack.questions.map((q) 
 
 // The sample packs double as import fixtures; the build serves the first one behind "Import sample Set".
 const samplePacks = Object.entries(import.meta.glob<string>("../../samples/*.json", { query: "?raw", import: "default", eager: true }));
+
+describe("Importer: Question language", () => {
+  const { language: _language, ...withoutLanguage } = onePack;
+
+  it("refuses a pack without language, naming the field, in the text to send back to the AI", async () => {
+    const parsed = parseQuestionPack(JSON.stringify(withoutLanguage));
+    expect(parsed).toEqual({ ok: false, errors: [{ field: "language", message: expect.any(String) }] });
+    if (parsed.ok) return;
+    expect(packErrorsText(parsed.errors)).toContain('field "language"');
+  });
+
+  it.each(["english", "", "en_US", "zh-", 5])("refuses the language %j, naming the field", (language) => {
+    const parsed = parseQuestionPack(JSON.stringify({ ...onePack, language }));
+    expect(parsed).toEqual({ ok: false, errors: [{ field: "language", message: expect.any(String) }] });
+  });
+
+  it("refuses a block's own language that is not a language tag, locating the block", () => {
+    const stem = [{ type: "text", text: "Which organelle makes ATP?", language: "english" }];
+    const parsed = parseQuestionPack(JSON.stringify({ ...onePack, questions: [{ ...onePack.questions[0]!, stem }] }));
+    expect(parsed).toEqual({ ok: false, errors: [{ question: "q1", field: "stem[0].language", message: expect.any(String) }] });
+  });
+
+  it.each(["en", "zh-CN", "zh-TW", "pt-BR"])("accepts the language %s", (language) => {
+    expect(parseQuestionPack(JSON.stringify({ ...onePack, language })).ok).toBe(true);
+  });
+
+  it("stores the pack's Question language on every Question", async () => {
+    const storage = createMemoryStorage();
+    const pack = { ...threePack, language: "zh-TW" };
+    const shown = await preview(storage, pack);
+    await commitImport(shown, storage, { confirmedTopicPaths: shown.newTopicPaths });
+    const questions = await storage.query<Question>("questions");
+    expect(questions).toHaveLength(3);
+    expect(questions.map((q) => q.language)).toEqual(["zh-TW", "zh-TW", "zh-TW"]);
+  });
+
+  it("keeps a block's own language, and leaves other blocks without one", async () => {
+    const storage = createMemoryStorage();
+    const q = onePack.questions[0]!;
+    const explanation = [{ type: "text", text: "ATP is made in mitochondria." }, { type: "text", text: "线粒体产生 ATP。", language: "zh-CN" }];
+    const pack = { ...onePack, questions: [{ ...q, explanation }] };
+    await commitImport(await preview(storage, pack), storage, { confirmedTopicPaths: [] });
+    const [stored] = await storage.query<Question>("questions");
+    expect(stored!.language).toBe("en");
+    expect(stored!.explanation).toEqual(explanation);
+    expect(stored!.stem[0]).not.toHaveProperty("language");
+  });
+
+  it("gives a Question updated by a later pack the later pack's Question language", async () => {
+    const storage = createMemoryStorage();
+    await commitImport(await preview(storage, onePack), storage, { confirmedTopicPaths: [] });
+    const next = { ...onePack, language: "zh-CN", questions: [{ ...onePack.questions[0]!, stem: [{ type: "text", text: "Which organelle makes most ATP? Not {{opt:opt_b}}." }] }] };
+    const shown = await preview(storage, next);
+    await commitImport(shown, storage, { confirmedTopicPaths: [], similarChoices: { q1: "update" } });
+    const [stored] = await storage.query<Question>("questions");
+    expect(stored!.revision).toBe(2);
+    expect(stored!.language).toBe("zh-CN");
+  });
+});
 
 describe("Importer: sample packs", () => {
   it("has at least one sample pack", () => {

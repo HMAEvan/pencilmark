@@ -15,6 +15,15 @@ export function browserLanguage(languages: readonly string[] = typeof navigator 
   return "en";
 }
 
+/** The `lang` value for the interface in `language`. Chinese follows a Traditional Chinese browser (zh-TW, zh-HK, zh-MO or script Hant), though there is only the one Chinese translation. */
+export function interfaceLangTag(language: Language, browserLanguages: readonly string[] = typeof navigator === "undefined" ? [] : navigator.languages): string {
+  if (language === "en") return "en";
+  const chinese = browserLanguages.map((tag) => tag.toLowerCase()).find((tag) => tag.split("-")[0] === "zh");
+  if (chinese === "zh-hk" || chinese?.startsWith("zh-hk-")) return "zh-HK";
+  if (chinese && /^zh-(tw|mo|hant)(-|$)/.test(chinese)) return "zh-TW";
+  return "zh-CN";
+}
+
 let current: Language = browserLanguage();
 
 export function currentLanguage(): Language {
@@ -24,7 +33,7 @@ export function currentLanguage(): Language {
 /** Switches every later `t` call. The caller re-renders so the screen follows. */
 export function applyLanguage(preference: LanguagePreference): Language {
   current = preference === "browser" ? browserLanguage() : preference;
-  document.documentElement.lang = current === "zh" ? "zh-CN" : "en";
+  document.documentElement.lang = interfaceLangTag(current);
   return current;
 }
 

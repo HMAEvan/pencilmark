@@ -4,8 +4,7 @@ import type { QuestionMarks, TextEntryMark } from "../derivation/marks";
 import { TextEntries } from "./TextEntries";
 import type { ComponentChildren } from "preact";
 import { CHALLENGE_REASONS, FLAGS, ITEM_FLAGS, flagsOfferedIn, type ChallengeReason, type Confidence, type ContentBlock, type Flag, type ItemFlag, type Phase } from "../domain/types";
-import { blocksToText } from "../domain/display";
-import { RichText } from "./RichText";
+import { QuestionText } from "./RichText";
 import { t, type TranslationKey } from "../i18n/i18n";
 
 // Marks shared by the Player and the review page. Each change is reported to the caller, which records it in the Raw log.
@@ -212,6 +211,7 @@ export function HintPanel({
   hints,
   opened,
   optionOrder,
+  language,
   showPhase,
   disabled,
   onOpen,
@@ -219,6 +219,8 @@ export function HintPanel({
   hints: ContentBlock[][];
   opened: { level: number; phase: Phase }[];
   optionOrder: string[];
+  /** The Question language, for Hints with no language of their own. */
+  language: string;
   showPhase?: boolean;
   disabled?: boolean;
   /** Absent where nothing is recorded, as in a Showcase: only the Hints opened are shown. */
@@ -232,7 +234,7 @@ export function HintPanel({
         <div key={level} class={`hint${phase === "answering" ? " used" : ""}`}>
           <strong>{t("hints.label", { n: level + 1 })}</strong>
           {showPhase && <span class="muted">{t(phase === "answering" ? "hints.answering" : "hints.reviewing")}</span>}
-          <RichText source={blocksToText(hints[level]!, optionOrder)} />
+          <QuestionText blocks={hints[level]!} optionOrder={optionOrder} language={language} />
         </div>
       ))}
       {onOpen && next < hints.length && (
